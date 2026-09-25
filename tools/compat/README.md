@@ -39,9 +39,8 @@ MIDI would pollute the very thing being measured.
 
 ## Building a traced image
 
-Object files do not depend on the build flags, so a traced build needs its own
-build directory. Building it into `build/` would silently mix traced and
-untraced objects.
+Give the traced build its own directory, so that a traced and an untraced
+image can coexist without rebuilding from scratch each time:
 
 ```bash
 make APPPATH=apps/controller TRACE=1 BUILDDIR=build-trace hex
@@ -49,7 +48,11 @@ make APPPATH=apps/controller TRACE=1 BUILDDIR=build-trace hex
 
 Add `SD_FORCE_1BIT_BUS=1` on a unit whose SD card data lines are damaged.
 
-Tracing costs about 3 KB of flash and 12 KB of RAM, all of it inside the traced
+Object files depend on the compiler flags, so changing `TRACE` does force a
+rebuild rather than silently linking a mixture. That was not always true; a
+build made before it was fixed cannot be trusted across a flag change.
+
+Tracing costs about 3 KB of flash and 36 KB of RAM, all of it inside the traced
 build. A normal build is byte for byte unaffected, because the trace
 translation unit compiles to nothing and the RTT sources are dropped from the
 file list.
