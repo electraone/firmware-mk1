@@ -77,17 +77,18 @@ CHROMA_KEY = 0xF81F
 class Variant:
     """One colour a face is stored in.
 
-    `field` is what the glyph is drawn on. A variant that is keyed is drawn on
-    the chroma colour and stored as the box its ink occupies. A variant that
-    is copied whole - the ones whose background is part of the look - keeps
-    its full cell, because the field around the letter is the point of it.
+    `field` is what the glyph is drawn on, which matters because the
+    anti-aliased edge blends towards it. A variant meant to land on anything
+    is drawn on the chroma colour, so the blit keys the background away; one
+    whose background is part of the look is drawn on that background instead,
+    and then there is no chroma in its box for the same blit to key. So every
+    variant is stored and drawn identically and only the colours differ.
     """
 
-    def __init__(self, name, ink, field=CHROMA_KEY, full_cell=False):
+    def __init__(self, name, ink, field=CHROMA_KEY):
         self.name = name
         self.ink = ink
         self.field = field
-        self.full_cell = full_cell
 
 
 # The six colours a preset can use, as the firmware holds them in RGB565.
@@ -102,12 +103,11 @@ PRESET_COLOURS = [
     Variant("Purple", 0xC232),
 ]
 
-# What the system's own windows draw in. The two that carry a background keep
-# their whole cell; the plain one is keyed like the preset colours.
+# What the system's own windows draw in.
 SYSTEM_VARIANTS = [
     Variant("White", 0xFFFF),
-    Variant("BlackOnWhite", 0x0000, field=0xFFFF, full_cell=True),
-    Variant("WhiteOnDimmed", 0xFFFF, field=0x4208, full_cell=True),
+    Variant("BlackOnWhite", 0x0000, field=0xFFFF),
+    Variant("WhiteOnDimmed", 0xFFFF, field=0x4208),
 ]
 
 
@@ -170,15 +170,18 @@ def measure(face: Face) -> None:
     the same box for every colour of the face - the shapes do not change with
     the colour, and the firmware's tables are smaller for sharing them.
     """
-    probe = Image.new("L", (1, 1))
-    draw = ImageDraw.Draw(probe)
-
     for code in range(FIRST_GLYPH, LAST_GLYPH + 1):
         character = chr(code)
-        advance = max(1, draw.textbbox((0, 0), character, font=face.font)[2])
+
+        # The advance is what the pen moves by, which is not the right edge
+        # of the ink: a glyph has bearings either side of it, and taking the
+        # ink extent instead draws the next character on top of this one.
+        advance = max(1, int(round(face.font.getlength(character))))
         face.advance.append(min(advance, 255))
 
-        coverage = Image.new("L", (advance + 4, face.cell), 0)
+        # Rendered wide enough that nothing is clipped, whatever the glyph
+        # does outside its advance. The box is measured, not assumed.
+        coverage = Image.new("L", (advance + face.cell * 2, face.cell), 0)
         ImageDraw.Draw(coverage).text((0, 0), character, font=face.font,
                                       fill=255)
         bbox = coverage.getbbox()
@@ -201,16 +204,14 @@ def render(face: Face, variant: Variant, index: int) -> Image.Image:
     left, top, width, height = face.box[index]
     advance = face.advance[index]
 
-    cell = Image.new("RGB", (advance + 4, face.cell), to_rgb(variant.field))
+    cell = Image.new("RGB", (advance + face.cell * 2, face.cell),
+                     to_rgb(variant.field))
     ImageDraw.Draw(cell).text(
         (0, 0),
         chr(FIRST_GLYPH + index),
         font=face.font,
         fill=to_rgb(variant.ink),
     )
-
-    if variant.full_cell:
-        return cell.crop((0, 0, advance, face.cell))
 
     return cell.crop((left, top, left + width, top + height))
 
@@ -367,9 +368,7 @@ def write_tables(faces, rows, placement, path: Path, asset: str) -> None:
         for variant in face.variants:
             spots = [placement[(face.name, variant.name, i)]
                      for i in range(NUM_GLYPHS)]
-            out.append(f"/* {face.name} in {variant.name}"
-                       + (", whole cell */" if variant.full_cell
-                          else ", keyed */"))
+            out.append(f"/* {face.name} in {variant.name} */")
             out += table(f"{face.name}{variant.name}X", "uint16_t",
                          [s[0] for s in spots])
             out += table(f"{face.name}{variant.name}Y", "uint16_t",

@@ -192,7 +192,7 @@ private:
             g.printText(0,
                         j * listItemHeight + 25,
                         stringValue,
-                        TextStyle::mediumTransparent,
+                        TextStyle::userMedium,
                         listItemWidth,
                         TextAlign::center);
 

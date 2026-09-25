@@ -81,7 +81,7 @@ void RelativeControl::paint(Graphics &g)
     g.printText(0,
                 0,
                 stringValue,
-                TextStyle::mediumTransparent,
+                TextStyle::userMedium,
                 width,
                 TextAlign::center);
 
@@ -111,7 +111,7 @@ void RelativeControl::paint(Graphics &g)
     g.printText(0,
                 getHeight() - 20,
                 getName(),
-                TextStyle::mediumWhiteOnBlack,
+                TextStyle::userMedium,
                 getWidth(),
                 TextAlign::center,
                 2);

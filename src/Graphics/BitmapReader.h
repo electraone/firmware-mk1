@@ -69,5 +69,4 @@ public:
                  bool progressBar = true);
 
     void initUIToolkit(void);
-    void loadEssentialFont(void);
 };

@@ -168,7 +168,7 @@ void ListButtonControl::paintButtonList(Graphics &g,
         g.printText(0,
                     bounds.getHeight() * 0.3f,
                     stringValue,
-                    TextStyle::mediumTransparent,
+                    TextStyle::userMedium,
                     bounds.getWidth(),
                     TextAlign::center);
     } else {

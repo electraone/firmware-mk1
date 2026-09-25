@@ -91,14 +91,14 @@ void KnobControl::paint(Graphics &g)
     g.printText(0,
                 getWidth() / 2 - 7,
                 stringValue,
-                TextStyle::mediumTransparent,
+                TextStyle::userMedium,
                 getWidth(),
                 TextAlign::center);
 
     g.printText(0,
                 getHeight() - 20,
                 getName(),
-                TextStyle::mediumWhiteOnBlack,
+                TextStyle::userMedium,
                 getWidth(),
                 TextAlign::center,
                 2);

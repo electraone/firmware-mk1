@@ -52,12 +52,4 @@ public:
                               TextAlign align,
                               uint32_t backgroundColor = Colours565::black);
     static uint16_t getTextWidth(const char *text, TextStyle textStyle);
-
-private:
-    static uint16_t chromaColors[6];
-    static uint16_t getCharSize(TextStyle textStyle);
-    static uint16_t getCharPxHeight(TextStyle textStyle);
-    static uint16_t getCharPositionY(TextStyle textStyle);
-    static int8_t getCharacterTableIndex(char c);
-    static uint8_t getCharacterWidth(char c, uint8_t size);
 };

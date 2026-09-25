@@ -146,7 +146,7 @@ void Slider::paintValueBox(Graphics &g)
     g.printText(0,
                 getHeight() - 13,
                 stringValue,
-                TextStyle::mediumTransparent,
+                TextStyle::userMedium,
                 getWidth(),
                 TextAlign::center);
 }

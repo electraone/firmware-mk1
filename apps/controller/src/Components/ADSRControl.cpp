@@ -110,7 +110,7 @@ void ADSRControl::paint(Graphics &g)
     g.printText(0,
                 getHeight() - 20,
                 getName(),
-                TextStyle::mediumWhiteOnBlack,
+                TextStyle::userMedium,
                 getWidth(),
                 TextAlign::center,
                 2);

@@ -212,7 +212,7 @@ void LookAndFeel::paintList(Graphics &g,
         g.printText(0,
                     0,
                     item.getLabel(),
-                    TextStyle::mediumTransparent,
+                    TextStyle::userMedium,
                     bounds.getWidth(),
                     TextAlign::center);
     } else {
@@ -250,7 +250,7 @@ void LookAndFeel::paintButtonList(Graphics &g,
         g.printText(0,
                     bounds.getHeight() * 0.3f,
                     item.getLabel(),
-                    TextStyle::mediumTransparent,
+                    TextStyle::userMedium,
                     bounds.getWidth(),
                     TextAlign::center);
     } else {

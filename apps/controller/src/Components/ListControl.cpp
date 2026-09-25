@@ -102,7 +102,7 @@ void ListControl::paint(Graphics &g)
     g.printText(0,
                 getHeight() - 20,
                 getName(),
-                TextStyle::mediumWhiteOnBlack,
+                TextStyle::userMedium,
                 getWidth(),
                 TextAlign::center,
                 2);
@@ -152,7 +152,7 @@ void ListControl::paintList(Graphics &g,
             g.printText(0,
                         0,
                         stringValue,
-                        TextStyle::mediumTransparent,
+                        TextStyle::userMedium,
                         bounds.getWidth(),
                         TextAlign::center);
         } else {

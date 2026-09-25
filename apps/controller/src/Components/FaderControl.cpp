@@ -122,7 +122,7 @@ void FaderControl::paint(Graphics &g)
     g.printText(0,
                 getHeight() - 20,
                 getName(),
-                TextStyle::mediumWhiteOnBlack,
+                TextStyle::userMedium,
                 getWidth(),
                 TextAlign::center,
                 2);
@@ -237,7 +237,7 @@ void FaderControl::paintValueFixed(Graphics &g,
         g.printText(0,
                     0,
                     item.getLabel(),
-                    TextStyle::mediumTransparent,
+                    TextStyle::userMedium,
                     bounds.getWidth(),
                     TextAlign::center);
     } else {
@@ -254,7 +254,7 @@ void FaderControl::paintValueFixed(Graphics &g,
         g.printText(0,
                     labelYPosition,
                     stringValue,
-                    TextStyle::mediumTransparent,
+                    TextStyle::userMedium,
                     getWidth(),
                     TextAlign::center);
     }
@@ -282,7 +282,7 @@ void FaderControl::paintValueFloating(Graphics &g,
     }
 
     uint16_t textWidth =
-        TextBTE::getTextWidth(stringValue, TextStyle::mediumTransparent);
+        TextBTE::getTextWidth(stringValue, TextStyle::userMedium);
     g.setColour(x > (bounds.getWidth() - textWidth)
                         && isColorTooBright(colour, 0.7f)
                     ? Colours565::black

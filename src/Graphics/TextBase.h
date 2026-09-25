@@ -35,14 +35,39 @@
 
 enum class TextAlign { left, center, right };
 
+/**
+ * @brief A face to draw with.
+ *
+ * These used to be the row a glyph sat on in the UI strip, which is why
+ * medium was 13. The strip is packed now and a glyph is found by its own
+ * position, so a style is simply a name for a family, a size and a variant.
+ *
+ * The family is the rule the mk2 follows and this now follows too: the
+ * firmware's own windows are written in the system faces, a preset's controls
+ * in the user faces. Which one a caller wants is a property of what it is
+ * drawing, not of how big it wants it, so it is in the name.
+ */
 enum class TextStyle {
-    smallWhiteOnBlack = 0,
-    mediumWhiteOnBlack = 13,
-    mediumBlackOnWhite = 32,
-    mediumWhiteOnDimmed = 52,
-    largeWhiteOnBlack = 371,
-    smallTransparent = 0,
-    largeTransparent = 371,
-    mediumTransparent = 13,
-    mediumInverseTransparent = 32
+    systemSmall = 0,
+    systemMedium,
+    systemMediumInverse, /**< black on a white field */
+    systemMediumDimmed, /**< white on a dimmed field */
+    userSmall,
+    userMedium,
+    userLarge,
+
+    /* The names the call sites used when there was only one family. They
+     * draw with the system faces, which is what they did before, so a call
+     * site that has not been looked at yet is unchanged rather than wrong. */
+    smallWhiteOnBlack = systemSmall,
+    smallTransparent = systemSmall,
+    mediumWhiteOnBlack = systemMedium,
+    mediumTransparent = systemMedium,
+    mediumBlackOnWhite = systemMediumInverse,
+    mediumInverseTransparent = systemMediumInverse,
+    mediumWhiteOnDimmed = systemMediumDimmed,
+
+    /* Large only ever draws a preset's values, so it is a user face. */
+    largeWhiteOnBlack = userLarge,
+    largeTransparent = userLarge,
 };

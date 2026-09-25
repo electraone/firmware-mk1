@@ -7,11 +7,17 @@ the wrong letters, and nothing in the firmware could notice.
 
 ```bash
 python3 tools/makeuiasset/makeuiasset.py
+python3 tools/makeuiasset/upload.py assets/ui-1.0.0.bmp
 ```
 
-Writes `assets/ui-1.0.0.bmp` and `src/Graphics/Fonts/UiAsset.inc`. Upload the
-asset to the unit the way any other file goes, and rebuild the firmware so the
-tables match it.
+Writes `assets/ui-1.0.0.bmp` and `src/Graphics/Fonts/UiAsset.inc`. Flash the
+firmware before sending the asset: the unit writes it under the name the
+running firmware asks for, and the tables have to be the ones built from the
+same run. A reboot loads it.
+
+The two go together and neither is any use without the other, which is why
+they are generated in one pass. A table out of step with the pixels draws text
+made of the wrong letters and nothing in the firmware can tell.
 
 ## What is in it
 
@@ -43,6 +49,19 @@ Deflating the file would take it under 100 KB on top of that, at the cost of an
 inflate in the firmware and a loader that no longer streams rows straight
 through. It is not done, because 286 KB is already small enough to not be worth
 the decompressor.
+
+## What the tables say
+
+Per face, shared by all of its colours: `Advance` is how far the pen moves,
+`Width` and `Height` size the blit, `Left` and `Top` place the ink box back
+inside the character cell. Per face and colour: `X` and `Y` locate the box in
+the strip.
+
+`Advance` is the pen advance and not the right edge of the ink - a glyph has
+bearings either side of it, and the two are not the same number. Taking the
+ink extent instead draws every character partly on top of the one before, and
+is worth knowing about because it looks like a packing fault rather than a
+measurement one.
 
 ## Adding a face
 

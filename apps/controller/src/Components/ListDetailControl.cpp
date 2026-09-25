@@ -185,7 +185,7 @@ void ListDetailControl::paintListItems(Graphics &g, int16_t offset)
         g.printText(0,
                     j * listItemHeight + 25,
                     stringValue,
-                    TextStyle::mediumTransparent,
+                    TextStyle::userMedium,
                     listItemWidth,
                     TextAlign::center);
 

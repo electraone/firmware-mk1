@@ -51,7 +51,6 @@ void displaySplash(Graphics &g,
                 TextStyle::smallWhiteOnBlack,
                 1024,
                 TextAlign::center);
-    g.bteCopy(FRAME_UI_TOOLKIT, 822, 0, FRAME_BUFFER_2, 407, 230, 199, 73);
     g.printText(0,
                 500,
                 "WWW.ELECTRA.ONE",

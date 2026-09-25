@@ -76,7 +76,7 @@ void GroupControl::paint(Graphics &g)
         g.paintTextPlaceHolder(0,
                                2,
                                label,
-                               TextStyle::smallTransparent,
+                               TextStyle::userSmall,
                                width,
                                TextAlign::center,
                                getUseAltBackground()
@@ -86,7 +86,7 @@ void GroupControl::paint(Graphics &g)
 
     if (strlen(label) > 0) {
         g.printText(
-            0, 2, label, TextStyle::smallTransparent, width, TextAlign::center);
+            0, 2, label, TextStyle::userSmall, width, TextAlign::center);
     }
 }
 

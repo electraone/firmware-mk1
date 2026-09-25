@@ -77,12 +77,11 @@ void initialise(void)
         System::logger.write(
             LOG_ERROR, "UI asset file not found: file=%s", UI_FILE);
     } else {
-        Hardware::screen.loadEssentialFont();
+        Hardware::screen.initUIToolkit();
         displaySplash(Hardware::screen,
                       App::get()->getApplicationName(),
                       App::get()->getApplicationVersion(),
                       System::runtimeInfo.getElectraInfoHwRevision());
-        Hardware::screen.initUIToolkit();
     }
     System::logger.write(LOG_INFO, "UI assets: Loaded and initialised");
 

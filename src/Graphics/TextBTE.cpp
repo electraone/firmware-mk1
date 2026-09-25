@@ -27,224 +27,103 @@
 
 #include "TextBTE.h"
 
-static const uint16_t lookupSmall[] = {
-    0,   4,   10,  19,  27,  38,  49,  53,  58,  63,  71,  79,  84,
-    90,  95,  101, 110, 115, 123, 132, 139, 148, 156, 164, 172, 180,
-    185, 189, 197, 205, 214, 221, 234, 244, 252, 262, 271, 279, 286,
-    296, 305, 309, 315, 323, 331, 342, 351, 362, 370, 381, 389, 398,
-    407, 416, 426, 440, 450, 459, 468, 475, 482, 488, 496, 510, 519,
-    527, 535, 544, 553, 561, 570, 578, 583, 589, 596, 601, // a - m
-    613, 621, 630, 638, 647, 653, 661, 667, 676, 685, 697, 706, 715, // n - z
-    723, 729, 733, 740 // {|}~
+#include "Fonts/UiAsset.inc"
+
+/**
+ * @brief One face of the strip, and where each of its colours sits in it.
+ *
+ * The tables are generated beside the pixels they describe, so this is only
+ * the gathering up: a style names a face and a variant, and the renderer then
+ * has everything it needs to find a glyph, size the blit and place it.
+ */
+struct AssetFace {
+    uint8_t cell;
+    const uint8_t *advance;
+    const uint8_t *width;
+    const uint8_t *height;
+    const uint8_t *left;
+    const uint8_t *top;
+    const uint16_t *x;
+    const uint16_t *y;
 };
 
-static const uint16_t lookupMedium[] = {
-    0,   8,   14,  25,  34,  47,  59,  63,  68,  73,  82,  92,  96,
-    101, 105, 112, 121, 127, 137, 146, 156, 165, 174, 183, 192, 202,
-    205, 209, 219, 228, 237, 245, 259, 271, 280, 291, 302, 310, 318,
-    329, 339, 342, 348, 358, 366, 379, 390, 402, 411, 423, 433, 442,
-    452, 463, 474, 490, 501, 511, 521, 526, 532, 539, 549, 562, 571,
-    580, 588, 597, 606, 613, 623, 632, 636, 641, 649, 653, // a - m
-    666, 675, 685, 694, 703, 710, 718, 725, 734, 743, 757, 766, 776, // n - z
-    784, 791, 794, 800 // {|}~
+#define ASSET_FACE(face, variant)                                              \
+    {                                                                          \
+        face##Cell, face##Advance, face##Width, face##Height, face##Left,      \
+            face##Top, face##variant##X, face##variant##Y                      \
+    }
+
+/** Indexed by TextStyle. The user faces appear once per preset colour. */
+static const AssetFace systemFaces[] = {
+    ASSET_FACE(SystemSmall, White),
+    ASSET_FACE(SystemMedium, White),
+    ASSET_FACE(SystemMedium, BlackOnWhite),
+    ASSET_FACE(SystemMedium, WhiteOnDimmed),
 };
 
-static const uint16_t lookupLarge[] = {
-    0,   9,   15,  28,  38,  53,  67,  71,  77,  83,  93,  103, 108,
-    114, 118, 126, 137, 143, 154, 164, 175, 185, 196, 206, 217, 227,
-    231, 236, 246, 256, 267, 275, 292, 305, 316, 327, 339, 348, 358,
-    370, 382, 385, 392, 403, 412, 427, 439, 452, 462, 476, 487, 497,
-    509, 521, 533, 551, 564, 575, 586, 592, 600, 606, 617, 633, 642,
-    653, 661, 672, 682, 691, 701, 711, 715, 721, 731, 734, // a - m
-    750, 760, 771, 781, 791, 799, 808, 815, 825, 836, 852, 862, 873, // n - z
-    882, 890, 893, 900 // {|}~
+static const AssetFace userSmallFaces[] = {
+    ASSET_FACE(UserSmall, White),  ASSET_FACE(UserSmall, Red),
+    ASSET_FACE(UserSmall, Orange), ASSET_FACE(UserSmall, Blue),
+    ASSET_FACE(UserSmall, Green),  ASSET_FACE(UserSmall, Purple),
 };
 
-static const uint8_t charWidthSmall[] = {
-    3,  4, 8, 6, 10, 9, 2, 4, 4, 6, 7, 3, 4, 3, 5, 7,
-    4,  7, 7, 7, 7,  7, 7, 7, 7, 3, 3, 7, 7, 7, 5, 10,
-    8, // A
-    6, // B
-    7, // C
-    7, // D
-    5, // E
-    5, // F
-    8, // G
-    7, // H
-    2, // I
-    4, // J
-    7, // K
-    5, // L
-    9, // M
-    7, // N
-    9, // O
-    6, // P
-    9, // Q
-    6, // R
-    6, // S
-    7, // T
-    7, // U
-    7, // V
-    11, // W
-    7, // X
-    7, // Y
-    7, // Z
-    3,  5, 3, 7, 7,
-    6, // a
-    5, // b,
-    5, // c,
-    7, // d
-    6, // e
-    4, // f
-    7, // g
-    6, // h
-    2, // i
-    4, // j
-    5, // k
-    3, // l
-    10, // m
-    6, // n
-    7, // o
-    5, // p
-    7, // q
-    3, // r
-    6, // s
-    4, // t
-    7, // u
-    6, // v
-    9, // w
-    6, // x
-    6, // y
-    6, // z
-    5, // {
-    2, // |
-    5, // }
-    7 // ~
+static const AssetFace userMediumFaces[] = {
+    ASSET_FACE(UserMedium, White),  ASSET_FACE(UserMedium, Red),
+    ASSET_FACE(UserMedium, Orange), ASSET_FACE(UserMedium, Blue),
+    ASSET_FACE(UserMedium, Green),  ASSET_FACE(UserMedium, Purple),
 };
 
-static const uint8_t charWidthMedium[] = {
-    3,  5, 10, 8, 12, 12, 3, 4, 4, 9, 9, 3, 4, 3, 6, 8,
-    5,  8, 8,  9, 8,  8,  8, 9, 9, 3, 4, 9, 8, 8, 7, 13,
-    11, // A
-    9, // B
-    10, // C
-    10, // D
-    7, // E
-    7, // F
-    10, // G
-    9, // H
-    3, // I
-    5, // J
-    9, // K
-    7, // L
-    12, // M
-    10, // N
-    11, // O
-    8, // P
-    11, // Q
-    9, // R
-    8, // S
-    9, // T
-    10, // U
-    10, // V
-    15, // W
-    10, // X
-    10, // Y
-    9, // Z
-    4,  7, 5,  8, 9,
-    8, // a
-    8, // b
-    7, // c
-    8, // d
-    7, // e
-    6, // f
-    9, // g
-    8, // h
-    3, // i
-    4, // j
-    7, // k
-    3, // l
-    12, // m
-    8, // n
-    9, // o
-    8, // p
-    8, // q
-    6, // r
-    7, // s
-    6, // t
-    8, // u
-    7, // v
-    13, // w
-    8, // x
-    9, // y
-    7, // z
-    6, // {
-    2, // |
-    5, // }
-    8 // ~
+static const AssetFace userLargeFaces[] = {
+    ASSET_FACE(UserLarge, White),  ASSET_FACE(UserLarge, Red),
+    ASSET_FACE(UserLarge, Orange), ASSET_FACE(UserLarge, Blue),
+    ASSET_FACE(UserLarge, Green),  ASSET_FACE(UserLarge, Purple),
 };
 
-static const uint8_t charWidthLarge[] = {
-    3,  5,  12, 9,  14, 13, 3, 4, 4, 9, 9, 4, 5, 3,  7, 10,
-    5,  10, 9,  10, 9,  10, 9, 9, 9, 3, 4, 9, 9, 10, 7, 16,
-    12, // A
-    10, // B
-    10, // C
-    11, // D
-    8, // E
-    9, // F
-    11, // G
-    11, // H
-    2, // I
-    6, // J
-    10, // K
-    8, // L
-    14, // M
-    11, // N
-    12, // O
-    9, // P
-    13, // Q
-    10, // R
-    9, // S
-    11, // T
-    11, // U
-    11, // V
-    17, // W
-    11, // X
-    10, // Y
-    10, // Z
-    5,  7,  5,  10, 9,
-    8, // a
-    9, // b
-    7, // c
-    10, // d
-    8, // e
-    7, // f
-    9, // g
-    9, // h
-    3, // i
-    5, // j
-    8, // k
-    2, // l
-    15, // m
-    9, // n
-    9, // o
-    9, // p
-    9, // q
-    7, // r
-    7, // s
-    6, // t
-    9, // u
-    9, // v
-    14, // w
-    8, // x
-    10, // y
-    8, // z
-    7, // {
-    2, // |
-    6, // }
-    10 // ~
-};
+/** How wide a space is, per face. It has no ink so it is not in the strip. */
+static uint8_t spaceWidth(const AssetFace &face)
+{
+    return ((uint8_t)(face.cell / 2));
+}
+
+/**
+ * @brief The face a style asks for, in the colour the caller asked for.
+ *
+ * A system style ignores the colour: the system UI draws on backgrounds it
+ * chose itself, and the variant is part of the style. A user style takes one
+ * of the six colours a preset can use, which is what the six bands are for.
+ */
+static const AssetFace &faceFor(TextStyle style, uint8_t colour)
+{
+    if (colour >= 6) {
+        colour = 0;
+    }
+
+    switch (style) {
+        case TextStyle::userSmall:
+            return (userSmallFaces[colour]);
+        case TextStyle::userMedium:
+            return (userMediumFaces[colour]);
+        case TextStyle::userLarge:
+            return (userLargeFaces[colour]);
+        default:
+            break;
+    }
+
+    return (systemFaces[(uint8_t)style]);
+}
+
+/** Where a character sits in the tables, or -1 if the strip has no ink for
+ *  it. Space and anything outside the printable range come back as -1. */
+static int16_t glyphIndex(char character)
+{
+    uint8_t code = (uint8_t)character;
+
+    if ((code < uiAssetFirstGlyph) || (code > uiAssetLastGlyph)) {
+        return (-1);
+    }
+
+    return ((int16_t)(code - uiAssetFirstGlyph));
+}
 
 TextBTE::TextBTE(const uint8_t CSp, const uint8_t RSTp) : FrameBuffer(CSp, RSTp)
 {
@@ -258,12 +137,10 @@ void TextBTE::printText(uint16_t x,
                         TextAlign align,
                         uint8_t color)
 {
-    uint16_t xPosition = 0;
+    const AssetFace &face = faceFor(textStyle, color);
     uint32_t address = getCanvasAddress();
-    uint8_t size = getCharSize(textStyle);
     uint16_t textWidth = getTextWidth(text, textStyle);
-
-    // drawRect (x, y, width, 20, 0xFFFF);
+    uint16_t xPosition = 0;
 
     if (textWidth > width) {
         textWidth = width;
@@ -273,83 +150,55 @@ void TextBTE::printText(uint16_t x,
         xPosition = (width - textWidth) / 2;
     } else if (align == TextAlign::right) {
         xPosition = width - textWidth;
-    } else {
-        xPosition = 0;
     }
 
-    uint16_t currentWidth = 0;
+    /* Every glyph is keyed against the same colour, whichever variant it came
+     * from. A variant that carries its own background has none of that colour
+     * in its box, so the same blit copies it whole. */
+    setBteChromaColor(uiAssetChromaKey);
 
-    for (uint8_t i = 0; text[i] != 0; i++) {
-        int8_t index = getCharacterTableIndex(text[i]);
-        uint8_t charWidth = getCharacterWidth(text[i], size);
-        currentWidth += charWidth;
+    uint16_t pen = 0;
+
+    for (uint16_t i = 0; text[i] != 0; i++) {
+        int16_t index = glyphIndex(text[i]);
+
+        if (index < 0) {
+            pen += spaceWidth(face);
+            continue;
+        }
+
+        uint16_t advance = (uint16_t)face.advance[index] + 1;
 
         // Do not print outside of the bounding box
-        if (currentWidth > width) {
+        if ((pen + advance) > width) {
             break;
         }
 
-        if (index >= 0) {
-            uint16_t charXposition = 0;
-            uint16_t charHeight = getCharPxHeight(textStyle);
-            uint16_t charYposition = getCharPositionY(textStyle);
+        /* Only the ink is stored, so the blit is the size of the ink and the
+         * bearing puts it back where the character cell wants it. */
+        bteCopyChroma(FRAME_UI_TOOLKIT,
+                      face.x[index],
+                      face.y[index],
+                      address,
+                      x + xPosition + pen + face.left[index],
+                      y + face.top[index],
+                      face.width[index],
+                      face.height[index]);
 
-            if (charHeight == 13) {
-                charXposition = lookupSmall[index];
-            } else if (charHeight == 17) {
-                charXposition = lookupMedium[index];
-            } else {
-                charXposition = lookupLarge[index];
-            }
-
-            if ((textStyle == TextStyle::largeTransparent)
-                || (textStyle == TextStyle::mediumTransparent)
-                || (textStyle == TextStyle::smallTransparent)) {
-                setBteChromaColor(0x000000);
-                bteCopyChroma(FRAME_UI_TOOLKIT,
-                              charXposition,
-                              charYposition,
-                              address,
-                              x + xPosition,
-                              y,
-                              charWidth,
-                              charHeight);
-            } else if (textStyle == TextStyle::mediumInverseTransparent) {
-                setBteChromaColor(0xFFFFFF);
-                bteCopyChroma(FRAME_UI_TOOLKIT,
-                              charXposition,
-                              charYposition,
-                              address,
-                              x + xPosition,
-                              y,
-                              charWidth,
-                              charHeight);
-            } else {
-                charYposition += (color * 60);
-                setBteChromaColor(chromaColors[color]);
-                // Temp fix - do not use chroma. it does not look good for black fonts.
-                bteCopy(FRAME_UI_TOOLKIT,
-                        charXposition,
-                        charYposition,
-                        address,
-                        x + xPosition,
-                        y,
-                        charWidth,
-                        charHeight);
-            }
-        }
-
-        xPosition += charWidth;
+        pen += advance;
     }
 }
 
 uint16_t TextBTE::getTextWidth(const char *text, TextStyle textStyle)
 {
+    const AssetFace &face = faceFor(textStyle, 0);
     uint16_t width = 0;
-    uint8_t size = getCharSize(textStyle);
 
-    for (uint8_t i = 0; text[i] != 0; i++) {
-        width += getCharacterWidth(text[i], size);
+    for (uint16_t i = 0; text[i] != 0; i++) {
+        int16_t index = glyphIndex(text[i]);
+
+        width += (index < 0) ? spaceWidth(face)
+                             : (uint16_t)face.advance[index] + 1;
     }
 
     return (width);
@@ -365,7 +214,7 @@ void TextBTE::paintTextPlaceHolder(uint16_t x,
 {
     uint16_t xPosition;
     uint16_t textWidth = getTextWidth(text, style);
-    uint8_t charHeight = getCharPxHeight(style);
+    uint8_t charHeight = faceFor(style, 0).cell;
 
     if (align == TextAlign::center) {
         xPosition = (width - textWidth) / 2;
@@ -381,87 +230,3 @@ void TextBTE::paintTextPlaceHolder(uint16_t x,
 
 // Private
 
-int8_t TextBTE::getCharacterTableIndex(char c)
-{
-    int8_t index = -1;
-
-    if ((33 <= c) && (c <= 96)) {
-        index = c - 33;
-    } else if ((96 < c) && (c <= 127)) {
-        index = c - 34;
-    } else {
-        index = -1; // \todo unknown or space. this could be done better
-    }
-
-    return (index);
-}
-
-uint8_t TextBTE::getCharacterWidth(char c, uint8_t size)
-{
-    int8_t index = getCharacterTableIndex(c);
-    uint8_t width = 0;
-
-    if (index >= 0) {
-        if (size == 1) {
-            width = charWidthSmall[index];
-        } else if (size == 2) {
-            width = charWidthMedium[index];
-        } else {
-            width = charWidthLarge[index];
-        }
-    } else {
-        width = 5; // space or unknown is always 5px
-    }
-
-    // Add extra padding
-    width += 1;
-
-    return (width);
-}
-
-uint16_t TextBTE::getCharPositionY(TextStyle textStyle)
-{
-    return ((uint16_t)textStyle);
-}
-
-uint16_t TextBTE::getCharSize(TextStyle textStyle)
-{
-    if ((textStyle == TextStyle::smallWhiteOnBlack)
-        || (textStyle == TextStyle::smallTransparent)) {
-        return (1);
-    } else if ((textStyle == TextStyle::largeWhiteOnBlack)
-               || (textStyle == TextStyle::largeTransparent)) {
-        return (3);
-    } else if ((textStyle == TextStyle::mediumWhiteOnBlack)
-               || (textStyle == TextStyle::mediumBlackOnWhite)
-               || (textStyle == TextStyle::mediumWhiteOnDimmed)
-               || (textStyle == TextStyle::mediumTransparent)) {
-        return (2);
-    }
-
-    return (0);
-}
-
-uint16_t TextBTE::getCharPxHeight(TextStyle textStyle)
-{
-    if ((textStyle == TextStyle::smallWhiteOnBlack)
-        || (textStyle == TextStyle::smallTransparent)) {
-        return (13);
-    } else if ((textStyle == TextStyle::largeWhiteOnBlack)
-               || (textStyle == TextStyle::largeTransparent)) {
-        return (19);
-    } else if ((textStyle == TextStyle::mediumWhiteOnBlack)
-               || (textStyle == TextStyle::mediumBlackOnWhite)
-               || (textStyle == TextStyle::mediumWhiteOnDimmed)
-               || (textStyle == TextStyle::mediumTransparent)) {
-        return (17);
-    }
-
-    return (0);
-}
-
-// The backround colours of the colour version of the texts.
-// The colours are used to filter out the text background using
-// RA8876 Chroma BTE
-uint16_t TextBTE::chromaColors[6] = { 0xFFFF, 0xF2EA, 0xF4A0,
-                                      0x54FD, 0x0533, 0xc232 };
