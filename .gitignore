@@ -1,6 +1,7 @@
 .clang_complete
 .gcc-flags.json
 build
+build-trace
 docs
 */docs
 */*/doc
