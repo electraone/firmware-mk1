@@ -117,6 +117,15 @@ SYSTEM = {
 SPACINGS = ["Proportional", "Monospaced"]
 WEIGHTS = ["Regular", "Bold"]
 
+# The mask atlas is addressed eight bits to the byte and 1024 bytes to the
+# row, which is what the blitter's colour expansion reads: a byte is eight
+# pixels, so a row is 8192 of them.
+MASK_WIDTH = 1024
+
+# Where the line between ink and nothing falls when a glyph is cut down to one
+# bit. Half covered.
+MASK_THRESHOLD = 128
+
 # A colour that appears in no band, for the bands that carry their own
 # background and so have nothing to key away.
 NO_KEY = 0xF81F
@@ -359,6 +368,41 @@ def build_faces() -> tuple[list[Face], list[Face]]:
     return system, user
 
 
+def mask(face: Face, index: int) -> bytes:
+    """The glyph's ink box as one bit a pixel, rows padded to whole bytes.
+
+    The blitter's colour expansion reads its source a byte at a time and
+    paints the set bits in a colour it is given per blit, leaving the clear
+    ones alone - so a mask can be drawn in any colour on any background, and
+    there is no fringe to have been mixed against the wrong one. That is the
+    whole reason the masks exist: the coloured bands cannot leave a background
+    alone, and text on a fader's bar is text on a background the bands were
+    not built for.
+
+    The most significant bit is the leftmost pixel, which is the order the
+    chip expands them in.
+    """
+    left, top, width, height = face.box[index]
+
+    if width == 0 or height == 0:
+        return b""
+
+    ink = render(face, index).crop((left, top, left + width, top + height))
+    pixels = ink.load()
+    packed = bytearray()
+
+    for y in range(height):
+        for byte in range((width + 7) // 8):
+            value = 0
+            for bit in range(8):
+                x = byte * 8 + bit
+                if x < width and pixels[x, y] >= MASK_THRESHOLD:
+                    value |= 0x80 >> bit
+            packed.append(value)
+
+    return bytes(packed)
+
+
 class Shelf:
     """A row of the atlas that glyphs are laid along until it fills."""
 
@@ -416,6 +460,53 @@ def pack(face: Face, firstRow: int) -> tuple[int, dict]:
     return rows, placement
 
 
+def pack_masks(faces: list[Face]) -> tuple[int, dict]:
+    """Where every glyph's mask sits, in byte columns rather than pixels.
+
+    A mask is read a byte at a time, so a glyph can start only on a byte -
+    which costs up to seven pixels of padding a glyph and buys the whole of
+    the addressing.
+
+    All the faces are packed together here, unlike the coloured bands: the
+    masks go into video memory as they are rather than being composited, so
+    there is no per row work for a face to be skipped in, and a row left half
+    empty is a row uploaded for nothing.
+    """
+    pieces = []
+
+    for face in faces:
+        for index in range(NUM_GLYPHS):
+            _left, _top, width, height = face.box[index]
+            if width == 0 or height == 0:
+                continue
+            pieces.append((height, (width + 7) // 8, face, index))
+
+    pieces.sort(key=lambda p: (-p[0], -p[1], p[2].name, p[3]))
+
+    placement = {}
+    shelves = []
+    rows = 0
+
+    for height, bytes_wide, face, index in pieces:
+        shelf = None
+        for candidate in shelves:
+            if (candidate.height >= height) and (
+                (candidate.x + bytes_wide) <= MASK_WIDTH
+            ):
+                shelf = candidate
+                break
+
+        if shelf is None:
+            shelf = Shelf(rows, height)
+            shelves.append(shelf)
+            rows += height
+
+        placement[(face.name, index)] = (shelf.x, shelf.top)
+        shelf.x += bytes_wide
+
+    return rows, placement
+
+
 def table(name: str, kind: str, values: list[int], perLine: int = 16):
     out = [f"const {kind} {name}[] = {{"]
     for index in range(0, len(values), perLine):
@@ -426,7 +517,7 @@ def table(name: str, kind: str, values: list[int], perLine: int = 16):
     return out
 
 
-def emit_face(face: Face, placement: dict) -> list[str]:
+def emit_face(face: Face, placement: dict, masks: dict) -> list[str]:
     """One face's shapes, metrics and bands."""
     out = [
         f"/* {face.name}: {Path(face.path).name}, {face.pixels} px on row "
@@ -445,7 +536,11 @@ def emit_face(face: Face, placement: dict) -> list[str]:
                    + ",")
     out.append("};")
 
-    out += table(f"{face.name}CoverageAt", "uint32_t", offsets, 8)
+    if len(blob) > 0xFFFF:
+        raise SystemExit(f"{face.name}: the coverage no longer fits a 16 bit "
+                         "offset - widen FontFace::coverageAt")
+
+    out += table(f"{face.name}CoverageAt", "uint16_t", offsets, 8)
 
     out.append(f"const FontGlyph {face.name}Glyph[] = {{")
     for index in range(NUM_GLYPHS):
@@ -462,6 +557,32 @@ def emit_face(face: Face, placement: dict) -> list[str]:
         out += table(f"{face.name}{variant.name}Y", "uint16_t",
                      [s[1] for s in spots])
 
+    if face.source == "user":
+        blob = bytearray()
+        offsets = []
+        for index in range(NUM_GLYPHS):
+            offsets.append(len(blob))
+            blob += mask(face, index)
+
+        out.append(f"const uint8_t {face.name}Mask[] = {{")
+        for index in range(0, len(blob), 24):
+            out.append("    "
+                       + ", ".join(str(v) for v in blob[index:index + 24])
+                       + ",")
+        out.append("};")
+
+        if len(blob) > 0xFFFF:
+            raise SystemExit(f"{face.name}: the masks no longer fit a 16 bit "
+                             "offset - widen FontFace::maskAt")
+
+        out += table(f"{face.name}MaskAt", "uint16_t", offsets, 8)
+        out += table(f"{face.name}MaskX", "uint16_t",
+                     [masks.get((face.name, i), (0, 0))[0]
+                      for i in range(NUM_GLYPHS)])
+        out += table(f"{face.name}MaskY", "uint16_t",
+                     [masks.get((face.name, i), (0, 0))[1]
+                      for i in range(NUM_GLYPHS)])
+
     out.append(f"const FontBand {face.name}Band[] = {{")
     for variant in face.variants:
         out.append(f"    {{ {face.name}{variant.name}X, "
@@ -475,10 +596,16 @@ def emit_face(face: Face, placement: dict) -> list[str]:
 
 
 def face_initialiser(face: Face) -> str:
+    if face.source == "user":
+        masks = (f"{face.name}Mask, {face.name}MaskAt, {face.name}MaskX, "
+                 f"{face.name}MaskY")
+    else:
+        masks = "nullptr, nullptr, nullptr, nullptr"
+
     return (f"    {{ {face.cell}, {face.baseline}, {face.inkTop}, "
             f"{face.inkHeight}, {face.row}, {face.rows}, {face.name}Glyph, "
-            f"{face.name}Coverage, {face.name}CoverageAt, {face.name}Band, "
-            f"{len(face.variants)} }},")
+            f"{face.name}Coverage, {face.name}CoverageAt, {masks}, "
+            f"{face.name}Band, {len(face.variants)} }},")
 
 
 HEADER_DOC = """/*
@@ -509,7 +636,8 @@ HEADER_DOC = """/*
 """
 
 
-def write_header(system, user, systemRows, userRows, path: Path) -> None:
+def write_header(system, user, systemRows, userRows, maskRows,
+                 path: Path) -> None:
     out = [HEADER_DOC, """
 /** One character of one face. */
 struct FontGlyph {
@@ -544,7 +672,11 @@ struct FontFace {
     uint16_t rows; /**< and how many of them, all of them its own */
     const FontGlyph *glyph;
     const uint8_t *coverage;
-    const uint32_t *coverageAt;
+    const uint16_t *coverageAt;
+    const uint8_t *mask; /**< one bit a pixel, rows padded to whole bytes */
+    const uint16_t *maskAt;
+    const uint16_t *maskX; /**< a byte column, not a pixel column */
+    const uint16_t *maskY;
     const FontBand *band;
     uint8_t numBands;
 };
@@ -564,6 +696,11 @@ struct FontFace {
     out.append(f"constexpr uint16_t fontUserRows = {userRows};")
     out.append(f"constexpr uint16_t fontAtlasRows = {systemRows + userRows};")
     out.append("")
+    out.append("/* The mask atlas, which is a different shape: a byte is")
+    out.append(" * eight pixels, so a row is 1024 bytes and 8192 of them. */")
+    out.append(f"constexpr uint16_t fontMaskWidth = {MASK_WIDTH};")
+    out.append(f"constexpr uint16_t fontMaskRows = {maskRows};")
+    out.append("")
     out.append("/* Indexed by TextSize; the system draws in two of them. */")
     out.append(f"extern const FontFace fontSystem[{len(system)}];")
     out.append("")
@@ -576,7 +713,7 @@ struct FontFace {
     path.write_text("\n".join(out) + "\n")
 
 
-def write_data(system, user, placement, path: Path) -> None:
+def write_data(system, user, placement, masks, path: Path) -> None:
     out = [
         "/*",
         "* Electra One MIDI Controller Firmware",
@@ -597,7 +734,7 @@ def write_data(system, user, placement, path: Path) -> None:
     ]
 
     for face in system + user:
-        out += emit_face(face, placement)
+        out += emit_face(face, placement, masks)
 
     out.append("const FontFace fontSystem[] = {")
     for face in system:
@@ -721,7 +858,64 @@ def blit(page, atlas, face, variant, placement, x, y, text):
     return pen
 
 
-def write_preview(system, user, placement, rows, path):
+def build_masks(faces, masks, rows):
+    """The mask atlas as the unit will hold it, out of the packed bytes.
+
+    Read back from what was written to the file rather than from the
+    rasteriser, so that a mask packed wrong, an offset out by one or a bit
+    order the wrong way round shows up here.
+    """
+    atlas = [bytearray(MASK_WIDTH) for _ in range(rows)]
+
+    for face in faces:
+        blob = bytearray()
+        offsets = []
+        for index in range(NUM_GLYPHS):
+            offsets.append(len(blob))
+            blob += mask(face, index)
+
+        for index in range(NUM_GLYPHS):
+            _left, _top, width, height = face.box[index]
+            if width == 0 or height == 0:
+                continue
+
+            x, y = masks[(face.name, index)]
+            stride = (width + 7) // 8
+
+            for row in range(height):
+                at = offsets[index] + row * stride
+                atlas[y + row][x:x + stride] = blob[at:at + stride]
+
+    return atlas
+
+
+def expand(page, atlas, face, masks, x, y, text, colour):
+    """One string, expanded out of the mask atlas, as the unit does it."""
+    pen = 0
+    pixels = page.load()
+
+    for character in text:
+        index = ord(character) - FIRST_GLYPH
+        if index < 0 or index >= NUM_GLYPHS:
+            continue
+
+        left, top, width, height = face.box[index]
+
+        if width and height:
+            column, row = masks[(face.name, index)]
+            for line in range(height):
+                for bit in range(width):
+                    byte = atlas[row + line][column + bit // 8]
+                    if byte & (0x80 >> (bit % 8)):
+                        pixels[x + pen + left + bit, y + top + line] = \
+                            to_rgb(colour)
+
+        pen += face.advance[index]
+
+    return pen
+
+
+def write_preview(system, user, placement, rows, masks, maskRows, path):
     """A specimen page, drawn the way the firmware will draw it."""
     atlas = composite(system + user, placement, rows)
 
@@ -742,6 +936,20 @@ def write_preview(system, user, placement, rows, path):
             blit(page, atlas, face, variant, placement,
                  index * (1024 // 6) + 4, y, sample)
         y += face.cell + 1
+
+    # And the masks, on the backgrounds they exist for.
+    maskAtlas = build_masks(user, masks, maskRows)
+    y += 8
+
+    for index, face in enumerate(user):
+        if face.cell != 17:
+            continue
+        for column, bar in enumerate([v.ink for v in PRESET_COLOURS]):
+            box = (column * 170 + 4, y, column * 170 + 166, y + 22)
+            ImageDraw.Draw(page).rectangle(box, fill=to_rgb(bar))
+            expand(page, maskAtlas, face, masks, column * 170 + 8, y + 3,
+                   "-12.5 dB", 0xFFFF)
+        y += 26
 
     page.save(path)
     atlas.save(str(path).replace(".png", "-atlas.png"))
@@ -771,15 +979,20 @@ def main() -> int:
         placement.update(spots)
         rows += face.rows
 
+
+    maskRows, masks = pack_masks(user)
+
     systemRows = sum(face.rows for face in system)
     userRows = sum(face.rows for face in user)
 
-    write_header(system, user, systemRows, userRows,
+    write_header(system, user, systemRows, userRows, maskRows,
                  arguments.out / "Fonts.h")
-    write_data(system, user, placement, arguments.out / "Fonts.inc")
+    write_data(system, user, placement, masks,
+               arguments.out / "Fonts.inc")
 
     if arguments.preview:
-        write_preview(system, user, placement, rows, arguments.preview)
+        write_preview(system, user, placement, rows, masks, maskRows,
+                      arguments.preview)
 
     flash = 0
     vram = 0
@@ -795,7 +1008,14 @@ def main() -> int:
     print(f"  bands in video memory  {vram:8d} B  ({vram / 1024:.0f} KB)")
     print(f"  atlas                  {rows} rows, "
           f"{rows * ATLAS_WIDTH * 2 / 1024:.0f} KB of the region")
-    print(f"  compositing at boot    {rows * ATLAS_WIDTH * 2 / 3305 :.0f} ms")
+    maskBytes = maskRows * MASK_WIDTH
+    maskFlash = sum(len(mask(f, i)) for f in user
+                    for i in range(NUM_GLYPHS))
+    print(f"  masks in flash         {maskFlash:8d} B")
+    print(f"  masks in video memory  {maskBytes:8d} B  "
+          f"({maskBytes / 1024:.0f} KB) in {maskRows} rows")
+    print(f"  compositing at boot    "
+          f"{(rows * ATLAS_WIDTH * 2 + maskBytes) / 3305 :.0f} ms")
     return 0
 
 

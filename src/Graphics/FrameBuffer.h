@@ -34,6 +34,9 @@
 #define SCREEN_MAX_X (SCREEN_WIDTH - 1)
 #define SCREEN_MAX_Y (SCREEN_HEIGHT - 1)
 
+/* Four banks of 4096 rows by 512 columns of 16 bits - see defaultSdramInfo. */
+#define VIDEO_RAM_SIZE 0x01000000
+
 /*
  * Video RAM map
  */
@@ -51,7 +54,6 @@
 #define SDRAM_PAGE_6 0x00E10000
 #define SDRAM_PAGE_7 0x00E10000
 #define SDRAM_PAGE_8 0x00E10000
-#define SDRAM_CGRAM 0x00E10000
 #define SDRAM_PAGE_SIZE 0x00258000
 #define FRAME_GLYPHS 0x00A8C000
 #else
@@ -68,7 +70,6 @@
 #define SDRAM_PAGE_6 0x00BB8000
 #define SDRAM_PAGE_7 0x00CE4000
 #define SDRAM_PAGE_8 0x00E10000
-#define SDRAM_CGRAM 0x00F3C000
 #define SDRAM_PAGE_SIZE 0x0012C000
 
 /*

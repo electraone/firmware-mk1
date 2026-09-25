@@ -284,15 +284,23 @@ void FaderControl::paintValueFloating(Graphics &g,
     }
 
     uint16_t textWidth = g.user().getTextWidth(stringValue, TextSize::medium);
-    g.setColour(x > (bounds.getWidth() - textWidth)
-                        && isColorTooBright(colour, 0.7f)
-                    ? Colours565::black
-                    : Colours565::white);
-    g.print(0,
-            labelYPosition,
-            stringValue,
-            bounds.getWidth() - textPositionFromRight,
-            TextAlign::right);
+    uint32_t textColour =
+        (x > (bounds.getWidth() - textWidth) && isColorTooBright(colour, 0.7f))
+            ? Colours565::black
+            : Colours565::white;
+
+    /* The value stands on the bar, which is whatever colour the control is,
+     * so it is drawn from the masks rather than from a band blended against
+     * black. See TextAtlas.h. */
+    g.user().setTextBackgroundColour(colour);
+    g.user().printText(0,
+                       labelYPosition,
+                       stringValue,
+                       bounds.getWidth() - textPositionFromRight,
+                       TextAlign::right,
+                       textColour,
+                       TextSize::medium);
+    g.user().setTextBackgroundColour(Colours565::black);
 }
 
 bool FaderControl::isColorTooBright(uint16_t color, float brightnessThreshold)

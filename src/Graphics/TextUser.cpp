@@ -122,8 +122,11 @@ uint32_t TextUser::getColour(uint8_t index)
 
 void TextUser::uploadFonts(void)
 {
-    uploadFaces(&fontUser[0][0][0],
-                (uint8_t)(numTextSpacings * numTextFaces * numTextSizes));
+    const uint8_t count =
+        (uint8_t)(numTextSpacings * numTextFaces * numTextSizes);
+
+    uploadFaces(&fontUser[0][0][0], count);
+    uploadMasks(&fontUser[0][0][0], count);
 }
 
 void TextUser::printText(uint16_t x,
@@ -137,7 +140,16 @@ void TextUser::printText(uint16_t x,
                          TextSpacing spacing)
 {
     const FontFace &font = fontFor(size, face, spacing);
-    drawString(x, y, text, font, bandFor(font, colour), width, align, false);
+
+    /* On black the bands are right and better looking. On anything else their
+     * edges were mixed against the wrong colour, and the masks - which have no
+     * edges - are the only ones that can be drawn there at all. */
+    if (textBackgroundColour == 0x0000) {
+        drawString(
+            x, y, text, font, bandFor(font, colour), width, align, false);
+    } else {
+        drawStringExpanded(x, y, text, font, colour, width, align, false);
+    }
 }
 
 void TextUser::printText(uint16_t x,

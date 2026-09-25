@@ -151,11 +151,17 @@ void PadControl::paint(Graphics &g)
         snprintf(stringValue, ControlValue::MaxLabelLength, "%s", getName());
     }
 
-    g.print(0,
-            getHeight() / 2 - 10,
-            stringValue,
-            bounds.getWidth(),
-            TextAlign::center);
+    /* The pad is painted in the control's colour under this, so the text is
+     * drawn from the masks. See TextAtlas.h. */
+    g.user().setTextBackgroundColour(control.getColour565());
+    g.user().printText(0,
+                       getHeight() / 2 - 10,
+                       stringValue,
+                       bounds.getWidth(),
+                       TextAlign::center,
+                       Colours565::white,
+                       TextSize::medium);
+    g.user().setTextBackgroundColour(Colours565::black);
 
     ControlComponent::paint(g);
 }

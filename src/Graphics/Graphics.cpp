@@ -30,7 +30,6 @@
 Graphics::Graphics(const uint8_t CSp, const uint8_t RSTp)
     : TextSystem(CSp, RSTp),
       TextUser(CSp, RSTp),
-      TextCGRAM(CSp, RSTp),
       Geometry(CSp, RSTp),
       BitmapTools(CSp, RSTp),
       BitmapReader(CSp, RSTp),
@@ -45,8 +44,6 @@ void Graphics::initialise(void)
     clear();
     setBacklight(true);
     resetExtRam();
-    loadCGRAMFonts();
-    selectCGRAMFont();
     setBacklightbrightness(512);
     delay(20);
 }

@@ -48,6 +48,23 @@
  * transfer costs its 42 us whatever it carries, so 60,000 glyph sized writes
  * would take the best part of three seconds; 2,300 row sized ones take about a
  * second and a half, which is the SPI link and nothing else.
+ *
+ * @section masks The other atlas
+ *
+ * A band cannot leave a background alone. Its edge pixels were mixed against
+ * the field it was composited on, so the same glyph on a fader's coloured bar
+ * wears a dark halo, and the band built the other way up wears a light one -
+ * neither is text, both are dirt.
+ *
+ * So the user faces are also kept as one bit masks, and drawn with the
+ * blitter's colour expansion: the set bits take a colour given per blit and
+ * the clear ones are not written at all, so there is no fringe to have been
+ * mixed against anything. One blit a glyph, the same as a band, in any colour
+ * on any background - and no anti-aliasing, which is what text on those
+ * backgrounds had anyway, from the character generator this replaces.
+ *
+ * Text on black keeps the bands, because they look better and that is nearly
+ * all the text there is. setTextBackgroundColour() is what chooses.
  */
 
 #pragma once
@@ -62,9 +79,16 @@ public:
     TextAtlas(const uint8_t CSp, const uint8_t RSTp);
     virtual ~TextAtlas() = default;
 
+    /** Where the one bit masks sit, immediately past the coloured bands. */
+    static constexpr uint32_t maskAddress =
+        (uint32_t)FRAME_GLYPHS + (uint32_t)fontAtlasRows * fontAtlasWidth * 2;
+
 protected:
     /** Composites every band of every one of the faces into the atlas. */
     void uploadFaces(const FontFace *faces, uint8_t count);
+
+    /** Copies the faces' one bit masks into the mask atlas. */
+    void uploadMasks(const FontFace *faces, uint8_t count);
 
     /**
      * @brief Puts a string on the screen, one blit a character.
@@ -81,6 +105,22 @@ protected:
                     uint16_t width,
                     TextAlign align,
                     bool clip);
+
+    /**
+     * @brief Puts a string on the screen by expanding its masks.
+     *
+     * The colour is given per blit and the background is never read, so this
+     * draws in any colour on anything - at the price of the anti-aliasing,
+     * which cannot survive not knowing what it would be mixed with.
+     */
+    void drawStringExpanded(uint16_t x,
+                            uint16_t y,
+                            const char *text,
+                            const FontFace &face,
+                            uint32_t colour,
+                            uint16_t width,
+                            TextAlign align,
+                            bool clip);
 
     /** The width the string will occupy in the face. */
     static uint16_t measureString(const char *text, const FontFace &face);

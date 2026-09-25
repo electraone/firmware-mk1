@@ -31,7 +31,6 @@
 #include "TextRenderer.h"
 #include "TextSystem.h"
 #include "TextUser.h"
-#include "TextCGRAM.h"
 #include "Point.h"
 #include "Rectangle.h"
 #include "Geometry.h"
@@ -48,7 +47,6 @@
  */
 class Graphics : public TextSystem,
                  public TextUser,
-                 public TextCGRAM,
                  public Geometry,
                  public BitmapTools,
                  public BitmapReader,

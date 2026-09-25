@@ -35,6 +35,14 @@ plain BTE copy carries whatever colour is in the pixels: a colour a face can
 be drawn in is a band of its own. Six is the palette a preset can choose from,
 and text asked for in anything else is drawn in the nearest of them.
 
+The user faces are also cut as one bit masks, for the text that does not stand
+on black. A band's edges were mixed against the field it was composited on, so
+the same glyph on a fader's coloured bar wears a dark halo and the band built
+the other way up wears a light one. A mask has no edges: the blitter's colour
+expansion paints its set bits in a colour given per blit and does not touch the
+clear ones, so it draws in any colour on anything - flat, which is what that
+text had anyway from the character generator it replaces.
+
 ## What it costs
 
 Nothing like what the bands would cost if they were carried. A glyph's shape
@@ -46,6 +54,10 @@ of SPI.
 Four bits and not eight: sixteen levels of coverage is past the point where
 another one changes a pixel on this panel, and the half thrown away is a third
 of the firmware image.
+
+The masks are 53 KB of the image and 81 KB of video memory, and they carry an
+offset and a position a glyph on top of that - another 6 KB. Both offset tables
+are 16 bit, and the script stops if a face outgrows that.
 
 The atlas is packed one face at a time, so each face owns a contiguous run of
 rows. Packing all of them together wastes about 190 rows fewer and costs the

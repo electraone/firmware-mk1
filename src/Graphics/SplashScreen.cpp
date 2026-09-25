@@ -44,7 +44,6 @@ void displaySplash(Graphics &g,
             appVersion);
 
     g.switchWriteLayer();
-    g.setTextColor(COLOR_WHITE);
     g.system().printText(0,
                          360,
                          versionText,

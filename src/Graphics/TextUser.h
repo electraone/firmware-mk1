@@ -49,9 +49,10 @@
  * here at three times the cost of one, over a link that is the thing text
  * actually costs.
  *
- * The anti-aliasing is blended towards black, because that is what the panel is
- * behind text nearly everywhere. Text on a light background gets a dark fringe
- * and there is nothing to be done about it from here.
+ * The anti-aliasing is blended towards black, because that is what the panel
+ * is behind text nearly everywhere. Text on anything else is drawn from the
+ * one bit masks instead - any colour, no fringe, no anti-aliasing - and
+ * setTextBackgroundColour() is what chooses between the two. See TextAtlas.h.
  */
 
 #pragma once
@@ -157,12 +158,16 @@ public:
                               TextSpacing spacing = TextSpacing::proportional);
 
     /**
-     * The colour the anti-aliasing blends towards.
+     * The colour the text is about to be drawn on.
      *
-     * Recorded and not used. The bands were blended when they were composited
-     * and there is one set of them, so the fringe is the colour it was mixed
-     * in - black. The mk2 mixes per blit and can honour this; here it is the
-     * price of one blit a glyph instead of three.
+     * Black, the default, means the pre-coloured bands: they were blended
+     * against black when they were composited, so that is the one background
+     * their edges are right on. Anything else means the masks, which have no
+     * edges to be wrong - the text is then the exact colour asked for rather
+     * than the nearest of six, and flat rather than anti-aliased.
+     *
+     * It stays set until it is changed, so a caller that has moved off black
+     * should put it back.
      */
     void setTextBackgroundColour(uint32_t colour);
     uint32_t getTextBackgroundColour(void) const;

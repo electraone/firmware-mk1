@@ -24,6 +24,7 @@
 
 #include <cstdint>
 
+
 /** One character of one face. */
 struct FontGlyph {
     uint8_t advance;
@@ -57,7 +58,11 @@ struct FontFace {
     uint16_t rows; /**< and how many of them, all of them its own */
     const FontGlyph *glyph;
     const uint8_t *coverage;
-    const uint32_t *coverageAt;
+    const uint16_t *coverageAt;
+    const uint8_t *mask; /**< one bit a pixel, rows padded to whole bytes */
+    const uint16_t *maskAt;
+    const uint16_t *maskX; /**< a byte column, not a pixel column */
+    const uint16_t *maskY;
     const FontBand *band;
     uint8_t numBands;
 };
@@ -76,9 +81,15 @@ constexpr uint16_t fontUserRow = 55;
 constexpr uint16_t fontUserRows = 2257;
 constexpr uint16_t fontAtlasRows = 2312;
 
+/* The mask atlas, which is a different shape: a byte is
+ * eight pixels, so a row is 1024 bytes and 8192 of them. */
+constexpr uint16_t fontMaskWidth = 1024;
+constexpr uint16_t fontMaskRows = 81;
+
 /* Indexed by TextSize; the system draws in two of them. */
 extern const FontFace fontSystem[2];
 
 /* Indexed by [spacing][weight][size], which is the order the
  * three enumerations are declared in. */
 extern const FontFace fontUser[2][2][4];
+

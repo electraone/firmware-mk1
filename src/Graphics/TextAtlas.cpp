@@ -29,16 +29,18 @@
 
 #include <cstring>
 
-static_assert((uint32_t)FRAME_GLYPHS
-                      + ((uint32_t)fontAtlasRows * fontAtlasWidth * 2)
-                  <= (uint32_t)SDRAM_CGRAM,
+static_assert(TextAtlas::maskAddress + ((uint32_t)fontMaskRows * fontMaskWidth)
+                  <= (uint32_t)VIDEO_RAM_SIZE,
               "the atlas has outgrown the video memory left for it - drop a "
-              "face in tools/makefont, or move the character generator");
+              "face in tools/makefont, or move it somewhere with more room");
 
 namespace
 {
     /** One row of the atlas, built in RAM and sent over in a single transfer. */
     uint16_t atlasRow[fontAtlasWidth];
+
+    /** The same for the mask atlas, whose row is bytes rather than pixels. */
+    uint8_t maskRow[fontMaskWidth];
 
     /**
  * @brief Blends ink towards field by the coverage, in 16 bit colour.
@@ -159,6 +161,42 @@ void TextAtlas::uploadFaces(const FontFace *faces, uint8_t count)
     }
 }
 
+void TextAtlas::uploadMasks(const FontFace *faces, uint8_t count)
+{
+    for (uint16_t line = 0; line < fontMaskRows; line++) {
+        memset(maskRow, 0, sizeof(maskRow));
+
+        for (uint8_t f = 0; f < count; f++) {
+            const FontFace &face = faces[f];
+
+            if (face.mask == nullptr) {
+                continue;
+            }
+
+            for (uint16_t index = 0; index < fontNumGlyphs; index++) {
+                const FontGlyph &glyph = face.glyph[index];
+                uint16_t top = face.maskY[index];
+
+                if ((glyph.height == 0) || (line < top)
+                    || (line >= (top + glyph.height))) {
+                    continue;
+                }
+
+                uint16_t stride = (uint16_t)((glyph.width + 7) / 8);
+
+                memcpy(&maskRow[face.maskX[index]],
+                       face.mask + face.maskAt[index]
+                           + (uint32_t)(line - top) * stride,
+                       stride);
+            }
+        }
+
+        writeRamData(maskAddress + ((uint32_t)line * fontMaskWidth),
+                     maskRow,
+                     sizeof(maskRow));
+    }
+}
+
 uint16_t TextAtlas::measureString(const char *text, const FontFace &face)
 {
     uint16_t width = 0;
@@ -218,6 +256,58 @@ void TextAtlas::drawString(uint16_t x,
                           y + glyph.top,
                           glyph.width,
                           glyph.height);
+        }
+
+        pen += glyph.advance;
+    }
+}
+
+void TextAtlas::drawStringExpanded(uint16_t x,
+                                   uint16_t y,
+                                   const char *text,
+                                   const FontFace &face,
+                                   uint32_t colour,
+                                   uint16_t width,
+                                   TextAlign align,
+                                   bool clip)
+{
+    uint32_t address = getCanvasAddress();
+    uint16_t textWidth = measureString(text, face);
+    uint16_t xPosition = 0;
+
+    if (textWidth > width) {
+        textWidth = width;
+    }
+
+    if (align == TextAlign::center) {
+        xPosition = (width - textWidth) / 2;
+    } else if (align == TextAlign::right) {
+        xPosition = width - textWidth;
+    }
+
+    uint16_t pen = 0;
+
+    for (uint16_t i = 0; text[i] != 0; i++) {
+        uint16_t index = glyphIndex(text[i]);
+        const FontGlyph &glyph = face.glyph[index];
+
+        if (clip && ((pen + glyph.advance) > width)) {
+            break;
+        }
+
+        if ((glyph.width != 0) && (glyph.height != 0)) {
+            /* The source x is a byte and not a pixel: the expansion reads
+             * eight pixels at a time, which is why a mask is packed to byte
+             * columns in the first place. */
+            bteExpansion(maskAddress,
+                         face.maskX[index],
+                         face.maskY[index],
+                         address,
+                         x + xPosition + pen + glyph.left,
+                         y + glyph.top,
+                         glyph.width,
+                         glyph.height,
+                         colour);
         }
 
         pen += glyph.advance;

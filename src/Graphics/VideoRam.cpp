@@ -170,8 +170,6 @@ void VideoRam::resetExtRam(void)
     fillRect(0, 0, 1024, 600);
     setCanvasAddress(SDRAM_PAGE_8);
     fillRect(0, 0, 1024, 600);
-    setCanvasAddress(SDRAM_CGRAM);
-    fillRect(0, 0, 1024, 600);
 #endif
     interrupts();
 }
