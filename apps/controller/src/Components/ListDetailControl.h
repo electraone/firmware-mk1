@@ -29,7 +29,13 @@
 
 #include "ListControl.h"
 
-// \todo height of the item is fixed to 80. Changing it will break the layout
+/**
+ * @brief The detail a list opens: one column, or a page of a grid.
+ *
+ * Which of the two is ListDetailLayout's to say. Nothing scrolls: the list
+ * used to be dragged under the finger out of an off-screen page, and every
+ * item is on a page now.
+ */
 class ListDetailControl : public ListControl
 {
 public:
@@ -40,7 +46,6 @@ public:
     void resized(void) override;
 
     void onTouchDown(const TouchEvent &touchEvent) override;
-    void onTouchMove(const TouchEvent &touchEvent) override;
     void onTouchClick(const TouchEvent &touchEvent) override;
     void onTouchUp(const TouchEvent &touchEvent) override;
     void onTouchLongHold(const TouchEvent &touchEvent);
@@ -50,19 +55,88 @@ public:
                            uint8_t handle = 0) override;
 
 private:
-    void paintListItems(Graphics &g, int16_t offset);
-    void determineOffsetY(void);
+    /** @brief Air between an item's box and its label, either side. */
+    static constexpr uint16_t itemTextMargin = 8;
 
-    std::function<void(void)> emit;
+    /**
+     * @brief Draws one item's box, its label and its bitmap.
+     *
+     * The label is drawn in the list's own face - the one the preset chose
+     * for its value on the page - centred on the row, and shortened with a
+     * marker when that face is too wide for the box.
+     */
+    void paintItem(Graphics &g,
+                   uint16_t itemIndex,
+                   uint16_t x,
+                   uint16_t y,
+                   uint16_t width,
+                   uint16_t height);
 
-private:
+    /** @brief The single column, top aligned, nothing hidden. */
+    void paintColumn(Graphics &g);
+
+    /** @brief The full-screen grid, one page of it. */
+    void paintGrid(Graphics &g);
+
+    /**
+     * @brief Draws one of the strips either side of the grid.
+     *
+     * @param g the canvas
+     * @param x the strip's left edge
+     * @param pointsRight which way the arrow points
+     * @param enabled false when there is no page that way, and no arrow
+     * @param pressed true while a finger is on it
+     */
+    void paintSideBar(Graphics &g,
+                      uint16_t x,
+                      bool pointsRight,
+                      bool enabled,
+                      bool pressed);
+
+    /** @brief Which strip a point is on: -1 left, 1 right, 0 neither. */
+    int8_t stripAt(uint16_t x);
+
+    /** @brief Marks a strip as under the finger, or none, and redraws. */
+    void setPressedStrip(int8_t strip);
+
+    /** @brief The item the grid draws at this point, or -1 for none. */
+    int16_t itemAt(uint16_t x, uint16_t y);
+
+    /** @brief How many pages the list fills. Never zero. */
+    uint16_t numPages(void);
+
+    /** @brief Brings the page holding this item to the front. */
+    void showPageOf(uint16_t itemIndex);
+
+    /**
+     * @brief Redraws the page, and the lock standing on top of it.
+     *
+     * The strips down the sides belong to this component and the lock is a
+     * sibling drawn over the bottom of the right hand one. Painting a
+     * component does not paint anything else - every component schedules
+     * itself - so a page turn would erase the lock and leave it erased.
+     */
+    void repaintPage(void);
+
+    /** @brief Takes the item as the control's value, as a touch would. */
+    void chooseItem(uint16_t itemIndex);
+
+    /** @name Grid geometry, all of it derived from the window's size @{ */
+    uint16_t rowHeight(void);
+    uint16_t columnWidth(void);
+    uint16_t gridLeft(void);
+    /** @} */
+
     bool valueChosen;
-    int16_t offsetY;
-    int16_t prevTouchY;
+
+    /** Whether this list is drawn as the grid. Settled once, at construction:
+     *  an overlay does not change length while its detail is open. */
+    bool paged;
+
+    /** The page on show, and which strip a finger is on. */
+    uint16_t page;
+    int8_t pressedStrip;
 
     uint16_t listItemWidth;
     uint16_t listItemHeight;
-    uint16_t maxItemsInViewport;
-
-    uint16_t itemTop;
 };

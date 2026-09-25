@@ -72,6 +72,79 @@ void LookAndFeel::fillSmoothRoundRect(Graphics &g,
     g.fillRoundRect(x, y, width, height, blendRadius);
 }
 
+void LookAndFeel::paintDetailListItem(Graphics &g,
+                                      uint16_t x,
+                                      uint16_t y,
+                                      uint16_t width,
+                                      uint16_t height,
+                                      uint32_t colour,
+                                      bool alternate)
+{
+    const uint32_t barColour = alternate ? Colours565::darker(colour, 0.1f)
+                                         : Colours565::darker(colour, 0.2f);
+
+    /* The corners the page strips and the bottom bar have, so the grid and
+     * the chrome around it are one shape. */
+    g.setColour(barColour);
+    g.fillRoundRect(x, y, width, height, standardRadius);
+}
+
+void LookAndFeel::paintDetailListItemSelection(Graphics &g,
+                                               uint16_t x,
+                                               uint16_t y,
+                                               uint16_t width,
+                                               uint16_t height)
+{
+    /* Two pixels of outline following the item's rounded corners: the inner
+     * ring one radius tighter, so the two stay concentric. */
+    g.setColour(Colours565::white);
+    g.drawRoundRect(x, y, width, height, standardRadius);
+    g.drawRoundRect(x + 1, y + 1, width - 2, height - 2, standardRadius - 1);
+}
+
+void LookAndFeel::paintDetailSideBar(Graphics &g,
+                                     uint16_t x,
+                                     uint16_t y,
+                                     uint16_t width,
+                                     uint16_t height,
+                                     uint16_t arrowCentreY,
+                                     bool pointsRight,
+                                     bool enabled,
+                                     bool pressed)
+{
+    /* Cleared either way, so a strip that has just lost its page does not
+     * leave its corners behind. */
+    g.setColour(Colours565::black);
+    g.fillRect(x, y, width, height);
+
+    if (!enabled) {
+        return;
+    }
+
+    const uint32_t barColour = Colours888::toRGB565(
+        pressed ? DetailSideBarColourPressed : DetailSideBarColour);
+
+    g.setColour(barColour);
+    g.fillRoundRect(x, y, width, height, standardRadius);
+
+    /* The < and > of the user face rather than a drawn triangle, so the strip
+     * speaks in the same letterforms as the items beside it. Placed by the
+     * ink and not the line box, which carries ascender and descender room the
+     * glyph does not use. */
+    auto &text = g.user();
+    const TextSize size = TextSize::large;
+    const uint16_t inkMiddle =
+        text.getInkTop(size) + (text.getInkHeight(size) / 2);
+
+    text.printText(x,
+                   (arrowCentreY > inkMiddle) ? (arrowCentreY - inkMiddle) : 0,
+                   pointsRight ? ">" : "<",
+                   width,
+                   TextAlign::center,
+                   Colours565::white,
+                   size);
+}
+
 void LookAndFeel::drawSmoothRoundRect(Graphics &g,
                                       uint16_t x,
                                       uint16_t y,

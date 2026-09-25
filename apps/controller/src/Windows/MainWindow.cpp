@@ -1,4 +1,5 @@
 #include "MainWindow.h"
+#include "ListDetailLayout.h"
 #include "ControlComponent.h"
 #include "GroupControl.h"
 #include "Envelope.h"
@@ -1133,6 +1134,14 @@ Rectangle MainWindow::getDetailBounds(const Control &control)
     if (control.getType() == Control::Type::Fader) {
         return Rectangle(8, 217, 1008, 330);
     } else if (control.getType() == Control::Type::List) {
+        /* A list too long for one column gets the screen instead of a panel
+         * beside the control, and pages through itself. Everything between
+         * the status bar and the bottom bar: both say things worth keeping
+         * while a list is open. */
+        if (ListDetailLayout::isPaged(control)) {
+            return Rectangle(0, 25, 1024, 543);
+        }
+
         uint16_t xPosition = (control.getBounds().getX() > 510) ? 8 : 577;
         return Rectangle(xPosition, 25, 436, 550);
     } else if (control.getType() == Control::Type::Dx7envelope) {

@@ -152,6 +152,45 @@ public:
      * neighbours in the blend. A two pixel corner that reads as smooth, for
      * two commands where writing the pixels would take eight.
      */
+    /** The corner radius the detail's grid, its strips and its items share. */
+    static constexpr uint16_t standardRadius = 4;
+
+    /** The strips down the sides of a paged detail, and the same pressed. */
+    static constexpr uint32_t DetailSideBarColour = 0x080812;
+    static constexpr uint32_t DetailSideBarColourPressed = 0x111122;
+
+    /** How far the bottom bar stands in from the edge of the screen. The
+     *  strips line their outer edges up with it. */
+    static constexpr uint16_t bottomBarMarginX = 12;
+
+    /** One item of a detail's list: a rounded box, every other one a shade
+     *  apart so the rows of a column tell themselves from each other. */
+    static void paintDetailListItem(Graphics &g,
+                                    uint16_t x,
+                                    uint16_t y,
+                                    uint16_t width,
+                                    uint16_t height,
+                                    uint32_t colour,
+                                    bool alternate);
+
+    /** The ring that marks the item the list is on. */
+    static void paintDetailListItemSelection(Graphics &g,
+                                             uint16_t x,
+                                             uint16_t y,
+                                             uint16_t width,
+                                             uint16_t height);
+
+    /** One of the strips that turn the page of a paged detail. */
+    static void paintDetailSideBar(Graphics &g,
+                                   uint16_t x,
+                                   uint16_t y,
+                                   uint16_t width,
+                                   uint16_t height,
+                                   uint16_t arrowCentreY,
+                                   bool pointsRight,
+                                   bool enabled,
+                                   bool pressed);
+
     static constexpr uint16_t smoothCornerSize = 2;
     static constexpr uint16_t smoothCornerRadius = 3;
     static constexpr uint16_t smoothShortestSide = 7;
