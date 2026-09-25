@@ -730,39 +730,113 @@ void LookAndFeel::paintBarVertical(Graphics &g,
     g.drawRect(padding, 0, barWidth, bounds.getHeight());
 }
 
+/*
+ * A pad: a box in a dark shade of the control's colour, a lighter shade of it
+ * while the pad is on, and down the left of a pad that is on a strip of the
+ * colour itself. The strip shares the box's left corners, so it is smoothed
+ * the same way, and its right corners are squared off by covering them.
+ *
+ * The bounds say how tall the box is, not where it starts: a pad's box is
+ * drawn from the top of the control whatever y it is given, which is what
+ * lets the value-only variant sit lower without moving this one.
+ */
 void LookAndFeel::paintPad(Graphics &g,
                            const Rectangle &bounds,
                            uint32_t colour,
-                           bool isMomentary,
+                           [[maybe_unused]] bool isMomentary,
                            bool state)
 {
-    uint32_t colourOff = Colours565::darker(colour, 0.3f);
-    uint32_t colourAccent = colour;
-    uint32_t colourOn = Colours565::darker(colour, 0.4f);
-    uint16_t backgroundColour = colourOff;
-    uint16_t activeBarHeight = bounds.getHeight() - 4;
-    uint16_t radius = 5;
+    const uint32_t colourOffBackground = Colours565::darker(colour, 0.4f);
+    const uint32_t colourOn = Colours565::darker(colour, 0.5f);
 
     if (state) {
-        backgroundColour = colourOn;
+        fillSmoothRoundRect(g,
+                            0,
+                            0,
+                            bounds.getWidth(),
+                            bounds.getHeight(),
+                            colourOn,
+                            backgroundColour,
+                            padRadius);
+        fillSmoothRoundRect(g,
+                            0,
+                            0,
+                            18,
+                            bounds.getHeight(),
+                            colour,
+                            backgroundColour,
+                            padRadius);
+        g.setColour(colourOn);
+        g.fillRect(13, 0, 5, bounds.getHeight());
+    } else {
+        fillSmoothRoundRect(g,
+                            0,
+                            0,
+                            bounds.getWidth(),
+                            bounds.getHeight(),
+                            colourOffBackground,
+                            backgroundColour,
+                            padRadius);
+    }
+}
+
+/*
+ * A checkbox: a pill, outlined while it is off and filled while it is on,
+ * with a light handle at the end the state points to. The word "On" goes in
+ * the room the handle leaves when it has moved to the right.
+ */
+void LookAndFeel::paintCheckbox(Graphics &g,
+                                const Rectangle &bounds,
+                                uint32_t colour,
+                                bool isChecked,
+                                [[maybe_unused]] bool hasFocus)
+{
+    const uint16_t x = bounds.getX();
+    const uint16_t y = bounds.getY();
+    const uint16_t width = bounds.getWidth();
+    const uint16_t height = (bounds.getHeight() < checkboxMaxHeight)
+                                ? bounds.getHeight()
+                                : checkboxMaxHeight;
+    const uint16_t radius = (height / 2) - 2;
+
+    if (isChecked) {
+        fillSmoothRoundRect(
+            g, x, y, width, height, colour, backgroundColour, radius);
+    } else {
+        drawSmoothRoundRect(g,
+                            x,
+                            y,
+                            width,
+                            height,
+                            colour,
+                            backgroundColour,
+                            backgroundColour,
+                            radius);
     }
 
-    g.setColour(Colours565::darker(colourOff, 0.5f));
-    g.fillRoundRect(0, 0, bounds.getWidth(), bounds.getHeight(), radius);
-    g.setColour(backgroundColour);
-    g.fillRoundRect(0, 0, bounds.getWidth(), activeBarHeight, radius);
+    const uint32_t handle = Colours888::toRGB565(HandleColour);
+    const uint16_t handleSize = height - 12;
+    /* As round as the chip draws a side this long without smearing. */
+    const uint16_t handleRadius =
+        (handleSize >= 9) ? (uint16_t)((handleSize - 3) / 2) : handleSize / 2;
+    const uint16_t xToggle = isChecked ? x + width - height + 6 : x + 6;
 
-    if (!isMomentary && state) {
-        g.setColour(colourAccent);
-        g.fillRoundRect(0, 0, 20, activeBarHeight, radius);
-        g.setColour(backgroundColour);
-        g.fillRect(18, 0, 2, activeBarHeight);
-        g.setColour(Colours565::black);
-        g.drawLine(15, 0, 15, activeBarHeight - 1);
-        g.setColour(Colours565::darker(colour, 0.15f));
-        g.drawLine(16, 0, 16, activeBarHeight - 1);
-        g.setColour(Colours565::darker(colour, 0.30f));
-        g.drawLine(17, 0, 17, activeBarHeight - 1);
+    fillSmoothRoundRect(g,
+                        xToggle,
+                        y + 6,
+                        handleSize,
+                        handleSize,
+                        handle,
+                        isChecked ? colour : backgroundColour,
+                        handleRadius);
+
+    if (isChecked) {
+        g.system().printText(x,
+                             y + height / 2 - 7,
+                             "On",
+                             TextStyle::mediumTransparent,
+                             xToggle - x,
+                             TextAlign::center);
     }
 }
 

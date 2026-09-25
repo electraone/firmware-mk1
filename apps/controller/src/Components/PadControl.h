@@ -54,6 +54,29 @@ public:
                          const ControlValue &cv) override;
 
 private:
+    /** @brief The default shape: a box in the control's colour. */
+    void paintPad(Graphics &g);
+
+    /** @brief The box a pad is drawn in, in local coordinates. */
+    Rectangle padBounds(Graphics &g) const;
+
+    /** @brief The valueOnly variant: a word for the state, no name. */
+    void paintValueOnly(Graphics &g);
+
+    /** @brief The checkbox variant: a toggle switch, the name beneath. */
+    void paintCheckbox(Graphics &g);
+
+    /**
+     * @brief What the pad has to say about itself, as text.
+     *
+     * The overlay item for the state if there is one, then the value's own
+     * label, then the control's name. Answers false when the item carries a
+     * bitmap instead, which the caller paints rather than prints.
+     */
+    bool resolveStateText(char *text,
+                          size_t size,
+                          const ListDataItem *item) const;
+
     bool getState(void) const;
     void setState(bool newState);
     void emitOffValue(void);

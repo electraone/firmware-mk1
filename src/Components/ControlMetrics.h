@@ -103,6 +103,30 @@ struct ControlMetrics {
     uint16_t valueGap;
 
     /*
+     * Pads
+     */
+
+    /** Taken off the height of a pad standing on its own. */
+    uint16_t padHeightInset;
+
+    /**
+     * @brief How far down the control a pad's box starts.
+     *
+     * Only a value-only pad reads it: LookAndFeel::paintPad() draws a plain
+     * pad's box from the top of the control whatever the bounds say, so this
+     * is what puts the value-only pad on the same row as the pad beside it.
+     */
+    uint16_t padBoxTopInset;
+
+    /** Whether a pad prints its value across the middle rather than its name
+     *  underneath. */
+    bool padValueCentred;
+
+    /** How far up from the bottom a checkbox is pushed, or zero to leave it
+     *  where the name-or-no-name branch put it. */
+    uint16_t padCheckboxBottomInset;
+
+    /*
      * Lists
      */
 
@@ -151,6 +175,10 @@ inline constexpr ControlMetrics controlMetrics = {
     /* faderValueFloats    */ true,
     /* faderDialHidesName  */ true,
     /* valueGap            */ 6,
+    /* padHeightInset      */ 6,
+    /* padBoxTopInset      */ 3,
+    /* padValueCentred     */ true,
+    /* padCheckboxBottomInset */ 0,
     /* listButtonBoxInset  */ 0,
     /* listButtonDotsInset */ 14,
     /* boxesEndOnNameBaseline */ true,

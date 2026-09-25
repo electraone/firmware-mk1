@@ -65,7 +65,16 @@ public:
         Bipolar = 4
     };
 
-    enum class Variant { Default = 0, Thin = 2, ValueOnly = 3, Dial = 4 };
+    /* Numbered as the mk2 numbers them, gaps and all, so that the two read
+     * the same preset the same way. The enumerators it carries and this does
+     * not belong to controls this has not been given yet. */
+    enum class Variant {
+        Default = 0,
+        Thin = 2,
+        ValueOnly = 3,
+        Dial = 4,
+        Checkbox = 5
+    };
 
     /**
      * @brief The face a control draws its text in.

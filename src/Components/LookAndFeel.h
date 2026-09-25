@@ -68,11 +68,27 @@ public:
                                 int16_t barX,
                                 int16_t barWidth);
 
+    /** The corner radius a pad's box is drawn with. */
+    static constexpr uint16_t padRadius = 4;
+
+    /** The pill a checkbox's handle is drawn in. */
+    static constexpr uint32_t HandleColour = 0xeeeeee;
+
+    /** The tallest paintCheckbox() draws, whatever bounds it is given. */
+    static constexpr uint16_t checkboxMaxHeight = 42;
+
     static void paintPad(Graphics &g,
                          const Rectangle &bounds,
                          uint32_t colour,
                          bool isMomentary,
                          bool state);
+
+    /** A toggle switch: a pill with a handle at one end, lit when checked. */
+    static void paintCheckbox(Graphics &g,
+                              const Rectangle &bounds,
+                              uint32_t colour,
+                              bool isChecked,
+                              bool hasFocus);
 
     static void paintSliderHorizontal(Graphics &g,
                                       const Rectangle &bounds,

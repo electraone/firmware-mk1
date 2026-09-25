@@ -299,6 +299,8 @@ Control::Variant Control::translateVariant(const char *variantText)
             return (Control::Variant::Dial);
         } else if (strcmp(variantText, "valueOnly") == 0) {
             return (Control::Variant::ValueOnly);
+        } else if (strcmp(variantText, "checkbox") == 0) {
+            return (Control::Variant::Checkbox);
         }
     }
     return (Control::Variant::Default);

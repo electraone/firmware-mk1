@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Builds a preset that shows every shape a fader can take.
+"""Builds a preset that shows every shape a control can take.
 
 One control for each thing the fader draws differently - the variants, the two
 polarities, the overlay treatments, and the sixteen faces - so that a change to
@@ -56,6 +56,49 @@ def control(page, slot, name, value, **extra):
             }
         ],
     }
+    body.update(extra)
+    controls.append(body)
+    next_id += 1
+
+
+def pad(page, slot, name, on, **extra):
+    """One pad, at a slot counted left to right and top to bottom.
+
+    `on` is the state it is drawn in: the default value is the MIDI value that
+    state sends, so the pad comes up lit or dark without anything having to
+    touch it.
+    """
+    global next_id
+
+    row, column = divmod(slot, 6)
+    body = {
+        "id": next_id,
+        "type": "pad",
+        "name": name,
+        "color": extra.pop("color", "529DEC"),
+        "bounds": [COLUMN_X[column], ROW_Y[row], 146, 56],
+        "pageId": page,
+        "controlSetId": (row % 3) + 1,
+        "visible": True,
+        "mode": extra.pop("mode", "toggle"),
+        "inputs": [{"potId": (slot % 12) + 1, "valueId": "value"}],
+        "values": [
+            {
+                "id": "value",
+                "defaultValue": 127 if on else 0,
+                "message": {
+                    "deviceId": 1,
+                    "type": "cc7",
+                    "parameterNumber": next_id,
+                    "offValue": 0,
+                    "onValue": 127,
+                },
+            }
+        ],
+    }
+    overlay_id = extra.pop("overlayId", None)
+    if overlay_id is not None:
+        body["values"][0]["overlayId"] = overlay_id
     body.update(extra)
     controls.append(body)
     next_id += 1
@@ -208,6 +251,81 @@ for pageId, kind, entries in LIST_PAGES:
                 **extra)
         controls[-1]["type"] = "list"
         controls[-1]["values"][0]["overlayId"] = overlayId
+
+# Page eight: the default pad. Both states, both modes, and the six colours -
+# a pad that is on carries a strip of its colour down the left whether it is
+# momentary or not.
+page(8, "PADS")
+pad(8, 0, "OFF", False)
+pad(8, 1, "ON", True)
+# Only at rest: this firmware writes a momentary pad's off value when the
+# component goes away, so one is always dark by the time a page has been
+# switched to. The lit shape is the same either way - paintPad() draws the
+# strip from the state alone, as the mk2 does.
+pad(8, 2, "MOMENTARY", False, mode="momentary")
+pad(8, 3, "A LONGER NAME", False)
+pad(8, 4, "LIT LONGER", True)
+for index, colour in enumerate(COLOURS):
+    pad(8, index + 6, f"COLOUR {index + 1}", False, color=colour)
+for index, colour in enumerate(COLOURS):
+    pad(8, index + 12, f"LIT {index + 1}", True, color=colour)
+
+# Page nine: the faces a pad's word is printed in. A pad prints its name
+# across the middle here, so the face is the control's own.
+page(9, "PAD FACES")
+for index, size in enumerate(["small", "medium", "large", "huge"]):
+    pad(9, index, size.upper(), False, font={"size": size})
+for index, size in enumerate(["small", "medium", "large", "huge"]):
+    pad(9, index + 6, size.upper(), True,
+        font={"size": size, "weight": "bold"})
+
+# Page ten: the valueOnly pad, which shows the state as a word from its
+# overlay - keyed by the MIDI value the state sends, not by an index.
+overlays.append({
+    "id": 8,
+    "items": [
+        {"value": 0, "label": "OFF"},
+        {"value": 127, "label": "ON"},
+    ],
+})
+overlays.append({
+    "id": 9,
+    "items": [
+        {"value": 0, "label": "MONO"},
+        {"value": 127, "label": "POLY"},
+    ],
+})
+
+page(10, "PAD VALUE")
+pad(10, 0, "STATE", False, variant="valueOnly", overlayId=8)
+pad(10, 1, "STATE", True, variant="valueOnly", overlayId=8)
+pad(10, 2, "VOICES", False, variant="valueOnly", overlayId=9)
+pad(10, 3, "VOICES", True, variant="valueOnly", overlayId=9)
+# No overlay: the name is what is left to print, as the default pad does.
+pad(10, 4, "NO OVERLAY", False, variant="valueOnly")
+pad(10, 5, "NO OVERLAY", True, variant="valueOnly")
+for index, colour in enumerate(COLOURS):
+    pad(10, index + 6, "STATE", index % 2 == 1, variant="valueOnly",
+        overlayId=8, color=colour)
+pad(10, 12, "LARGE", False, variant="valueOnly", overlayId=8,
+    font={"size": "large"})
+pad(10, 13, "LARGE", True, variant="valueOnly", overlayId=8,
+    font={"size": "large"})
+pad(10, 14, "SMALL", True, variant="valueOnly", overlayId=8,
+    font={"size": "small"})
+
+# Page eleven: the checkbox, which stands on the row a fader's track ends on
+# and keeps its name underneath. A checkbox with no name has the whole cell.
+page(11, "CHECKBOX")
+pad(11, 0, "OFF", False, variant="checkbox")
+pad(11, 1, "ON", True, variant="checkbox")
+pad(11, 2, "MOMENTARY", False, variant="checkbox", mode="momentary")
+pad(11, 3, "", True, variant="checkbox")
+pad(11, 4, "", False, variant="checkbox")
+pad(11, 5, "A LONGER NAME", True, variant="checkbox")
+for index, colour in enumerate(COLOURS):
+    pad(11, index + 6, f"COLOUR {index + 1}", index % 2 == 1,
+        variant="checkbox", color=colour)
 
 preset = {
     "version": 2,
