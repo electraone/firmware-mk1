@@ -142,8 +142,8 @@ public:
         size_t sysexBlockLength = sysexBlock.getLength();
         size_t readBytes = 0;
         size_t totalReadBytes = 0;
-        // buffer size must be divisible by 3
-        uint8_t buffer[60];
+        // Divisible by three, as USB system exclusive packets need.
+        uint8_t buffer[MemoryBlock::streamChunkSize];
 
         sysexBlock.seek(0);
         while ((readBytes = sysexBlock.readBytes(buffer, sizeof(buffer)))

@@ -127,7 +127,7 @@ public:
 
     void sendSysEx(uint8_t port, SysexBlock &sysexBlock) override
     {
-        uint8_t buffer[MemoryBlock::headerMaxSize];
+        uint8_t buffer[MemoryBlock::streamChunkSize];
         sysexBlock.seek(0);
         size_t readBytes = 0;
         while ((readBytes = sysexBlock.readBytes(buffer, sizeof(buffer)))

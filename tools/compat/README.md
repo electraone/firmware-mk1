@@ -124,12 +124,18 @@ electraone CLI:
 
 ```bash
 electraone --port "Electra CTRL" preset switch -b 0 -s 1
-electraone --port "Electra CTRL" lua upload presets/compat.lua
 electraone --port "Electra CTRL" preset upload presets/compat.epr
+electraone --port "Electra CTRL" lua upload presets/compat.lua
 ```
 
-Upload the Lua script first. Uploading the preset makes the unit reload the
-slot, and the script has to be on the card by then to be picked up.
+**The preset goes first, then the script.** Uploading a preset deletes the
+slot's Lua script: `SysexHandlerCtrl` does that deliberately, so that a
+preset and a script from different versions cannot end up side by side.
+Uploading the script afterwards makes the unit run it straight away.
+
+Doing it the other way round leaves the slot with no script at all, and the
+only sign of it is that the recording has no Lua calls in it - which reads
+exactly like a firmware that stopped calling Lua.
 
 `electra_preset.py` uses the same CLI when it can find it, looking at
 `$ELECTRAONE_CLI`, then the path, then `~/Repos/electraone-cli/build`. Without

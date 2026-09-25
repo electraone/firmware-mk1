@@ -50,12 +50,24 @@ public:
 
     bool isAllocatedInPool(void) const;
     bool isEmpty(void) const;
+
+    /** True when the message did not fit in the pool and was cut short. */
+    bool isOverflowed(void) const;
     size_t getLength(void) const;
     MemoryBlock getRange(uint32_t rangeStart, uint32_t rangeLength) const;
     int peek(size_t position) const;
 
     // The size of the header must be divisible by 4
     static const size_t headerMaxSize = 56;
+
+    /**
+     * @brief How much of a block to pull out of the pool at a time.
+     *
+     * A read costs far more in fixed overhead than in the bytes it carries,
+     * so a message goes out in chunks rather than in dribs. Divisible by
+     * three, because USB packs system exclusive data three bytes to a packet.
+     */
+    static const size_t streamChunkSize = 240;
 
 protected:
     MemoryPool *memoryPool;
@@ -66,7 +78,14 @@ protected:
 
     uint8_t header[headerMaxSize];
     size_t headerLength;
-    bool isFullMessageInHeader;
+
+    /** Whether the header has been copied into the pool. Until it is, a short
+     *  message lives only here and costs the pool nothing. */
+    bool headerFlushed;
+
+    /** Set when the pool had no room for the rest of the message. The block
+     *  then reports only what it really holds. */
+    bool overflowed;
 
 private:
     size_t readBytesInternal(uint8_t *buffer, size_t length);

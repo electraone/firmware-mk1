@@ -36,19 +36,26 @@ MemoryBlock::MemoryBlock()
       endAddress(0),
       length(0),
       headerLength(0),
-      isFullMessageInHeader(false)
+      headerFlushed(false),
+      overflowed(false)
 {
+    /* Cleared because callers ask things of an empty block: whether it is a
+     * system exclusive message, what manufacturer it carries. Those questions
+     * used to be answered from whatever the memory happened to hold. */
+    memset(header, 0, sizeof(header));
 }
 
 MemoryBlock::MemoryBlock(MemoryPool *newMemoryPool, uint32_t newAddress)
     : memoryPool(newMemoryPool),
       startAddress(newAddress),
-      currentAddress(0),
-      endAddress(0),
+      currentAddress(newAddress),
+      endAddress(newAddress),
       length(0),
       headerLength(0),
-      isFullMessageInHeader(false)
+      headerFlushed(false),
+      overflowed(false)
 {
+    memset(header, 0, sizeof(header));
 }
 
 MemoryBlock::~MemoryBlock()
@@ -79,8 +86,7 @@ int MemoryBlock::read()
         if (bytePosition < headerLength) {
             byte = header[bytePosition];
         } else {
-            byte = memoryPool->fb->readRam8(memoryPool->getBaseAddress()
-                                            + currentAddress);
+            byte = memoryPool->readByte(currentAddress);
         }
 
         currentAddress++;
@@ -107,47 +113,69 @@ size_t MemoryBlock::readBytes(uint8_t *buffer, size_t length)
 
 size_t MemoryBlock::writeBytes(const uint8_t *buffer, size_t lengthToWrite)
 {
-    if (memoryPool == nullptr) {
+    if ((memoryPool == nullptr) || (buffer == nullptr) || overflowed) {
         return (0);
     }
 
-    size_t bytesAvailableInHeader = headerMaxSize - headerLength;
-    size_t bytesExceedingHeader;
-    size_t bytesToWriteToHeader;
-    size_t originalHeaderLength = headerLength;
+    size_t stored = 0;
 
-    if (bytesAvailableInHeader > lengthToWrite) {
-        bytesExceedingHeader = 0;
-        bytesToWriteToHeader = lengthToWrite;
-    } else {
-        bytesExceedingHeader = lengthToWrite - bytesAvailableInHeader;
-        bytesToWriteToHeader = bytesAvailableInHeader;
-    }
+    /* The first bytes of a message are kept in RAM as well as in the pool, so
+     * that what every reader looks at first - the manufacturer, the command,
+     * a device's header - costs no transfer at all. A message that fits here
+     * entirely never reaches the pool. */
+    if (headerLength < headerMaxSize) {
+        size_t toHeader = headerMaxSize - headerLength;
 
-    if (bytesToWriteToHeader > 0) {
-        memcpy(header + headerLength, buffer, bytesToWriteToHeader);
-        headerLength += bytesToWriteToHeader;
-        bytesAvailableInHeader = headerMaxSize - headerLength;
+        if (toHeader > lengthToWrite) {
+            toHeader = lengthToWrite;
+        }
 
-        if ((isFullMessageInHeader == false) && (bytesAvailableInHeader == 0)) {
-            isFullMessageInHeader = true;
-            memoryPool->write(header, headerLength);
+        memcpy(header + headerLength, buffer, toHeader);
+        headerLength += toHeader;
+        stored = toHeader;
 
-            if (bytesExceedingHeader > 0) {
-                memoryPool->write(buffer
-                                      + (headerLength - originalHeaderLength),
-                                  bytesExceedingHeader);
+        if (headerLength < headerMaxSize) {
+            /* Still room, so the message may yet turn out to fit in the
+             * header. Nothing goes to the pool until it is clear it does not. */
+            length += stored;
+            currentAddress += stored;
+            endAddress = startAddress + length;
+            return (stored);
+        }
+
+        if (headerFlushed == false) {
+            headerFlushed = true;
+
+            if (memoryPool->write(header, headerMaxSize) == false) {
+                /* The header bytes are readable from RAM either way, so they
+                 * count; nothing beyond them can be kept. */
+                overflowed = true;
+                length += stored;
+                currentAddress += stored;
+                endAddress = startAddress + length;
+                return (stored);
             }
         }
-    } else {
-        memoryPool->write(buffer, lengthToWrite);
     }
 
-    currentAddress += lengthToWrite;
-    length += lengthToWrite;
+    size_t remaining = lengthToWrite - stored;
+
+    if (remaining > 0) {
+        if (memoryPool->write(buffer + stored, remaining)) {
+            stored += remaining;
+        } else {
+            /* Reporting a short write is what keeps a reader from being told
+             * about bytes that were never stored, and then being handed
+             * whatever the pool held there before. */
+            overflowed = true;
+        }
+    }
+
+    length += stored;
+    currentAddress += stored;
     endAddress = startAddress + length;
 
-    return (lengthToWrite);
+    return (stored);
 }
 
 void MemoryBlock::close(void)
@@ -169,29 +197,47 @@ MemoryBlock MemoryBlock::getRange(uint32_t rangeStart,
 {
     MemoryBlock newBlock;
 
+    if (memoryPool == nullptr) {
+        return (newBlock);
+    }
+
+    /* Clamped to what this block actually holds. A caller working out a
+     * payload length by subtraction can arrive at a nonsense range from a
+     * malformed message, and a range reaching past the end would hand back
+     * whatever the pool held there. */
+    if (rangeStart > length) {
+        rangeStart = length;
+    }
+    if (rangeLength > (length - rangeStart)) {
+        rangeLength = length - rangeStart;
+    }
+
     newBlock.memoryPool = memoryPool;
     newBlock.startAddress = startAddress + rangeStart;
     newBlock.currentAddress = newBlock.startAddress;
     newBlock.length = rangeLength;
     newBlock.endAddress = newBlock.startAddress + newBlock.length;
-
-    if (rangeStart < headerMaxSize) {
-        size_t lengthInHeader = headerMaxSize - rangeStart;
-
-        memcpy(newBlock.header, header + rangeStart, lengthInHeader);
-        memoryPool->fb->readRamData(memoryPool->getBaseAddress() + startAddress
-                                        + rangeStart + lengthInHeader,
-                                    newBlock.header + lengthInHeader,
-                                    headerMaxSize - lengthInHeader);
-    } else {
-        memoryPool->fb->readRamData(memoryPool->getBaseAddress() + startAddress
-                                        + rangeStart,
-                                    newBlock.header,
-                                    headerMaxSize);
-    }
-
     newBlock.headerLength =
         (rangeLength > headerMaxSize) ? headerMaxSize : rangeLength;
+
+    /* A range is read, never written, so its header is already as flushed as
+     * it will ever be. */
+    newBlock.headerFlushed = true;
+
+    /* Taken a byte at a time, which costs nothing: it is at most 56 bytes,
+     * they come either from this block's own header in RAM or from a single
+     * cached window of the pool. The old code always transferred, even when
+     * the whole message was sitting in the header. */
+    for (size_t i = 0; i < newBlock.headerLength; i++) {
+        size_t sourcePosition = rangeStart + i;
+
+        if (sourcePosition < headerLength) {
+            newBlock.header[i] = header[sourcePosition];
+        } else {
+            newBlock.header[i] =
+                (uint8_t)memoryPool->readByte(startAddress + sourcePosition);
+        }
+    }
 
     return (newBlock);
 }
@@ -206,24 +252,29 @@ bool MemoryBlock::isAllocatedInPool(void) const
     return (memoryPool != nullptr ? true : false);
 }
 
+bool MemoryBlock::isOverflowed(void) const
+{
+    return (overflowed);
+}
+
 int MemoryBlock::peek(size_t position) const
 {
-    uint8_t byte = -1;
-
     if (memoryPool == nullptr) {
         return (-1);
     }
 
-    size_t addressToRead = startAddress + position;
-
-    if (position < headerLength) {
-        byte = header[position];
-    } else {
-        byte = memoryPool->fb->readRam8(memoryPool->getBaseAddress()
-                                        + addressToRead);
+    /* Past the end is -1, which is what every caller already tests for and
+     * what none of them used to get: a byte read from beyond the message was
+     * handed back as though the message contained it. */
+    if (position >= length) {
+        return (-1);
     }
 
-    return (byte);
+    if (position < headerLength) {
+        return (header[position]);
+    }
+
+    return (memoryPool->readByte(startAddress + position));
 }
 
 size_t MemoryBlock::readBytesInternal(uint8_t *buffer, size_t length)

@@ -536,7 +536,11 @@ bool Midi::processSysexData(const DataBytes &sysexMessage,
                             SysexBlock &sysexBlock)
 {
     auto sysexLength = sysexBlock.getLength();
-    uint8_t j = 0;
+
+    /* Both counters used to be uint8_t. A message longer than 255 bytes whose
+     * terminator sits beyond that never ended the loop, and the template
+     * index ran off the end of its vector. */
+    size_t j = 0;
     uint16_t parameterNumber = 0;
     uint16_t value = 0;
 
@@ -546,10 +550,20 @@ bool Midi::processSysexData(const DataBytes &sysexMessage,
     uint16_t mask = 0;
     bool match = true;
 
-    for (uint8_t i = 0; i < sysexLength; i++) {
+    for (size_t i = 0; i < sysexLength; i++) {
+        /* The template is walked alongside the message and can be stepped by
+         * up to seven at a time, so it runs out first on a message longer
+         * than the pattern it is matched against. */
+        if (j >= sysexMessage.size()) {
+            return (false);
+        }
+
         uint8_t receivedByte = sysexBlock.peek(i);
 
         if (sysexMessage[j] == VARIABLE_PARAMETER) {
+            if ((j + 3) >= sysexMessage.size()) {
+                return (false);
+            }
             pPos = sysexMessage[j + 1];
             bPos = sysexMessage[j + 2];
             size = sysexMessage[j + 3];
@@ -563,6 +577,9 @@ bool Midi::processSysexData(const DataBytes &sysexMessage,
             parameterNumber |= (((receivedByte & mask) >> bPos) << pPos);
             j += 4;
         } else if (sysexMessage[j] == VARIABLE_DATA) {
+            if ((j + 6) >= sysexMessage.size()) {
+                return (false);
+            }
             pPos = sysexMessage[j + 4];
             bPos = sysexMessage[j + 5];
             size = sysexMessage[j + 6];
@@ -636,7 +653,7 @@ bool Midi::doesHeaderMatch(const SysexBlock &sysexBlock,
     auto sysexLength = sysexBlock.getLength();
 
     if (sysexLength > headerLength) {
-        for (uint8_t i = 0; i < headerLength; i++) {
+        for (size_t i = 0; i < headerLength; i++) {
             if (header[i] != sysexBlock.peek(i)) {
                 match = false;
                 break;

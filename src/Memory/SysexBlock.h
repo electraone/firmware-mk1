@@ -51,4 +51,8 @@ private:
     // \todo this needs to be deduplicated
     static const uint32_t nonProfitManufacturer = 0x7d0000;
     static const uint32_t electraSroManufacturer = 0x002145;
+
+    /** Where the command byte sits: past 0xF0 and the three byte
+     *  manufacturer identifier. */
+    static const size_t commandOffset = 4;
 };

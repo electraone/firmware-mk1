@@ -32,6 +32,8 @@
 #include "Hardware.h"
 #include "System.h"
 #include "VramStore.h"
+#include "SysexBlock.h"
+#include "MemoryPool.h"
 #include "ListData.h"
 #include "Control.h"
 #include "Group.h"
@@ -534,6 +536,175 @@ static void testListItems(void)
  * read it costs. Printed rather than assumed, because padding and the
  * embedded containers make the arithmetic on paper wrong.
  */
+/**
+ * @brief Checks the pool that received and sent system exclusive messages
+ *        live in.
+ *
+ * The awkward cases are all about the boundary between the part of a message
+ * kept in RAM and the part kept over here: a message shorter than the header,
+ * one exactly the length of it, one that spans it, and a range taken across
+ * it. Then the end of the pool, which used to be written straight past.
+ */
+static void testSysexBlocks(void)
+{
+    MemoryPool pool(&Hardware::screen, SDRAM_PAGE_3, SDRAM_PAGE_SIZE);
+    uint32_t failures = 0;
+
+    // A message that fits entirely in the RAM header.
+    static const uint8_t shortMessage[] = {
+        0xF0, 0x00, 0x21, 0x45, 0x02, 0x7F, 0xF7
+    };
+    SysexBlock small(pool.openMemoryBlock());
+    small.writeBytes(shortMessage, sizeof(shortMessage));
+    small.close();
+
+    bool shortIsSysex = small.isSysex();
+    bool shortIsElectra = small.isElectraSysex();
+    bool shortLength = (small.getLength() == sizeof(shortMessage));
+    bool shortBytes = true;
+
+    for (size_t i = 0; i < sizeof(shortMessage); i++) {
+        if (small.peek(i) != shortMessage[i]) {
+            shortBytes = false;
+        }
+    }
+
+    // Past the end must say so rather than hand back the memory after it.
+    bool pastEndIsMinusOne = (small.peek(sizeof(shortMessage)) == -1)
+                             && (small.peek(10000) == -1);
+
+    // A message far longer than the header, written in uneven pieces so it
+    // crosses the boundary mid write.
+    static const size_t longLength = 600;
+    uint8_t longMessage[longLength];
+
+    longMessage[0] = 0xF0;
+    longMessage[1] = 0x00;
+    longMessage[2] = 0x21;
+    longMessage[3] = 0x45;
+    longMessage[4] = 0x7E;
+    longMessage[5] = 0x7F;
+
+    for (size_t i = 6; i < (longLength - 1); i++) {
+        longMessage[i] = (uint8_t)(i & 0x7F);
+    }
+    longMessage[longLength - 1] = 0xF7;
+
+    SysexBlock large(pool.openMemoryBlock());
+    size_t offset = 0;
+    static const size_t pieces[] = { 7, 40, 9, 100, 3, 441 };
+
+    for (unsigned p = 0; p < (sizeof(pieces) / sizeof(pieces[0])); p++) {
+        large.writeBytes(longMessage + offset, pieces[p]);
+        offset += pieces[p];
+    }
+    large.close();
+
+    bool longLengthOk = (large.getLength() == longLength);
+    bool longBytes = true;
+
+    for (size_t i = 0; i < longLength; i++) {
+        if (large.peek(i) != longMessage[i]) {
+            longBytes = false;
+        }
+    }
+
+    /* What a scan of a received message costs. Everything that examines one
+     * walks it a byte at a time, and every byte past the header used to be
+     * its own transfer: compare this against the readUsPerByte the single
+     * access measurement reports. */
+    uint32_t scanStarted = micros();
+    uint32_t scanSum = 0;
+
+    for (size_t i = 0; i < longLength; i++) {
+        scanSum += (uint32_t)large.peek(i);
+    }
+    uint32_t scanMicros = micros() - scanStarted;
+
+    // Reading it back as a stream has to give the same thing as peeking.
+    uint8_t streamed[longLength];
+    memset(streamed, 0, sizeof(streamed));
+    large.seek(0);
+    size_t streamedLength = large.readBytes(streamed, sizeof(streamed));
+    bool streamMatches = (streamedLength == longLength)
+                         && (memcmp(streamed, longMessage, longLength) == 0);
+
+    // The Electra payload starts after the manufacturer, command and object
+    // bytes, and stops before the terminator.
+    MemoryBlock payload = large.getElectraSysexPayload();
+    bool payloadLength = (payload.getLength() == (longLength - 7));
+    bool payloadBytes = true;
+
+    for (size_t i = 0; i < payload.getLength(); i++) {
+        if (payload.peek(i) != longMessage[6 + i]) {
+            payloadBytes = false;
+        }
+    }
+
+    // A message too short to have a payload must give an empty one rather
+    // than a range that wraps round to four gigabytes.
+    static const uint8_t truncated[] = { 0xF0, 0x00, 0x21, 0x45, 0x09 };
+    SysexBlock stub(pool.openMemoryBlock());
+    stub.writeBytes(truncated, sizeof(truncated));
+    stub.close();
+    bool stubPayloadEmpty = (stub.getElectraSysexPayload().getLength() == 0);
+
+    // An empty block answers without reading memory it never wrote.
+    SysexBlock empty;
+    bool emptyIsSafe = (empty.isSysex() == false) && (empty.isEmpty())
+                       && (empty.getManufacturerSysexId() == 0)
+                       && (empty.peek(0) == -1);
+
+    /* The end of the pool. A message larger than the whole pool is the only
+     * way to reach it, because a new block starts from the beginning again
+     * while there is not room ahead of it. It has to be cut short rather than
+     * written on past the end, which is what used to happen and what landed
+     * in the page the labels live in. */
+    MemoryPool tiny(
+        &Hardware::screen, SDRAM_PAGE_3 + (SDRAM_PAGE_SIZE / 2), 300);
+    uint8_t filler[400];
+    memset(filler, 0x5A, sizeof(filler));
+
+    MemoryBlock tooBig(tiny.openMemoryBlock());
+    tooBig.writeBytes(filler, sizeof(filler));
+    tooBig.close();
+
+    bool refusedAtEnd = (tooBig.getLength() < sizeof(filler))
+                        && tooBig.isOverflowed()
+                        && (tiny.getOverflowCount() > 0);
+
+    /* Whatever it did keep still has to read back as what was written. */
+    for (size_t i = 0; i < tooBig.getLength(); i++) {
+        if (tooBig.peek(i) != 0x5A) {
+            refusedAtEnd = false;
+        }
+    }
+
+    System::logger.write(
+        LOG_ERROR,
+        "bench sysex failures=%lu short=%d%d%d%d end=%d long=%d%d stream=%d "
+        "payload=%d%d stub=%d empty=%d refused=%d scanBytes=%u scanUs=%lu "
+        "scanNsPerByte=%lu checksum=%lu",
+        (unsigned long)failures,
+        shortIsSysex ? 1 : 0,
+        shortIsElectra ? 1 : 0,
+        shortLength ? 1 : 0,
+        shortBytes ? 1 : 0,
+        pastEndIsMinusOne ? 1 : 0,
+        longLengthOk ? 1 : 0,
+        longBytes ? 1 : 0,
+        streamMatches ? 1 : 0,
+        payloadLength ? 1 : 0,
+        payloadBytes ? 1 : 0,
+        stubPayloadEmpty ? 1 : 0,
+        emptyIsSafe ? 1 : 0,
+        refusedAtEnd ? 1 : 0,
+        (unsigned)longLength,
+        (unsigned long)scanMicros,
+        (unsigned long)((scanMicros * 1000u) / longLength),
+        (unsigned long)scanSum);
+}
+
 static void reportModelSizes(void)
 {
     System::logger.write(LOG_ERROR,
@@ -558,6 +729,7 @@ void run(void)
     reportModelSizes();
     testVramStore();
     testListItems();
+    testSysexBlocks();
 
     measureDirections();
     sweepDirectionSizes();

@@ -49,7 +49,9 @@ SysexBlock::~SysexBlock()
 
 bool SysexBlock::isSysex(void) const
 {
-    return (header[0] == 0xF0);
+    /* The length is checked first. A block that holds nothing has nothing at
+     * header[0] to ask about. */
+    return ((length > 0) && (header[0] == 0xF0));
 }
 
 bool SysexBlock::isEmpty(void) const
@@ -59,19 +61,21 @@ bool SysexBlock::isEmpty(void) const
 
 uint32_t SysexBlock::getManufacturerSysexId(void) const
 {
-    uint32_t manufacturerSysexId = 0;
-
-    if (length < 3) {
+    if (length < 2) {
         return (0);
     }
 
+    /* A leading zero means a three byte identifier follows, so there have to
+     * be three bytes there. The old code settled for two and read the third
+     * from beyond the message. */
     if (header[1] == 0) {
-        manufacturerSysexId = (header[1] << 16) + (header[2] << 8) + header[3];
-    } else {
-        manufacturerSysexId = header[1];
+        if (length < 4) {
+            return (0);
+        }
+        return (((uint32_t)header[2] << 8) | header[3]);
     }
 
-    return (manufacturerSysexId);
+    return (header[1]);
 }
 
 bool SysexBlock::isElectraSysex(void) const
@@ -85,26 +89,41 @@ ElectraCommand SysexBlock::getElectraSysexCommand(void) const
 {
     ElectraCommand electraCommand;
 
-    uint32_t manufacturerSysexId = getManufacturerSysexId();
-
-    if (manufacturerSysexId == electraSroManufacturer) {
-        electraCommand.set(
-            header[4], header[5], header[6], header[7], header[8], header[9]);
+    if (getManufacturerSysexId() != electraSroManufacturer) {
+        return (electraCommand);
     }
+
+    /* Six bytes are read, so six bytes have to be there. A message that
+     * stops early gives a command built from zeros rather than from whatever
+     * followed it in memory. */
+    uint8_t bytes[6] = {};
+
+    for (size_t i = 0; (i < 6) && ((commandOffset + i) < length); i++) {
+        bytes[i] = header[commandOffset + i];
+    }
+
+    electraCommand.set(
+        bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5]);
 
     return (electraCommand);
 }
 
 MemoryBlock SysexBlock::getElectraSysexPayload(void) const
 {
-    uint32_t offset = 0;
-    uint32_t manufacturerSysexId = getManufacturerSysexId();
+    /* Past the manufacturer identifier, then past the command and the object
+     * byte. A non Electra message is treated as having a single byte
+     * identifier, which is what this did before. */
+    uint32_t offset =
+        (getManufacturerSysexId() == electraSroManufacturer)
+            ? (commandOffset + 2)
+            : 2;
 
-    if (manufacturerSysexId == electraSroManufacturer) {
-        offset = 4;
+    /* The trailing 0xF7 is not payload. Working the length out by subtraction
+     * wrapped round on a message too short to have a payload at all, and the
+     * range that came back ran to four gigabytes of video memory. */
+    if (length < (offset + 1)) {
+        return (MemoryBlock());
     }
-
-    offset += 2;
 
     return (getRange(offset, length - offset - 1));
 }
