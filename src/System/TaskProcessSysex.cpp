@@ -183,6 +183,10 @@ void processSysexMemory(uint8_t port, const SysexBlock &sysexBlock)
                 System::logger.write(LOG_ERROR,
                                      "processElectraSysex::handleElectraSysex: "
                                      "Lua script is not available");
+                /* Refused rather than ignored: the host is waiting for an
+                 * answer and will hold everything behind it until one
+                 * arrives. */
+                MidiOutput::sendNack(MidiInterface::Type::MidiUsbDev, port);
             }
         } else if (cmd.isRemove()) {
             uint8_t bankNumber = cmd.getByte1();

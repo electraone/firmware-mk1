@@ -164,7 +164,17 @@ bool Controller::handleCtrlFileRemoved(uint8_t bankNumber,
  */
 void Controller::handleElectraSysex(uint8_t port, const SysexBlock &sysexBlock)
 {
-    sysexApi.process(port, sysexBlock);
+    if (!sysexApi.process(port, sysexBlock)) {
+        /* Said "no" rather than said nothing. A host matches a reply to its
+         * request and holds the queue until one arrives, so a request the
+         * firmware does not implement used to stop the conversation
+         * altogether - the editor sat on a message that was never coming and
+         * everything behind it waited too. */
+        System::logger.write(
+            LOG_ERROR,
+            "handleElectraSysex: request not implemented, sending NACK");
+        MidiOutput::sendNack(MidiInterface::Type::MidiUsbDev, port);
+    }
 }
 
 /** User configurable task

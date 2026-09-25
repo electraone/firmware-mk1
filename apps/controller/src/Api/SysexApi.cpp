@@ -24,6 +24,12 @@ bool SysexApi::process(uint8_t port, const SysexBlock &sysexBlock)
         object,
         cmd.getByte1());
 
+    /* A request nobody answers is worse than one that is refused: the host
+     * cannot tell the difference between a message still in flight and one
+     * that will never be answered, so its queue stops. Anything that reaches
+     * the end of these chains is said "no" to. */
+    bool handled = true;
+
     if (cmd.isFileRequest()) {
         if (object == ElectraCommand::Object::SnapshotList) {
             sendSnapshotList(port, sysexPayload);
@@ -35,6 +41,8 @@ bool SysexApi::process(uint8_t port, const SysexBlock &sysexBlock)
             sendFileListing(port, sysexPayload);
         } else if (object == ElectraCommand::Object::File) {
             sendFile(port, sysexPayload);
+        } else {
+            handled = false;
         }
     } else if (cmd.isMidiLearnSwitch()) {
         if (object == ElectraCommand::Object::MidiLearnOff) {
@@ -49,6 +57,8 @@ bool SysexApi::process(uint8_t port, const SysexBlock &sysexBlock)
             switchPage(port, cmd.getByte1());
         } else if (object == ElectraCommand::Object::ControlSet) {
             switchControlSet(port, cmd.getByte1());
+        } else {
+            handled = false;
         }
     } else if (cmd.isUpdateRuntime()) {
         if (object == ElectraCommand::Object::Control) {
@@ -66,22 +76,30 @@ bool SysexApi::process(uint8_t port, const SysexBlock &sysexBlock)
             uint16_t controlId = cmd.getByte1() | cmd.getByte2() << 7;
             uint8_t handleId = cmd.getByte3();
             updateControlValueLabel(port, controlId, handleId, sysexPayload);
+        } else {
+            handled = false;
         }
     } else if (cmd.isUpdate()) {
         if (object == ElectraCommand::Object::SnapshotInfo) {
             updateSnapshot(port, sysexPayload);
         } else if (object == ElectraCommand::Object::PresetSlot) {
             updatePresetSlot(port, sysexPayload);
+        } else {
+            handled = false;
         }
     } else if (cmd.isRemove()) {
         if (object == ElectraCommand::Object::SnapshotInfo) {
             removeSnapshot(port, sysexPayload);
         } else if (object == ElectraCommand::Object::File) {
             removeFile(port, sysexPayload);
+        } else {
+            handled = false;
         }
     } else if (cmd.isSwap()) {
         if (object == ElectraCommand::Object::SnapshotInfo) {
             swapSnapshots(port, sysexPayload);
+        } else {
+            handled = false;
         }
     } else if (cmd.isEvent()) {
         if (cmd.getEvent() == ElectraCommand::Event::SnapshotBankSwitch) {
@@ -98,15 +116,17 @@ bool SysexApi::process(uint8_t port, const SysexBlock &sysexBlock)
         } else {
             System::logger.write(LOG_ERROR,
                                  "SysexApi::process: application system call");
+            handled = false;
         }
     } else {
         System::logger.write(LOG_ERROR,
                              "SysexApi::process: unknown sysex request");
+        handled = false;
     }
     /* \todo This needs to be reviewed. Commands are taking care of ACK/NACK
      * by themselves. That is not in line with the file processing.
      */
-    return (true);
+    return (handled);
 }
 
 bool SysexApi::process(uint8_t port,
