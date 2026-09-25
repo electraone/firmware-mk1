@@ -143,10 +143,21 @@ public:
         midiDINInterfaces[port]->sendSysEx(sysexDataLength, sysexData, false);
     }
 
+    /**
+     * @brief Sends one chunk of a system exclusive message on a DIN port.
+     *
+     * @attention `complete` is deliberately not used, and the parameter is
+     * only here because the interface declares it. A stored message carries
+     * its own 0xF0 and 0xF7, and the `true` below is what tells the library
+     * not to add its own, so the chunks concatenate into the right thing on
+     * the wire whether or not this one is the last. Passing `complete`
+     * through would wrap every chunk but the final one in a 0xF0 and 0xF7 of
+     * its own.
+     */
     void sendSysExPartial(uint8_t port,
                           const uint8_t *sysexData,
                           uint16_t sysexDataLength,
-                          bool complete) const override
+                          [[maybe_unused]] bool complete) const override
     {
         midiDINInterfaces[port]->sendSysEx(sysexDataLength, sysexData, true);
     }
