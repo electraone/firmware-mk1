@@ -105,6 +105,7 @@ private:
     void append(const char *value);
     void appendChar(char c);
     void appendNum(int32_t value);
+    void appendUnsigned(uint32_t value);
     void appendEscaped(const char *value);
 
     char buffer[224];
@@ -120,6 +121,9 @@ void boot(const char *firmwareVersion, const char *applicationName);
 /** Records a marker so a host script can delimit test steps. */
 void mark(const char *label);
 
+/** Records a message the firmware logged, whatever the logger does with it. */
+void logged(uint8_t level, const char *message);
+
 /** Number of records lost so far because the host was not reading fast
  *  enough. A non-zero value invalidates a comparison run. */
 uint32_t droppedRecords(void);
@@ -129,6 +133,7 @@ uint32_t droppedRecords(void);
 #define TRACE_INIT() Trace::initialise()
 #define TRACE_BOOT(version, app) Trace::boot((version), (app))
 #define TRACE_MARK(label) Trace::mark(label)
+#define TRACE_LOG(level, message) Trace::logged((level), (message))
 
 /** A MIDI message received, described by its parsed fields. */
 #define TRACE_MIDI_IN(iface, port, type, channel, data1, data2)                \
@@ -223,6 +228,7 @@ uint32_t droppedRecords(void);
 #define TRACE_INIT() ((void)0)
 #define TRACE_BOOT(version, app) ((void)0)
 #define TRACE_MARK(label) ((void)0)
+#define TRACE_LOG(level, message) ((void)0)
 #define TRACE_MIDI_IN(iface, port, type, channel, data1, data2) ((void)0)
 #define TRACE_MIDI_OUT(iface, port, kind, channel, data1, data2) ((void)0)
 #define TRACE_SYSEX_IN(iface, port, data, len) ((void)0)

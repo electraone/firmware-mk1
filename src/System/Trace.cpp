@@ -30,15 +30,74 @@
 #if defined(ELECTRA_TRACE) && ELECTRA_TRACE
 
 #include "SEGGER_RTT.h"
+
 #include "core_pins.h"
+
+/**
+ * @brief Microsecond timestamp that is safe to take from anywhere.
+ *
+ * The trace deliberately does not call micros(). micros() ends with an
+ * unconditional __enable_irq(), so calling it from an interrupt handler or
+ * from inside a critical section re-enables interrupts the caller had masked,
+ * and the trace runs in exactly those places. It also cannot use the debug
+ * unit's cycle counter, because an attached debugger resets it.
+ *
+ * This reads the same two values micros() does, without touching the
+ * interrupt mask. The millisecond counter is re-read to detect a tick landing
+ * between the two reads, which is the only race that matters.
+ */
+static uint32_t traceMicros(void)
+{
+    const uint32_t reload = (F_CPU / 1000) - 1;
+    uint32_t milliseconds;
+    uint32_t current;
+
+    do {
+        milliseconds = systick_millis_count;
+        current = SYST_CVR;
+    } while (milliseconds != systick_millis_count);
+
+    return (milliseconds * 1000 + (reload - current) / (F_CPU / 1000000));
+}
 
 namespace Trace {
 
-/** RTT up-channel the trace is written to. Channel 0 is the channel every
- *  J-Link host tool reads by default, and nothing else in this firmware
- *  writes to RTT, so the trace has it to itself. Its buffer is sized by
- *  BUFFER_SIZE_UP, which the Makefile sets from TRACE_BUFFER_SIZE. */
-static const unsigned int channel = 0;
+/** RTT up-channel the trace is written to.
+ *
+ * Channel 1 rather than 0, because SEGGER_RTT_ConfigUpBuffer() only accepts a
+ * caller supplied buffer for a non-zero channel; for channel 0 it changes the
+ * flags and keeps its own small built-in buffer. The trace needs its own
+ * buffer, both for the size and for the alignment described below.
+ */
+static const unsigned int channel = 1;
+
+#ifndef ELECTRA_TRACE_BUFFER_SIZE
+#define ELECTRA_TRACE_BUFFER_SIZE 16384
+#endif
+
+/*
+ * The buffer is aligned to its own size, and that is not cosmetic.
+ *
+ * This part splits its RAM into two banks, SRAM_L below 0x20000000 reached
+ * over the code bus and SRAM_U at and above it reached over the system bus.
+ * A single access may not span the boundary between them; one that does
+ * raises a bus fault. The linker lays .bss straight across the boundary, so a
+ * large buffer landing there would be written across it by memcpy sooner or
+ * later and take the firmware down.
+ *
+ * A block whose size is a power of two and whose alignment equals its size
+ * cannot straddle any boundary that is a multiple of that size, and
+ * 0x20000000 is such a multiple. That makes the buffer safe wherever the
+ * linker decides to put it.
+ */
+static_assert((ELECTRA_TRACE_BUFFER_SIZE
+               & (ELECTRA_TRACE_BUFFER_SIZE - 1))
+                  == 0,
+              "the trace buffer size must be a power of two, so that the "
+              "buffer cannot straddle the SRAM_L/SRAM_U boundary");
+
+static char traceBuffer[ELECTRA_TRACE_BUFFER_SIZE]
+    __attribute__((aligned(ELECTRA_TRACE_BUFFER_SIZE)));
 
 static uint32_t sequence = 0;
 static uint32_t dropped = 0;
@@ -70,8 +129,11 @@ void initialise(void)
 
     /* Records are dropped rather than stalling the firmware when no host is
      * reading. A gap in the sequence numbers tells the host that happened. */
-    SEGGER_RTT_SetNameUpBuffer(channel, "electra-trace");
-    SEGGER_RTT_SetFlagsUpBuffer(channel, SEGGER_RTT_MODE_NO_BLOCK_SKIP);
+    SEGGER_RTT_ConfigUpBuffer(channel,
+                              "electra-trace",
+                              traceBuffer,
+                              sizeof(traceBuffer),
+                              SEGGER_RTT_MODE_NO_BLOCK_SKIP);
     ready = true;
 }
 
@@ -86,7 +148,7 @@ Record::Record(const char *category) : length(0)
 
     appendNum((int32_t)seq);
     appendChar(' ');
-    appendNum((int32_t)micros());
+    appendUnsigned(traceMicros());
     appendChar(' ');
     append(category);
 }
@@ -130,6 +192,21 @@ void Record::appendEscaped(const char *value)
             c = '.';
         }
         buffer[length++] = c;
+    }
+}
+
+void Record::appendUnsigned(uint32_t magnitude)
+{
+    char digits[12];
+    uint8_t count = 0;
+
+    do {
+        digits[count++] = (char)('0' + (magnitude % 10));
+        magnitude /= 10;
+    } while (magnitude && (count < sizeof(digits)));
+
+    while (count--) {
+        appendChar(digits[count]);
     }
 }
 
@@ -250,6 +327,11 @@ void boot(const char *firmwareVersion, const char *applicationName)
 void mark(const char *label)
 {
     Record("MARK").text(label).emit();
+}
+
+void logged(uint8_t level, const char *message)
+{
+    Record("LOG").num("lvl", level).text(message).emit();
 }
 
 } // namespace Trace

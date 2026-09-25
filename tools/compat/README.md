@@ -104,12 +104,38 @@ Scenarios live in `scenarios.py`. Add new ones freely. Do not change or remove
 an existing one: every baseline recorded with it becomes meaningless, which
 defeats the point of the harness.
 
+## The test preset
+
+What a scenario can observe depends entirely on the preset loaded on the unit.
+A preset that maps nothing to the stimulus produces MIDI records and nothing
+else. `presets/compat.epr` and `presets/compat.lua` exist so that a recording
+exercises every path the harness watches: a 7 bit and a 14 bit control change,
+an NRPN, a note, pitch bend and a program change, with Lua formatters, Lua
+control functions, `parameterMap.onChange`, the preset lifecycle handlers and
+the incoming MIDI handlers all defined.
+
+The baselines in `baseline/` were recorded with it loaded. Upload it, into the
+slot the unit currently has selected, with:
+
+```python
+import electra_preset, json
+from pathlib import Path
+electra_preset.upload_lua(Path("presets/compat.lua").read_text())
+electra_preset.upload_preset(
+    json.dumps(json.loads(Path("presets/compat.epr").read_text()),
+               separators=(",", ":")))
+```
+
+Upload the Lua script first. Uploading the preset makes the unit reload the
+slot, and the script has to be on the card by then to be picked up.
+
 ## Caveats
 
-- What a scenario exercises depends on the preset loaded on the unit. A preset
-  that maps nothing to the stimulus produces MIDI records but no parameter map
-  or Lua records. Record the baseline and the candidate with the same preset
-  loaded.
+- Record the baseline and the candidate with the same preset loaded, or the
+  comparison is meaningless.
 - The harness reads the trace buffer directly out of target RAM rather than
   through the SEGGER RTT host tools, which do not reliably locate the control
   block on this part.
+- A reset disconnects the unit from USB. The harness waits for it to enumerate
+  again before sending anything, which is why a recording takes a few seconds
+  longer than the scenario itself.

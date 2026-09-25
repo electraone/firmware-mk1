@@ -21,10 +21,17 @@ DEVICE = "MK66FX1M0XXX18"
 INTERFACE = "SWD"
 SPEED = 4000
 
-# Offsets inside the SEGGER RTT control block.
+# Offsets inside the SEGGER RTT control block: a 16 byte identifier, the two
+# buffer counts, then the up-buffer descriptors.
 _ID_LENGTH = 16
-_UP_BUFFER_OFFSET = _ID_LENGTH + 8
+_UP_BUFFER_ARRAY_OFFSET = _ID_LENGTH + 8
 _UP_BUFFER_FORMAT = "<IIIIII"  # sName, pBuffer, size, wrOff, rdOff, flags
+_UP_BUFFER_SIZE = 24
+
+# The firmware puts the trace on channel 1, because SEGGER only honours a
+# caller supplied buffer for a non-zero channel.
+TRACE_CHANNEL = 1
+_UP_BUFFER_OFFSET = _UP_BUFFER_ARRAY_OFFSET + TRACE_CHANNEL * _UP_BUFFER_SIZE
 
 
 class JLinkError(RuntimeError):
@@ -164,7 +171,9 @@ def read_elf_symbols(elf_path: Path, names: set[str]) -> dict[str, int]:
 
 def read_up_buffer(jlink: JLink, control_block_address: int) -> UpBuffer:
     """Reads the RTT control block and returns the trace up-buffer state."""
-    raw = jlink.read_memory(control_block_address, 0x48)
+    raw = jlink.read_memory(
+        control_block_address, _UP_BUFFER_OFFSET + _UP_BUFFER_SIZE
+    )
 
     if not raw.startswith(b"SEGGER RTT"):
         raise JLinkError(

@@ -26,7 +26,12 @@ KNOWN_CATEGORIES = {
     "LE": "Lua raised an error",
     "PM": "parameter map change",
     "MARK": "harness marker",
+    "LOG": "message the firmware logged",
 }
+
+# The firmware's own log text is free form and routinely contains '=', so it
+# must not be split into key/value pairs. Only the leading level is a field.
+FREE_TEXT_CATEGORIES = {"LOG", "MARK"}
 
 # Fields that legitimately differ between two runs of the same firmware and
 # must not be compared.
@@ -87,6 +92,8 @@ class Record:
             )
         if self.category == "MARK":
             return f"marker {self.text}"
+        if self.category == "LOG":
+            return f"log[{self.fields.get('lvl', '?')}] {self.text}"
         return self.signature()
 
     def _midi(self) -> str:
@@ -149,12 +156,22 @@ def parse(text: str) -> Trace:
             raw=line,
         )
 
-        for token in match.group(4).split():
-            if "=" in token:
-                key, _, value = token.partition("=")
+        tokens = match.group(4).split()
+
+        if record.category in FREE_TEXT_CATEGORIES:
+            # Only a leading key=value is a field; the rest is the message.
+            if tokens and "=" in tokens[0]:
+                key, _, value = tokens[0].partition("=")
                 record.fields[key] = value
-            else:
-                record.text = (record.text + " " + token).strip()
+                tokens = tokens[1:]
+            record.text = " ".join(tokens)
+        else:
+            for token in tokens:
+                if "=" in token:
+                    key, _, value = token.partition("=")
+                    record.fields[key] = value
+                else:
+                    record.text = (record.text + " " + token).strip()
 
         if previous is not None and sequence != previous + 1:
             trace.gaps.append((previous, sequence))

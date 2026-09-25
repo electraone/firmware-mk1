@@ -52,9 +52,11 @@ OPTIONS = -Wno-deprecated-declarations
 # damaged; the SDIO bus then stays in 1-bit mode. Normal builds leave this at 0.
 SD_FORCE_1BIT_BUS = 0
 
-# Size of the RTT buffer the behavioural trace writes into. Only allocated
-# when the firmware is built with TRACE=1.
-TRACE_BUFFER_SIZE = 32768
+# Size of the buffer the behavioural trace writes into. Only allocated when
+# the firmware is built with TRACE=1. Must be a power of two: the buffer is
+# aligned to its own size so that it cannot straddle the boundary between the
+# two SRAM banks, which a single access may not cross.
+TRACE_BUFFER_SIZE = 16384
 
 # CPU speed
 CPU_SPEED = 180000000
@@ -113,8 +115,9 @@ LC_FILES := $(wildcard $(LIBRARYPATH)/*/*.c)
 # RTT transport is left out of the build entirely unless TRACE=1 is given.
 ifeq ($(TRACE),1)
   CPPFLAGS += -DELECTRA_TRACE=1 \
-              -DBUFFER_SIZE_UP=$(TRACE_BUFFER_SIZE) \
-              -DSEGGER_RTT_MAX_NUM_UP_BUFFERS=1 \
+              -DELECTRA_TRACE_BUFFER_SIZE=$(TRACE_BUFFER_SIZE) \
+              -DBUFFER_SIZE_UP=64 \
+              -DSEGGER_RTT_MAX_NUM_UP_BUFFERS=2 \
               -DSEGGER_RTT_MAX_NUM_DOWN_BUFFERS=1
 else
   LC_FILES := $(filter-out $(LIBRARYPATH)/SEGGER_RTT/%,$(LC_FILES))
@@ -202,12 +205,23 @@ upload-jlink: $(BUILDDIR)/$(TARGET).hex
 docs: $(OBJS)
 	@$(DOXYGEN)
 
-$(BUILDDIR)/%.o: %.c
+# Object files depend on the compiler flags as well as on the sources. Without
+# this, changing a flag such as TRACE or SD_FORCE_1BIT_BUS leaves every object
+# stale and links a firmware that is a silent mixture of both settings.
+BUILDFLAGS := $(CPPFLAGS) $(CXXFLAGS) $(INC) $(L_INC) $(L_APP_INC)
+
+$(BUILDDIR)/.buildflags: FORCE
+	@mkdir -p "$(dir $@)"
+	@echo '$(BUILDFLAGS)' | cmp -s - "$@" || echo '$(BUILDFLAGS)' > "$@"
+
+FORCE:
+
+$(BUILDDIR)/%.o: %.c $(BUILDDIR)/.buildflags
 	@echo -e "[CC] \t$<"
 	@mkdir -p "$(dir $@)"
 	@$(CC) $(CPPFLAGS) $(INC) $(L_INC) $(L_APP_INC) -o "$@" -c "$<"
 
-$(BUILDDIR)/%.o: %.cpp
+$(BUILDDIR)/%.o: %.cpp $(BUILDDIR)/.buildflags
 	@echo -e "[CXX]\t$<"
 	@mkdir -p "$(dir $@)"
 	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(INC) $(L_INC) $(L_APP_INC) -o "$@" -c "$<"

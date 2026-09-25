@@ -97,6 +97,18 @@ def command_record(args: argparse.Namespace) -> int:
     # trace buffer without having to walk it.
     print("resetting the unit ...")
     jlink.reset_and_run()
+
+    # The reset disconnects the unit from USB. Stimuli sent before it has
+    # enumerated again would be lost, which would look like changed behaviour.
+    if not args.no_midi_capture:
+        for _ in range(40):
+            time.sleep(1)
+            if electra_midi.PORT_CTRL in electra_midi.list_ports()[1]:
+                break
+        else:
+            print("error: the unit did not reappear on USB after the reset")
+            return 2
+
     time.sleep(args.boot_wait)
 
     for step in scenario.steps:

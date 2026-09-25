@@ -27,6 +27,7 @@
 
 #include "Logger.h"
 #include "MidiOutput.h"
+#include "Trace.h"
 #include <cstdarg>
 #include <cstdio>
 #include <cstring>
@@ -66,13 +67,30 @@ void Logger::setStatus(bool newStatus)
 
 void Logger::write(uint8_t level, const char *format, ...)
 {
-    if ((enabled && (level < minimumLevel)) || (level == LOG_LUA)) {
+#if defined(ELECTRA_TRACE) && ELECTRA_TRACE
+    /* The trace wants every message the firmware produced, independently of
+     * whether the logger itself decides to put it on the wire. The message is
+     * formatted once and shared, so tracing costs no extra stack in what can
+     * be an interrupt context. */
+    const bool traceWanted = true;
+#else
+    const bool traceWanted = false;
+#endif
+
+    if (traceWanted || (enabled && (level < minimumLevel))
+        || (level == LOG_LUA)) {
         char buf[MaxLogMessageSize];
         va_list ap;
 
         va_start(ap, format);
         vsnprintf(buf + 5, sizeof(buf) - 5, format, ap);
         va_end(ap);
+
+        TRACE_LOG(level, buf + 5);
+
+        if (!((enabled && (level < minimumLevel)) || (level == LOG_LUA))) {
+            return;
+        }
 
         buf[0] = 0x00;
         buf[1] = 0x21;
