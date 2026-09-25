@@ -150,7 +150,9 @@ void ListButtonControl::paintButtonList(Graphics &g,
     g.setColour(colour);
     g.drawRoundRect(0, 0, bounds.getWidth(), bounds.getHeight(), 5);
 
-    if (items->getByIndex(activeIndex).isBitmapEmpty()) {
+    ListDataItem item = items->getByIndex(activeIndex);
+
+    if (item.isBitmapEmpty()) {
         char stringValue[ControlValue::MaxLabelLength + 1];
         if (control.getValue(0).isLabelSet()) {
             copyString(stringValue,
@@ -160,7 +162,7 @@ void ListButtonControl::paintButtonList(Graphics &g,
             snprintf(stringValue,
                      ControlValue::MaxLabelLength,
                      "%s",
-                     items->getByIndex(activeIndex).getLabel());
+                     item.getLabel());
         }
         // Print the label
         g.printText(0,
@@ -172,8 +174,7 @@ void ListButtonControl::paintButtonList(Graphics &g,
     } else {
         // display bitmap image
         uint16_t paddingBitmap = ((bounds.getWidth() - BITMAP_WIDTH)) / 2 - 1;
-        items->getByIndex(activeIndex)
-            .paintBitmap(
-                paddingBitmap, bounds.getHeight() * 0.3f, Colours565::white);
+        item.paintBitmap(
+            paddingBitmap, bounds.getHeight() * 0.3f, Colours565::white);
     }
 }

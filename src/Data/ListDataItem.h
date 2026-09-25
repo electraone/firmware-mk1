@@ -98,6 +98,29 @@ public:
         return (Bitmap(record.bitmapAddress));
     }
 
+    /**
+     * @brief The label and the bitmap, fetched together.
+     *
+     * Both live in one record in the display's memory, so asking for them
+     * separately crosses the bus twice for data that arrived the first time.
+     * Callers that need both, which is every painter that can draw either,
+     * should use this instead.
+     *
+     * @attention the returned label is the same shared buffer getLabel()
+     * hands out, and the next call to either overwrites it.
+     */
+    const char *getLabelAndBitmap(Bitmap &bitmap) const
+    {
+        Record record;
+
+        readRecord(record);
+        copyString(buffer, record.label, maxLabelLength);
+
+        bitmap = bitmapIsEmpty ? Bitmap() : Bitmap(record.bitmapAddress);
+
+        return (buffer);
+    }
+
     void paintBitmap(uint16_t x, uint16_t y, uint32_t colour)
     {
         Hardware::memory.bitmapPool.paint(getBitmap(), x, y, colour);

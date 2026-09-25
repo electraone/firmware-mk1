@@ -172,8 +172,15 @@ void ListDetailControl::paintListItems(Graphics &g, int16_t offset)
         g.fillRect(0, j * listItemHeight + 0, listItemWidth, 60);
 
         char stringValue[21];
+        Bitmap bitmap;
 
-        snprintf(stringValue, sizeof(stringValue), "%s", listItem.getLabel());
+        /* Label and bitmap come out of the display's memory together. Asking
+         * for them one at a time fetched the same record twice, for every
+         * item in the viewport. */
+        snprintf(stringValue,
+                 sizeof(stringValue),
+                 "%s",
+                 listItem.getLabelAndBitmap(bitmap));
 
         g.printText(0,
                     j * listItemHeight + 25,
@@ -183,7 +190,6 @@ void ListDetailControl::paintListItems(Graphics &g, int16_t offset)
                     TextAlign::center);
 
         if (listItem.isBitmapEmpty() == false) {
-            Bitmap bitmap = listItem.getBitmap();
             Hardware::memory.bitmapPool.paint(bitmap,
                                               28,
                                               j * listItemHeight + 22,

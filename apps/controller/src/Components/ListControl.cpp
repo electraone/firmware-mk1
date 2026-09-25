@@ -134,7 +134,9 @@ void ListControl::paintList(Graphics &g,
                             uint16_t activeIndex)
 {
     if (items) {
-        if (items->getByIndex(activeIndex).isBitmapEmpty()) {
+        ListDataItem item = items->getByIndex(activeIndex);
+
+        if (item.isBitmapEmpty()) {
             char stringValue[ControlValue::MaxLabelLength + 1];
             if (control.getValue(0).isLabelSet()) {
                 copyString(stringValue,
@@ -144,7 +146,7 @@ void ListControl::paintList(Graphics &g,
                 snprintf(stringValue,
                          ControlValue::MaxLabelLength,
                          "%s",
-                         items->getByIndex(activeIndex).getLabel());
+                         item.getLabel());
             }
 
             g.printText(0,
@@ -157,8 +159,7 @@ void ListControl::paintList(Graphics &g,
             // display bitmap image
             uint16_t paddingBitmap =
                 ((bounds.getWidth() - BITMAP_WIDTH)) / 2 - 1;
-            items->getByIndex(activeIndex)
-                .paintBitmap(paddingBitmap, 0, colour);
+            item.paintBitmap(paddingBitmap, 0, colour);
         }
         // Paint the graphics
         if (items->getNumItems() < 16) {

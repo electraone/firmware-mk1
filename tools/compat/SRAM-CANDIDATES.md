@@ -148,17 +148,30 @@ of corruption the SPI work just removed.
 
 ## Two things to fix before moving anything
 
-### The paint path reads the same record twice
+### ~~The paint path reads the same record twice~~ — done, and it was smaller than stated
 
-`LookAndFeel::paintList` calls `getByIndex()` once to test the bitmap and
-again to get the label, at
-[LookAndFeel.cpp:208](../../src/Components/LookAndFeel.cpp:208) and `:212`.
-Each call is a separate fetch, so the same record crosses the bus twice for
-one control. The same shape appears in `paintButtonList`, `ListControl::paint`
-and `ListButtonControl::paint`.
+Fixed. What was actually there, after looking properly:
 
-That is 80 µs thrown away per list control today, and it scales with
-everything added to this list. Fetch once into a local and use it twice.
+`getByIndex()` and `getByValue()` do **not** touch the display's memory. Only
+`getLabel()` and `getBitmap()` do. So calling `getByIndex()` twice cost a
+vector copy, not a transfer, and in `LookAndFeel::paintList`,
+`paintButtonList`, `ListControl` and `ListButtonControl` the label and bitmap
+branches are mutually exclusive: one fetch per paint, not two. The earlier
+claim of 80 µs wasted per list control was wrong.
+
+Two things were real and are now fixed:
+
+- **`ListDetailControl::paint` did fetch twice**, once for the label and again
+  for the bitmap, for every item in the viewport that has one. `ListDataItem`
+  gained `getLabelAndBitmap()`, which returns both from a single fetch, since
+  they live in one record anyway.
+- **`FaderControl::paint` searched the list three times.** `getByValue()` is a
+  linear scan, and it was asked the same question in the bitmap test, the
+  label test and the label fetch. Now looked up once.
+
+The redundant `getByIndex()` calls in the other painters were hoisted into a
+local as well. Cheap either way, but it makes the pattern uniform and removes
+the trap for anyone adding a second fetch later.
 
 ### Component names are borrowed pointers, not copies
 
@@ -176,8 +189,7 @@ the real work in those two, not the storage itself.
 
 ## Suggested order
 
-1. Fix the double read in the list painters. Costs nothing, helps immediately,
-   and makes everything after it cheaper.
+1. ~~Fix the double read in the list painters.~~ Done.
 2. Move control value labels. Largest clean win, no lifetime problem.
 3. Make `Component` own its name, then move control names and group labels.
 4. Move preset slot names, on a store that survives a preset change.

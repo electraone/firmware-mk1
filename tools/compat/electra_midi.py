@@ -49,13 +49,30 @@ def list_ports() -> tuple[list[str], list[str]]:
     )
 
 
+def wait_for_port(name: str, timeout: float = 40.0) -> None:
+    """Waits for a port to appear before giving up on it.
+
+    The unit drops off USB whenever it is reset or reflashed and takes a
+    moment to come back. Failing immediately would just mean the caller has to
+    guess how long to sleep before trying again.
+    """
+    deadline = time.monotonic() + timeout
+
+    while True:
+        inputs, outputs = list_ports()
+        if name in inputs and name in outputs:
+            return
+        if time.monotonic() >= deadline:
+            raise MidiError(
+                f"the MIDI port {name!r} did not appear within "
+                f"{timeout:.0f}s. Is the unit connected over USB?\n"
+                "Seen inputs: " + ", ".join(inputs)
+            )
+        time.sleep(1.0)
+
+
 def require_port(name: str) -> None:
-    inputs, outputs = list_ports()
-    if name not in inputs or name not in outputs:
-        raise MidiError(
-            f"the MIDI port {name!r} is not available. Is the unit connected "
-            "over USB?\nSeen inputs: " + ", ".join(inputs)
-        )
+    wait_for_port(name)
 
 
 @dataclass

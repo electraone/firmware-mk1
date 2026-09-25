@@ -224,15 +224,19 @@ void FaderControl::paintValueFixed(Graphics &g,
 {
     uint16_t labelYPosition = 0;
 
+    /* Looked up once. getByValue() walks the list to find the entry, so
+     * asking it the same question three times searched it three times. */
+    ListDataItem item = items ? items->getByValue(val) : ListDataItem();
+
     // Print the label text / Bitmap if exists
-    if (items && !items->getByValue(val).isBitmapEmpty()) {
+    if (items && !item.isBitmapEmpty()) {
         uint16_t paddingBitmap = ((bounds.getWidth() - BITMAP_WIDTH)) / 2 - 1;
-        items->getByValue(val).paintBitmap(paddingBitmap, 0, colour);
-    } else if (items && !items->getByValue(val).isLabelEmpty()) {
+        item.paintBitmap(paddingBitmap, 0, colour);
+    } else if (items && !item.isLabelEmpty()) {
         g.setColour(Colours565::white);
         g.printText(0,
                     0,
-                    items->getByValue(val).getLabel(),
+                    item.getLabel(),
                     TextStyle::mediumTransparent,
                     bounds.getWidth(),
                     TextAlign::center);

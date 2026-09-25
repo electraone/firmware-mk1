@@ -205,18 +205,20 @@ void LookAndFeel::paintList(Graphics &g,
                             const ListData *items,
                             uint16_t activeIndex)
 {
-    if (items->getByIndex(activeIndex).isBitmapEmpty()) {
+    ListDataItem item = items->getByIndex(activeIndex);
+
+    if (item.isBitmapEmpty()) {
         // Print the label
         g.printText(0,
                     0,
-                    items->getByIndex(activeIndex).getLabel(),
+                    item.getLabel(),
                     TextStyle::mediumTransparent,
                     bounds.getWidth(),
                     TextAlign::center);
     } else {
         // display bitmap image
         uint16_t paddingBitmap = ((bounds.getWidth() - BITMAP_WIDTH)) / 2 - 1;
-        items->getByIndex(activeIndex).paintBitmap(paddingBitmap, 0, colour);
+        item.paintBitmap(paddingBitmap, 0, colour);
     }
     // Paint the graphics
     if (items->getNumItems() < 16) {
@@ -241,20 +243,21 @@ void LookAndFeel::paintButtonList(Graphics &g,
     g.setColour(colour);
     g.drawRoundRect(0, 0, bounds.getWidth(), bounds.getHeight(), 5);
 
-    if (items->getByIndex(activeIndex).isBitmapEmpty()) {
+    ListDataItem item = items->getByIndex(activeIndex);
+
+    if (item.isBitmapEmpty()) {
         // Print the label
         g.printText(0,
                     bounds.getHeight() * 0.3f,
-                    items->getByIndex(activeIndex).getLabel(),
+                    item.getLabel(),
                     TextStyle::mediumTransparent,
                     bounds.getWidth(),
                     TextAlign::center);
     } else {
         // display bitmap image
         uint16_t paddingBitmap = ((bounds.getWidth() - BITMAP_WIDTH)) / 2 - 1;
-        items->getByIndex(activeIndex)
-            .paintBitmap(
-                paddingBitmap, bounds.getHeight() * 0.3f, Colours565::white);
+        item.paintBitmap(
+            paddingBitmap, bounds.getHeight() * 0.3f, Colours565::white);
     }
 }
 
