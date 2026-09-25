@@ -48,6 +48,10 @@ JLINKSCRIPTPATH = jlink
 # Optional compiler parameters
 OPTIONS = -Wno-deprecated-declarations
 
+# Bench workaround. Set to 1 on units whose SD card DAT1..DAT3 lines are
+# damaged; the SDIO bus then stays in 1-bit mode. Normal builds leave this at 0.
+SD_FORCE_1BIT_BUS = 0
+
 # CPU speed
 CPU_SPEED = 180000000
 
@@ -86,6 +90,7 @@ LIBS = -lstdc++ -lm
 CPPFLAGS += -D__MK66FX1M0__ -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16 \
 		-DARDUINOJSON_ENABLE_STD_STRING -DARDUINOJSON_ENABLE_ARDUINO_STRING=0 \
 		-DARDUINO=182 -DTEENSYDUINO # Required to compile Arduino / Teensy libs
+CPPFLAGS += -DSD_FORCE_1BIT_BUS=$(SD_FORCE_1BIT_BUS)
 LDSCRIPT = $(BASEPATH)/mk66fx1m0.ld
 LDFLAGS += -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16 -fno-use-linker-plugin \
 	-T$(LDSCRIPT)

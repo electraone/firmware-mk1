@@ -34,6 +34,12 @@ const uint32_t MAX_SDHC_COUNT = 0XFFFF;
 const uint32_t RU_MASK = 0X03FF;
 //==============================================================================
 #define SDHC_PROCTL_DTW_4BIT 0x01
+
+// Set to 1 to keep the SDIO bus in 1-bit mode (bench workaround for boards
+// with damaged DAT1..DAT3 wiring). Normal builds leave this at 0.
+#ifndef SD_FORCE_1BIT_BUS
+#define SD_FORCE_1BIT_BUS 0
+#endif
 const uint32_t FIFO_WML = 16;
 const uint32_t CMD8_RETRIES = 3;
 const uint32_t BUSY_TIMEOUT_MICROS = 1000000;
@@ -643,6 +649,12 @@ bool SdioCard::begin(SdioConfig sdioConfig) {
   if (!cardCommand(CMD7_XFERTYP, m_rca)) {
     return sdError(SD_CARD_ERROR_CMD7);
   }
+#if SD_FORCE_1BIT_BUS
+  // Hardware workaround for units whose DAT1..DAT3 lines are unreliable.
+  // Commands and init only need CMD/CLK/DAT0, so the card still enumerates;
+  // staying in 1-bit mode avoids data CRC errors at the cost of throughput.
+  SDHC_PROCTL &= ~SDHC_PROCTL_DTW_MASK;
+#else
   // Set card to bus width four.
   if (!cardAcmd(m_rca, ACMD6_XFERTYP, 2)) {
     return sdError(SD_CARD_ERROR_ACMD6);
@@ -650,6 +662,7 @@ bool SdioCard::begin(SdioConfig sdioConfig) {
   // Set SDHC to bus width four.
   SDHC_PROCTL &= ~SDHC_PROCTL_DTW_MASK;
   SDHC_PROCTL |= SDHC_PROCTL_DTW(SDHC_PROCTL_DTW_4BIT);
+#endif
 
   SDHC_WML = SDHC_WML_RDWML(FIFO_WML) | SDHC_WML_WRWML(FIFO_WML);
 
