@@ -30,9 +30,10 @@
 #include <cstring>
 
 static_assert(TextAtlas::maskAddress + ((uint32_t)fontMaskRows * fontMaskWidth)
-                  <= (uint32_t)VIDEO_RAM_SIZE,
-              "the atlas has outgrown the video memory left for it - drop a "
-              "face in tools/makefont, or move it somewhere with more room");
+                  <= (uint32_t)FRAME_GLYPHS_END,
+              "the atlas has outgrown the region reserved for it - drop a "
+              "face in tools/makefont, or move what is above it and take "
+              "another page");
 
 namespace
 {

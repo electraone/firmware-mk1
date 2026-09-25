@@ -51,11 +51,10 @@ namespace DisplayBenchmark {
  * visible, and the benchmark restores nothing on purpose: the page is redrawn
  * from scratch whenever it is next used.
  */
-/* Page four rather than page eight: the glyph atlas runs from page five
- * to the character generator now, and a benchmark writing over it would
- * take the text with it. Page four is a list detail's scratch canvas,
- * which a benchmark build is not drawing. */
-static const uint32_t scratchAddress = SDRAM_PAGE_4;
+/* Past the last page, in the megabyte the character generator used to have:
+ * everything below page eight is the glyph atlas now, and page eight itself is
+ * where the store measurements below put their pools. */
+static const uint32_t scratchAddress = SDRAM_PAGE_8 + SDRAM_PAGE_SIZE;
 
 /** Block sizes swept, in bytes. Small sizes expose per-call overhead, large
  *  ones expose the raw transfer rate. */
@@ -396,7 +395,7 @@ static void testVramStore(void)
     static const unsigned sampleCount =
         sizeof(samples) / sizeof(samples[0]);
 
-    VramStore store(SDRAM_PAGE_3, SDRAM_PAGE_SIZE);
+    VramStore store(SDRAM_PAGE_8, SDRAM_PAGE_SIZE);
     VramStore::Handle handles[sampleCount];
     char readBack[128];
     uint32_t failures = 0;
@@ -435,7 +434,7 @@ static void testVramStore(void)
     size_t usedAfterStores = store.getUsed();
 
     // A store that fills up must refuse rather than wrap onto live records.
-    VramStore tiny(SDRAM_PAGE_3 + (SDRAM_PAGE_SIZE / 2), 32);
+    VramStore tiny(SDRAM_PAGE_8 + (SDRAM_PAGE_SIZE / 2), 32);
     tiny.assignStorageDriver(&Hardware::screen);
     VramStore::Handle first = tiny.storeString("0123456789");
     VramStore::Handle second = tiny.storeString("0123456789");
@@ -551,7 +550,7 @@ static void testListItems(void)
  */
 static void testSysexBlocks(void)
 {
-    MemoryPool pool(&Hardware::screen, SDRAM_PAGE_3, SDRAM_PAGE_SIZE);
+    MemoryPool pool(&Hardware::screen, SDRAM_PAGE_8, SDRAM_PAGE_SIZE);
     uint32_t failures = 0;
 
     // A message that fits entirely in the RAM header.
@@ -665,7 +664,7 @@ static void testSysexBlocks(void)
      * written on past the end, which is what used to happen and what landed
      * in the page the labels live in. */
     MemoryPool tiny(
-        &Hardware::screen, SDRAM_PAGE_3 + (SDRAM_PAGE_SIZE / 2), 300);
+        &Hardware::screen, SDRAM_PAGE_8 + (SDRAM_PAGE_SIZE / 2), 300);
     uint8_t filler[400];
     memset(filler, 0x5A, sizeof(filler));
 

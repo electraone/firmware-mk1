@@ -1,7 +1,7 @@
 # What else could live in the display's memory
 
 The processor has 256 KB of RAM. The display controller has 16 MB, of which
-about 6.9 MB is unused: five whole pages (`SDRAM_PAGE_3`, `5`, `6`, `7`, `8`)
+about 1.9 MB is unused: `SDRAM_PAGE_8` and the megabyte above it (the glyph atlas has taken what were pages three to seven)
 are allocated in the map and never written, and the character generator region
 uses 3 KB of its 800 KB.
 

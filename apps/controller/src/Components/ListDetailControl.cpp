@@ -40,7 +40,7 @@ void ListDetailControl::paint(Graphics &g)
 {
     g.fillAll(Colours565::black);
     paintListItems(g, offsetY);
-    g.copy(SDRAM_PAGE_4,
+    g.copy(SDRAM_PAGE_8,
            0,
            (offsetY % listItemHeight),
            g.getActiveBufferAddress(),
@@ -153,7 +153,7 @@ void ListDetailControl::paintListItems(Graphics &g, int16_t offset)
     auto origY = g.getActiveWindowY();
     auto origWidth = g.getActiveWindowWidth();
     auto origHeight = g.getActiveWindowHeight();
-    g.setCanvasAddress(SDRAM_PAGE_4);
+    g.setCanvasAddress(SDRAM_PAGE_8);
     g.setActiveWindowPosition(0, 0);
     g.setActiveWindowSize(1024, virtualWindowHeight);
 
@@ -195,7 +195,7 @@ void ListDetailControl::paintListItems(Graphics &g, int16_t offset)
                                               28,
                                               j * listItemHeight + 22,
                                               Colours565::white,
-                                              SDRAM_PAGE_4);
+                                              SDRAM_PAGE_8);
         }
 
         if (index == i) {

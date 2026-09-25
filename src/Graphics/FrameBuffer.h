@@ -56,6 +56,7 @@
 #define SDRAM_PAGE_8 0x00E10000
 #define SDRAM_PAGE_SIZE 0x00258000
 #define FRAME_GLYPHS 0x00A8C000
+#define FRAME_GLYPHS_END VIDEO_RAM_SIZE
 #else
 #define FRAME_BUFFER_1 0x00000000
 #define FRAME_BUFFER_2 0x0012C000
@@ -64,22 +65,22 @@
 #define SDRAM_PAGE_0 0x004B0000
 #define SDRAM_PAGE_1 0x005DC000
 #define SDRAM_PAGE_2 0x00708000
-#define SDRAM_PAGE_3 0x00834000
-#define SDRAM_PAGE_4 0x00960000
-#define SDRAM_PAGE_5 0x00A8C000
-#define SDRAM_PAGE_6 0x00BB8000
-#define SDRAM_PAGE_7 0x00CE4000
 #define SDRAM_PAGE_8 0x00E10000
 #define SDRAM_PAGE_SIZE 0x0012C000
 
 /*
- * The glyph atlas, which does not fit in a page and so does not get one: it
- * runs from page five to the character generator, four and a half of the six
- * megabytes nothing else was using. Sixteen user faces in six colours and two
- * system faces in three is what that buys; TextAtlas.cpp says so at build time
- * if a face is added that does not fit.
+ * The glyph atlas and the masks beside it, which do not fit in a page and so
+ * do not get one: they run from where page three used to start to where page
+ * eight does, six megabytes, of which about four and three quarters are in
+ * use. Sixteen user faces in six colours, two system faces in three, and one
+ * bit masks of all sixteen is what that buys.
+ *
+ * Pages three to seven are gone rather than left named, because a name is an
+ * invitation: anything that took one would be writing over the text.
+ * TextAtlas.cpp fails the build if the atlas outgrows what is here.
  */
-#define FRAME_GLYPHS SDRAM_PAGE_5
+#define FRAME_GLYPHS 0x00834000
+#define FRAME_GLYPHS_END SDRAM_PAGE_8
 #endif
 
 /**

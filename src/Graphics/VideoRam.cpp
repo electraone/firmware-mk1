@@ -148,6 +148,9 @@ void VideoRam::writeRamData(uint32_t address,
 
 void VideoRam::resetExtRam(void)
 {
+    /* The glyph region is not among these. Every row of it that anything reads
+     * is written by uploadFonts(), and nothing addresses the rest - so
+     * clearing it would be five pages of fill to no end. */
     noInterrupts();
     setForegroundColor(0);
     setCanvasAddress(SDRAM_PAGE_0);
@@ -156,18 +159,8 @@ void VideoRam::resetExtRam(void)
     fillRect(0, 0, 1024, 600);
     setCanvasAddress(SDRAM_PAGE_2);
     fillRect(0, 0, 1024, 600);
-    setCanvasAddress(SDRAM_PAGE_3);
-    fillRect(0, 0, 1024, 600);
 
 #if DEFAULT_BPP < 24
-    setCanvasAddress(SDRAM_PAGE_4);
-    fillRect(0, 0, 1024, 600);
-    setCanvasAddress(SDRAM_PAGE_5);
-    fillRect(0, 0, 1024, 600);
-    setCanvasAddress(SDRAM_PAGE_6);
-    fillRect(0, 0, 1024, 600);
-    setCanvasAddress(SDRAM_PAGE_7);
-    fillRect(0, 0, 1024, 600);
     setCanvasAddress(SDRAM_PAGE_8);
     fillRect(0, 0, 1024, 600);
 #endif
