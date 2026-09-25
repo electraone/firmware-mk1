@@ -1,5 +1,6 @@
 #include "ControllerApp.h"
 #include "luaExtension.h"
+#include "Trace.h"
 
 void Controller::initialise(void)
 {
@@ -40,6 +41,12 @@ void Controller::initialise(void)
     // Register ParameterMap onChange callback
     parameterMap.onChange = [this](LookupEntry *entry, Origin origin) {
         if (entry) {
+            TRACE_PMAP_CHANGE(origin,
+                              entry->getMessage().getDeviceId(),
+                              entry->getMessage().getType(),
+                              entry->getMessage().getParameterNumber(),
+                              entry->getMidiValue());
+
             if (origin != Origin::midi && origin != Origin::file) {
                 // @todo taking the first message destination might not be ok
                 // in some situations

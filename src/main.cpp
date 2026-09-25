@@ -30,6 +30,7 @@
 #include "App.h"
 #include "SplashScreen.h"
 #include "MidiOutput.h"
+#include "Trace.h"
 
 /*
  * Prototype of the application creation function.
@@ -39,7 +40,13 @@ extern App *createApplication(void);
 
 void initialise(void)
 {
+    // Bring the behavioural trace up before anything else can be traced.
+    TRACE_INIT();
+
     createApplication();
+
+    TRACE_BOOT(App::get()->getApplicationVersion(),
+               App::get()->getApplicationName());
 
     // Initialise hardware components
     Hardware::initialise();

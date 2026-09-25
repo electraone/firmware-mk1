@@ -22,6 +22,32 @@
 #include "luaIntegrationBase.h"
 #include "SysexBlock.h"
 #include "System.h"
+#include "Trace.h"
+
+/**
+ * @brief Records a module function lookup made on behalf of a real call.
+ *
+ * Every C++ to Lua call of the form module.function() resolves the function
+ * through luaLE_getModuleFunction() first, so this one place covers all of
+ * them. Whether the call will actually be made is already known here, which
+ * is why a missing handler is recorded separately from a call.
+ */
+static void traceModuleLookup(lua_State *L,
+                              const char *module,
+                              const char *function)
+{
+#if defined(ELECTRA_TRACE) && ELECTRA_TRACE
+    if (lua_isfunction(L, -1)) {
+        TRACE_LUA_ENTER(module, function);
+    } else {
+        TRACE_LUA_MISSING(module, function);
+    }
+#else
+    (void)L;
+    (void)module;
+    (void)function;
+#endif
+}
 
 void luaLE_pushTableString(lua_State *L, const char *key, const char *value)
 {
@@ -93,6 +119,7 @@ void luaLE_getModuleFunction(lua_State *L,
     lua_pushstring(L, function);
     lua_gettable(L, -2);
     lua_remove(L, -2);
+    traceModuleLookup(L, module, function);
 }
 
 void luaLE_addObjectMethods(lua_State *L, const luaL_Reg *l)
@@ -146,7 +173,12 @@ void luaLE_dumpstack(lua_State *L)
 
 bool luaLE_functionExists(const char *module, const char *function)
 {
-    luaLE_getModuleFunction(module, function);
+    /** @attention the lookup is done here rather than through
+     * luaLE_getModuleFunction() on purpose. This is a probe, not a call, and
+     * it must not show up in the behavioural trace as one.
+     */
+    lua_getglobal(L, module);
+    lua_getfield(L, -1, function);
 
     if (lua_isfunction(L, -1)) {
         return (true);
@@ -159,4 +191,5 @@ void luaLE_getModuleFunction(const char *module, const char *function)
 {
     lua_getglobal(L, module);
     lua_getfield(L, -1, function);
+    traceModuleLookup(L, module, function);
 }

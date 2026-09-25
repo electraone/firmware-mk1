@@ -22,6 +22,7 @@
 #include "MidiOutput.h"
 #include "ArduinoJson.h"
 #include "App.h"
+#include "Trace.h"
 
 /** Constructor
  *
@@ -612,6 +613,12 @@ void MidiOutput::addToQueue(MidiInterface::Type interface,
                             uint8_t port,
                             MidiMessage &message)
 {
+    TRACE_MIDI_OUT(MidiInterface::getName(interface),
+                   port,
+                   "queue",
+                   message.getChannel(),
+                   message.getData1(),
+                   message.getData2());
     MidiMessageTransport mmt(interface, port, message);
     /*
     for (int i = 0; i < outgoingQueue.size(); i++) {
@@ -633,6 +640,12 @@ void MidiOutput::send(MidiInterface::Type interface,
                       uint8_t data1,
                       uint8_t data2)
 {
+    TRACE_MIDI_OUT(MidiInterface::getName(interface),
+                   port,
+                   "send",
+                   channel,
+                   data1,
+                   data2);
     MidiInterface::get(interface)->send(port, type, channel, data1, data2);
     indicate(interface, port, Direction::out, type);
 }
@@ -641,6 +654,13 @@ void MidiOutput::send(MidiInterface::Type interface,
                       uint8_t port,
                       MidiMessage &message)
 {
+    TRACE_MIDI_OUT(MidiInterface::getName(interface),
+                   port,
+                   "sendMessage",
+                   message.getChannel(),
+                   message.getData1(),
+                   message.getData2());
+
     if (message.getType() == MidiMessage::Type::SystemExclusive) {
         MidiInterface::get(interface)->send(port, message.getSysExBlock());
     } else {
@@ -657,6 +677,8 @@ void MidiOutput::send(MidiInterface::Type interface,
                       uint8_t port,
                       SysexBlock &sysexBlock)
 {
+    TRACE_MIDI_OUT(
+        MidiInterface::getName(interface), port, "sendSysExBlock", 0, 0, 0);
     MidiInterface::get(interface)->sendSysEx(port, sysexBlock);
     indicate(
         interface, port, Direction::out, MidiMessage::Type::SystemExclusive);

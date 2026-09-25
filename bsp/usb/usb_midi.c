@@ -1,6 +1,7 @@
 #include "usb_dev.h"
 #include "usb_midi.h"
 #include "mk66fx1m0.h"
+#include "Trace.h"
 
 #ifdef MIDI_INTERFACE // defined by usb_dev.h -> usb_desc.h
 #if F_CPU >= 20000000
@@ -77,6 +78,8 @@ uint8_t stopFlush = 0;
 void usb_midi_write_packed (uint32_t n)
 {
 	uint32_t index, wait_count = 0;
+
+	TRACE_USB_MIDI_PACKET (n);
 
 	tx_noautoflush = 1;
 	if (!tx_packet)

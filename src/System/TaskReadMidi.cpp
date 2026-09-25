@@ -22,6 +22,7 @@
 #include "TaskReadMidi.h"
 #include "MidiInputCallback.h"
 #include "App.h" // \todo To be removed.
+#include "Trace.h"
 
 #define USB_MIDI_PORT_CTRL 2
 
@@ -178,6 +179,13 @@ void processMidi(void)
 #endif
 
         if (App::get()->enableMidi == true) {
+            TRACE_MIDI_IN(MidiInterface::getName(message.getInterfaceType()),
+                          message.getPort(),
+                          message.getType(),
+                          message.getChannel(),
+                          message.getData1(),
+                          message.getData2());
+
             MidiInput midiInput(message.getInterfaceType(), message.getPort());
             MidiInputCallback::deviceManager.handleIncomingMidiMessage(
                 midiInput, message);
