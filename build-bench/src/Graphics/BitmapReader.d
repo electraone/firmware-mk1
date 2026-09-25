@@ -65,7 +65,8 @@ build-bench/src/Graphics/BitmapReader.o: src/Graphics/BitmapReader.cpp \
  src/Graphics/Geometry.h src/Graphics/BitmapTools.h \
  src/Graphics/VideoRam.h src/Hardware/Memory.h src/Memory/MemoryPool.h \
  src/Memory/MemoryBlock.h src/Memory/BitmapPool.h src/Graphics/Bitmap.h \
- src/Hardware/RamMonitor.h src/System/SystemTasks.h \
+ src/Memory/VramStore.h src/Hardware/RamMonitor.h \
+ src/System/SystemTasks.h \
  lib/TaskScheduler/src/TaskSchedulerDeclarations.h bsp/IntervalTimer.h \
  src/Utils/InstanceCallback.h src/System/TaskReadButtons.h \
  src/System/TaskReadPots.h src/System/TaskReadPotTouch.h \

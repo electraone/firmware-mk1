@@ -70,8 +70,9 @@ build-bench/apps/controller/src/Windows/Selection.o: \
  src/Hardware/PotTouch.h lib/BU21072/BU21072.h lib/i2c_t3/i2c_t3.h \
  bsp/DMAChannel.h src/Hardware/Buttons.h src/Hardware/HardwareButton.h \
  src/Hardware/Memory.h src/Memory/MemoryPool.h src/Memory/MemoryBlock.h \
- src/Memory/BitmapPool.h src/Graphics/Bitmap.h src/Hardware/RamMonitor.h \
- lib/base64/Base64.h src/System/System.h src/System/SystemTasks.h \
+ src/Memory/BitmapPool.h src/Graphics/Bitmap.h src/Memory/VramStore.h \
+ src/Hardware/RamMonitor.h lib/base64/Base64.h src/System/System.h \
+ src/System/SystemTasks.h \
  lib/TaskScheduler/src/TaskSchedulerDeclarations.h bsp/IntervalTimer.h \
  src/Utils/InstanceCallback.h src/System/TaskReadButtons.h \
  src/System/TaskReadPots.h src/System/TaskReadPotTouch.h \

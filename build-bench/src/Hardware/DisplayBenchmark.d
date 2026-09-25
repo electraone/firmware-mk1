@@ -64,8 +64,8 @@ build-bench/src/Hardware/DisplayBenchmark.o: \
  lib/SdFat/src/iostream/StdioStream.h lib/SdFat/src/iostream/ios.h \
  lib/SdFat/src/iostream/../FsLib/FsLib.h src/Graphics/VideoRam.h \
  src/Hardware/Memory.h src/Memory/MemoryPool.h src/Memory/MemoryBlock.h \
- src/Memory/BitmapPool.h src/Graphics/Bitmap.h src/Hardware/RamMonitor.h \
- src/System/System.h src/System/SystemTasks.h \
+ src/Memory/BitmapPool.h src/Graphics/Bitmap.h src/Memory/VramStore.h \
+ src/Hardware/RamMonitor.h src/System/System.h src/System/SystemTasks.h \
  lib/TaskScheduler/src/TaskSchedulerDeclarations.h bsp/IntervalTimer.h \
  src/Utils/InstanceCallback.h src/System/TaskReadButtons.h \
  src/System/TaskReadPots.h src/System/TaskReadPotTouch.h \
@@ -95,4 +95,5 @@ build-bench/src/Hardware/DisplayBenchmark.o: \
  src/System/RepaintManager.h src/System/Context.h \
  src/System/RuntimeInfo.h bsp/eeprom.h src/System/Logger.h \
  lib/lua/lauxlib.h lib/lua/luaconf.h lib/lua/lua.h lib/lua/lua.h \
- lib/lua/lualib.h
+ lib/lua/lualib.h src/Data/ListData.h src/Data/ListDataItem.h \
+ lib/base64/Base64.h

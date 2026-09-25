@@ -64,10 +64,11 @@ build-bench/src/System/TaskProcessSysex.o: \
  lib/SdFat/src/iostream/StdioStream.h lib/SdFat/src/iostream/ios.h \
  lib/SdFat/src/iostream/../FsLib/FsLib.h src/Graphics/VideoRam.h \
  src/Hardware/Memory.h src/Memory/MemoryPool.h src/Memory/MemoryBlock.h \
- src/Memory/BitmapPool.h src/Graphics/Bitmap.h src/Hardware/RamMonitor.h \
- src/Memory/SysexBlock.h src/Midi/ElectraCommand.h src/Midi/MidiOutput.h \
- src/Midi/MidiMessage.h src/Midi/MidiMessageTransport.h \
- src/Midi/MidiInterface.h src/Midi/MidiIo.h src/Midi/MidiBase.h \
+ src/Memory/BitmapPool.h src/Graphics/Bitmap.h src/Memory/VramStore.h \
+ src/Hardware/RamMonitor.h src/Memory/SysexBlock.h \
+ src/Midi/ElectraCommand.h src/Midi/MidiOutput.h src/Midi/MidiMessage.h \
+ src/Midi/MidiMessageTransport.h src/Midi/MidiInterface.h \
+ src/Midi/MidiIo.h src/Midi/MidiBase.h \
  lib/arduino_midi_library/src/MIDI.h \
  lib/arduino_midi_library/src/midi_Defs.h \
  lib/arduino_midi_library/src/midi_Namespace.h \

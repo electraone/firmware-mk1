@@ -66,8 +66,8 @@ build-bench/src/Components/LookAndFeel.o: src/Components/LookAndFeel.cpp \
  lib/CircularBuffer/CircularBuffer.tpp lib/FT5x16/TouchPoint.h \
  lib/FT5x16/setup.h src/Hardware/Memory.h src/Memory/MemoryPool.h \
  src/Memory/MemoryBlock.h src/Memory/BitmapPool.h src/Graphics/Bitmap.h \
- src/Hardware/RamMonitor.h lib/base64/Base64.h src/System/System.h \
- src/System/SystemTasks.h \
+ src/Memory/VramStore.h src/Hardware/RamMonitor.h lib/base64/Base64.h \
+ src/System/System.h src/System/SystemTasks.h \
  lib/TaskScheduler/src/TaskSchedulerDeclarations.h bsp/IntervalTimer.h \
  src/Utils/InstanceCallback.h src/System/TaskReadButtons.h \
  src/System/TaskReadPots.h src/System/TaskReadPotTouch.h \

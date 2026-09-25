@@ -89,8 +89,8 @@ build-bench/src/System/SystemTasks.o: src/System/SystemTasks.cpp \
  src/Hardware/PotTouch.h lib/BU21072/BU21072.h lib/i2c_t3/i2c_t3.h \
  bsp/DMAChannel.h src/Hardware/Buttons.h src/Hardware/HardwareButton.h \
  src/Hardware/Memory.h src/Memory/MemoryPool.h src/Memory/BitmapPool.h \
- src/Graphics/Bitmap.h src/Hardware/RamMonitor.h src/System/TaskSpinner.h \
- lib/TaskScheduler/src/TaskScheduler.h \
+ src/Graphics/Bitmap.h src/Memory/VramStore.h src/Hardware/RamMonitor.h \
+ src/System/TaskSpinner.h lib/TaskScheduler/src/TaskScheduler.h \
  lib/TaskScheduler/src/TaskSchedulerDeclarations.h src/System/System.h \
  src/Windows/WindowManager.h src/System/RepaintManager.h \
  src/System/Context.h src/System/RuntimeInfo.h bsp/eeprom.h \

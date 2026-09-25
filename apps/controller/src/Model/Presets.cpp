@@ -191,6 +191,12 @@ void Presets::reset(void)
     // Reset parameterMap
     parameterMap.clear();
 
+    /* Everything the preset put in the display's memory dies with it. Without
+     * this the stores only ever grow, and after enough preset loads they fill
+     * up and new labels are silently lost. */
+    Hardware::memory.stringPool.reset();
+    Hardware::memory.bitmapPool.clear();
+
     System::logger.write(LOG_TRACE,
                          "Controller::reset: preset memory deallocated");
     monitorFreeMemory();

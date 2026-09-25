@@ -67,8 +67,8 @@ build-bench/src/Lua/luaIntegrationBase.o: src/Lua/luaIntegrationBase.cpp \
  lib/CircularBuffer/CircularBuffer.h \
  lib/CircularBuffer/CircularBuffer.tpp lib/FT5x16/TouchPoint.h \
  lib/FT5x16/setup.h src/Hardware/Memory.h src/Memory/MemoryPool.h \
- src/Memory/BitmapPool.h src/Graphics/Bitmap.h src/Hardware/RamMonitor.h \
- src/System/SystemTasks.h \
+ src/Memory/BitmapPool.h src/Graphics/Bitmap.h src/Memory/VramStore.h \
+ src/Hardware/RamMonitor.h src/System/SystemTasks.h \
  lib/TaskScheduler/src/TaskSchedulerDeclarations.h bsp/IntervalTimer.h \
  src/Utils/InstanceCallback.h src/System/TaskReadButtons.h \
  src/System/TaskReadPots.h src/System/TaskReadPotTouch.h \

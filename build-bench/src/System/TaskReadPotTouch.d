@@ -64,6 +64,6 @@ build-bench/src/System/TaskReadPotTouch.o: \
  lib/SdFat/src/iostream/StdioStream.h lib/SdFat/src/iostream/ios.h \
  lib/SdFat/src/iostream/../FsLib/FsLib.h src/Graphics/VideoRam.h \
  src/Hardware/Memory.h src/Memory/MemoryPool.h src/Memory/MemoryBlock.h \
- src/Memory/BitmapPool.h src/Graphics/Bitmap.h src/Hardware/RamMonitor.h \
- src/Events/PotListener.h bsp/core_pins.h bsp/compat.h \
- src/Events/PotBroadcaster.h src/Events/PotEvent.h
+ src/Memory/BitmapPool.h src/Graphics/Bitmap.h src/Memory/VramStore.h \
+ src/Hardware/RamMonitor.h src/Events/PotListener.h bsp/core_pins.h \
+ bsp/compat.h src/Events/PotBroadcaster.h src/Events/PotEvent.h

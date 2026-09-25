@@ -72,8 +72,8 @@ build-bench/apps/controller/src/Lua/luaControl.o: \
  lib/SdFat/src/iostream/StdioStream.h lib/SdFat/src/iostream/ios.h \
  lib/SdFat/src/iostream/../FsLib/FsLib.h src/Graphics/VideoRam.h \
  src/Hardware/Memory.h src/Memory/MemoryPool.h src/Memory/MemoryBlock.h \
- src/Memory/BitmapPool.h src/Graphics/Bitmap.h src/Hardware/RamMonitor.h \
- src/System/SystemTasks.h \
+ src/Memory/BitmapPool.h src/Graphics/Bitmap.h src/Memory/VramStore.h \
+ src/Hardware/RamMonitor.h src/System/SystemTasks.h \
  lib/TaskScheduler/src/TaskSchedulerDeclarations.h bsp/IntervalTimer.h \
  src/Utils/InstanceCallback.h src/System/TaskReadButtons.h \
  src/System/TaskReadPots.h src/System/TaskReadPotTouch.h \

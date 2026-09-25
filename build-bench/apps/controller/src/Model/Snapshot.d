@@ -65,9 +65,9 @@ build-bench/apps/controller/src/Model/Snapshot.o: \
  lib/SdFat/src/iostream/StdioStream.h lib/SdFat/src/iostream/ios.h \
  lib/SdFat/src/iostream/../FsLib/FsLib.h src/Graphics/VideoRam.h \
  src/Hardware/Memory.h src/Memory/MemoryPool.h src/Memory/MemoryBlock.h \
- src/Memory/BitmapPool.h src/Graphics/Bitmap.h src/Hardware/RamMonitor.h \
- lib/ArduinoJson/ArduinoJson.h lib/ArduinoJson/src/ArduinoJson.h \
- lib/ArduinoJson/src/ArduinoJson.hpp \
+ src/Memory/BitmapPool.h src/Graphics/Bitmap.h src/Memory/VramStore.h \
+ src/Hardware/RamMonitor.h lib/ArduinoJson/ArduinoJson.h \
+ lib/ArduinoJson/src/ArduinoJson.h lib/ArduinoJson/src/ArduinoJson.hpp \
  lib/ArduinoJson/src/ArduinoJson/Configuration.hpp src/System/System.h \
  src/System/SystemTasks.h \
  lib/TaskScheduler/src/TaskSchedulerDeclarations.h bsp/IntervalTimer.h \

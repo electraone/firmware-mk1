@@ -36,14 +36,20 @@ class ListDataItem
 {
 public:
     ListDataItem()
-        : value(0), address(0), labelIsEmpty(true), bitmapIsEmpty(true)
+        : value(0),
+          address(VramStore::invalidHandle),
+          labelIsEmpty(true),
+          bitmapIsEmpty(true)
     {
     }
 
     ListDataItem(int16_t newValue,
                  const char *label,
                  const char *encodedBitmap = nullptr)
-        : value(newValue), address(0), labelIsEmpty(false), bitmapIsEmpty(true)
+        : value(newValue),
+          address(VramStore::invalidHandle),
+          labelIsEmpty(false),
+          bitmapIsEmpty(true)
     {
         Bitmap bitmap;
 
@@ -52,8 +58,7 @@ public:
             bitmapIsEmpty = false;
         }
 
-        address =
-            Hardware::memory.stringPool.saveItem(bitmap.getAddress(), label);
+        address = saveRecord(bitmap.getAddress(), label);
     }
 
     virtual ~ListDataItem() = default;
@@ -63,12 +68,19 @@ public:
         return (value);
     }
 
+    /**
+     * @brief The item's label.
+     *
+     * @attention the returned pointer is a shared buffer that the next call
+     * overwrites, which is the same contract this had before the label moved
+     * into the display's memory. Copy it if it has to outlive the next call.
+     */
     const char *getLabel(void) const
     {
-        uint32_t bitmapAddress;
+        Record record;
 
-        Hardware::memory.stringPool.getItem(
-            address, buffer, sizeof(buffer), &bitmapAddress);
+        readRecord(record);
+        copyString(buffer, record.label, maxLabelLength);
 
         return (buffer);
     }
@@ -79,11 +91,11 @@ public:
             return (Bitmap());
         }
 
-        uint32_t bitmapAddress = 0;
-        Hardware::memory.stringPool.getItem(
-            address, buffer, sizeof(buffer), &bitmapAddress);
+        Record record;
 
-        return (Bitmap(bitmapAddress));
+        readRecord(record);
+
+        return (Bitmap(record.bitmapAddress));
     }
 
     void paintBitmap(uint16_t x, uint16_t y, uint32_t colour)
@@ -107,6 +119,22 @@ public:
     }
 
 private:
+    /** Longest label kept for an item. Anything longer is truncated when it
+     *  is stored, so the reader never has to deal with a partial one. */
+    static const size_t maxLabelLength = 39;
+
+    /**
+     * @brief One item as it lives in the display's memory.
+     *
+     * The bitmap handle and the label travel together because they are always
+     * wanted together and a read costs far more in fixed overhead than in
+     * bytes moved.
+     */
+    struct Record {
+        uint32_t bitmapAddress;
+        char label[maxLabelLength + 1];
+    };
+
     /** Parse bitmap data
 	 *
 	 */
@@ -119,13 +147,44 @@ private:
         return (Hardware::memory.bitmapPool.saveBitmap(bytes));
     }
 
+    VramStore::Handle saveRecord(uint32_t bitmapAddress, const char *label)
+    {
+        Record record;
+
+        record.bitmapAddress = bitmapAddress;
+        copyString(record.label, label ? label : "", maxLabelLength);
+
+        return (Hardware::memory.stringPool.store(
+            &record, sizeof(record.bitmapAddress) + strlen(record.label) + 1));
+    }
+
+    void readRecord(Record &record) const
+    {
+        record.bitmapAddress = 0;
+        record.label[0] = '\0';
+
+        size_t read = Hardware::memory.stringPool.load(
+            address, &record, sizeof(record));
+
+        /* A record that did not survive, because the store was full when it
+         * was written, reads back as nothing rather than as somebody else's
+         * label. */
+        if (read <= sizeof(record.bitmapAddress)) {
+            record.bitmapAddress = 0;
+            record.label[0] = '\0';
+            return;
+        }
+        record.label[read - sizeof(record.bitmapAddress) - 1] = '\0';
+    }
+
     int16_t value;
-    uint32_t address;
+    VramStore::Handle address;
 
     struct {
         bool labelIsEmpty : 1;
         bool bitmapIsEmpty : 1;
     };
 
-    static char buffer[40];
+    /** Shared scratch the label is handed out through. See getLabel(). */
+    static char buffer[maxLabelLength + 1];
 };

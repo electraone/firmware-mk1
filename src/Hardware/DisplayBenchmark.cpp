@@ -31,6 +31,9 @@
 
 #include "Hardware.h"
 #include "System.h"
+#include "VramStore.h"
+#include "ListData.h"
+#include <string.h>
 
 namespace DisplayBenchmark {
 
@@ -47,8 +50,14 @@ static const uint32_t scratchAddress = SDRAM_PAGE_8;
  *  ones expose the raw transfer rate. */
 static const uint16_t blockSizes[] = { 16, 64, 256, 1024, 4096 };
 
-/** Largest block the benchmark moves. Sits on the stack, so it is bounded. */
+/** Largest block the benchmark moves. */
 static const uint16_t maxBlock = 4096;
+
+/** One pair of buffers shared by every measurement. Giving each function its
+ *  own pair cost tens of kilobytes of RAM in a build that is meant to measure
+ *  the machine, not change it. */
+static uint8_t writeBuffer[maxBlock];
+static uint8_t readBuffer[maxBlock];
 
 /** How many times each block size is transferred, chosen so that every size
  *  moves a similar number of bytes and the timing is not dominated by the
@@ -104,9 +113,6 @@ static uint32_t kilobytesPerSecond(uint32_t bytes, uint32_t microseconds)
 
 static void measureBlockSize(uint16_t blockSize)
 {
-    static uint8_t writeBuffer[maxBlock];
-    static uint8_t readBuffer[maxBlock];
-
     uint16_t repeats = repeatsFor(blockSize);
     uint32_t totalBytes = (uint32_t)blockSize * repeats;
     uint32_t writeMicros = 0;
@@ -189,8 +195,6 @@ static void measureSingleAccess(void)
  */
 static void measureIntegrity(void)
 {
-    static uint8_t writeBuffer[maxBlock];
-    static uint8_t readBuffer[maxBlock];
     static const uint16_t rounds = 64;
 
     uint32_t mismatches = 0;
@@ -227,8 +231,6 @@ static void measureIntegrity(void)
 static void measureDirections(void)
 {
     static const uint16_t size = 256;
-    static uint8_t writeBuffer[size];
-    static uint8_t readBuffer[size];
 
     makePattern(writeBuffer, size, 0x5A);
 
@@ -273,8 +275,6 @@ static void measureDirections(void)
  */
 static void sweepDirectionSizes(void)
 {
-    static uint8_t writeBuffer[maxBlock];
-    static uint8_t readBuffer[maxBlock];
     static const uint16_t sizes[] = { 64, 128, 256, 512, 1024, 2048, 4096 };
 
     for (unsigned s = 0; s < (sizeof(sizes) / sizeof(sizes[0])); s++) {
@@ -327,8 +327,6 @@ static void sweepDirectionSizes(void)
  */
 static void sweepReadClock(void)
 {
-    static uint8_t writeBuffer[maxBlock];
-    static uint8_t readBuffer[maxBlock];
     static const uint32_t clocks[] = { 30000000, 20000000, 15000000,
                                        12000000, 10000000, 7500000 };
     static const uint16_t rounds = 8;
@@ -367,6 +365,129 @@ static void sweepReadClock(void)
     RA8876::readClock = original;
 }
 
+/**
+ * @brief Exercises VramStore against the real display.
+ *
+ * Storing and reading back on the hardware is the only way to know the store
+ * works: the failure modes it has to survive, dropped bytes and a full
+ * region, do not exist off the device. A spare page is used so the running
+ * application's own data is not touched.
+ */
+static void testVramStore(void)
+{
+    static const char *samples[] = {
+        "",
+        "a",
+        "Cutoff",
+        "a label of a more usual length",
+        "0123456789012345678901234567890123456789012345678901234567890123"
+    };
+    static const unsigned sampleCount =
+        sizeof(samples) / sizeof(samples[0]);
+
+    VramStore store(SDRAM_PAGE_3, SDRAM_PAGE_SIZE);
+    VramStore::Handle handles[sampleCount];
+    char readBack[128];
+    uint32_t failures = 0;
+
+    store.assignStorageDriver(&Hardware::screen);
+    store.reset();
+
+    for (unsigned i = 0; i < sampleCount; i++) {
+        handles[i] = store.storeString(samples[i]);
+        if (handles[i] == VramStore::invalidHandle) {
+            failures++;
+        }
+    }
+
+    // Read back out of order, so a handle that happens to point at the record
+    // written just before it cannot pass by accident.
+    for (unsigned i = sampleCount; i-- > 0;) {
+        store.loadString(handles[i], readBack, sizeof(readBack));
+        if (strcmp(readBack, samples[i]) != 0) {
+            failures++;
+        }
+    }
+
+    // A record longer than the buffer must truncate and stay terminated
+    // rather than run past the end.
+    char small[8];
+    store.loadString(handles[3], small, sizeof(small));
+    bool truncatedSafely = (strlen(small) == sizeof(small) - 1)
+                           && (strncmp(small, samples[3], sizeof(small) - 1)
+                               == 0);
+
+    // An invalid handle must read as nothing, not as somebody else's record.
+    store.loadString(VramStore::invalidHandle, readBack, sizeof(readBack));
+    bool invalidIsEmpty = (readBack[0] == '\0');
+
+    size_t usedAfterStores = store.getUsed();
+
+    // A store that fills up must refuse rather than wrap onto live records.
+    VramStore tiny(SDRAM_PAGE_3 + (SDRAM_PAGE_SIZE / 2), 32);
+    tiny.assignStorageDriver(&Hardware::screen);
+    VramStore::Handle first = tiny.storeString("0123456789");
+    VramStore::Handle second = tiny.storeString("0123456789");
+    VramStore::Handle third = tiny.storeString("0123456789");
+    bool refusedWhenFull = (first != VramStore::invalidHandle)
+                           && (second != VramStore::invalidHandle)
+                           && (third == VramStore::invalidHandle)
+                           && (tiny.getRejectedCount() == 1);
+
+    store.reset();
+    bool resetFrees = (store.getUsed() == 0);
+
+    System::logger.write(
+        LOG_ERROR,
+        "bench vramstore failures=%lu used=%lu truncate=%d invalid=%d "
+        "full=%d reset=%d",
+        (unsigned long)failures,
+        (unsigned long)usedAfterStores,
+        truncatedSafely ? 1 : 0,
+        invalidIsEmpty ? 1 : 0,
+        refusedWhenFull ? 1 : 0,
+        resetFrees ? 1 : 0);
+}
+
+/**
+ * @brief Checks that a list item still gives back the label it was made with.
+ *
+ * The labels live in the display's memory, so this exercises the whole path
+ * the painting code uses: pack a record, store it, read it back, unpack it.
+ */
+static void testListItems(void)
+{
+    static const char *labels[] = { "Off", "Sine", "a fairly long item label" };
+    static const unsigned count = sizeof(labels) / sizeof(labels[0]);
+
+    ListData list;
+    uint32_t failures = 0;
+
+    for (unsigned i = 0; i < count; i++) {
+        list.addItem((int16_t)i, labels[i]);
+    }
+
+    for (unsigned i = 0; i < count; i++) {
+        ListDataItem item = list.getByIndex(i);
+
+        if (strcmp(item.getLabel(), labels[i]) != 0) {
+            failures++;
+        }
+        if (item.getValue() != (int16_t)i) {
+            failures++;
+        }
+        if (!item.isBitmapEmpty()) {
+            failures++;
+        }
+    }
+
+    System::logger.write(LOG_ERROR,
+                         "bench listitems count=%u failures=%lu poolUsed=%lu",
+                         count,
+                         (unsigned long)failures,
+                         (unsigned long)Hardware::memory.stringPool.getUsed());
+}
+
 void run(void)
 {
     System::logger.write(LOG_ERROR,
@@ -374,6 +495,9 @@ void run(void)
                          (unsigned long)RA8876_SPI_SPEED,
                          (unsigned long)F_BUS,
                          (unsigned long)F_CPU);
+
+    testVramStore();
+    testListItems();
 
     measureDirections();
     sweepDirectionSizes();

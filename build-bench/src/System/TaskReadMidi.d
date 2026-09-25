@@ -75,8 +75,8 @@ build-bench/src/System/TaskReadMidi.o: src/System/TaskReadMidi.cpp \
  src/Hardware/Buttons.h src/Hardware/HardwareButton.h \
  src/Hardware/Touch.h lib/FT5x16/FT5x16.h lib/FT5x16/TouchPoint.h \
  lib/FT5x16/setup.h src/Hardware/Memory.h src/Memory/MemoryPool.h \
- src/Memory/BitmapPool.h src/Graphics/Bitmap.h src/Hardware/RamMonitor.h \
- src/System/System.h src/System/SystemTasks.h \
+ src/Memory/BitmapPool.h src/Graphics/Bitmap.h src/Memory/VramStore.h \
+ src/Hardware/RamMonitor.h src/System/System.h src/System/SystemTasks.h \
  lib/TaskScheduler/src/TaskSchedulerDeclarations.h bsp/IntervalTimer.h \
  src/Utils/InstanceCallback.h src/System/TaskReadButtons.h \
  src/System/TaskReadPots.h src/System/TaskReadPotTouch.h \

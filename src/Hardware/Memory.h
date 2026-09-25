@@ -29,14 +29,18 @@
 
 #include "MemoryPool.h"
 #include "BitmapPool.h"
+#include "VramStore.h"
 
 struct Memory {
     Memory()
-        : stringPool(MemoryPool(SDRAM_PAGE_1, SDRAM_PAGE_SIZE)),
+        : stringPool(VramStore(SDRAM_PAGE_1, SDRAM_PAGE_SIZE)),
           bitmapPool(BitmapPool(SDRAM_PAGE_2, SDRAM_PAGE_SIZE))
     {
     }
 
-    MemoryPool stringPool;
+    /** Text and other data that belongs to the loaded preset. Everything in
+     *  here is thrown away together when the preset is replaced. */
+    VramStore stringPool;
+
     BitmapPool bitmapPool;
 };

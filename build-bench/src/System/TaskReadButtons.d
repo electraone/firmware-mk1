@@ -64,6 +64,6 @@ build-bench/src/System/TaskReadButtons.o: src/System/TaskReadButtons.cpp \
  lib/SdFat/src/iostream/StdioStream.h lib/SdFat/src/iostream/ios.h \
  lib/SdFat/src/iostream/../FsLib/FsLib.h src/Graphics/VideoRam.h \
  src/Hardware/Memory.h src/Memory/MemoryPool.h src/Memory/MemoryBlock.h \
- src/Memory/BitmapPool.h src/Graphics/Bitmap.h src/Hardware/RamMonitor.h \
- src/Events/ButtonListener.h src/Events/ButtonBroadcaster.h \
- src/Events/Broadcaster.h
+ src/Memory/BitmapPool.h src/Graphics/Bitmap.h src/Memory/VramStore.h \
+ src/Hardware/RamMonitor.h src/Events/ButtonListener.h \
+ src/Events/ButtonBroadcaster.h src/Events/Broadcaster.h
