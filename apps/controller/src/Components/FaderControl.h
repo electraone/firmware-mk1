@@ -74,7 +74,7 @@ private:
     void paintValueFloating(Graphics &g,
                             const Rectangle &bounds,
                             uint32_t colour,
-                            uint16_t x,
+                            int16_t x,
                             int16_t val,
                             const ListData *items,
                             Control::Mode mode,

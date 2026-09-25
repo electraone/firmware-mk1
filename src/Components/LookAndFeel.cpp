@@ -30,6 +30,48 @@
 uint32_t LookAndFeel::backgroundColour = Colours565::black;
 uint32_t LookAndFeel::altBackgroundColour = 0x0022;
 
+void LookAndFeel::paintFaderTrack(Graphics &g,
+                                  const Rectangle &bounds,
+                                  uint32_t colour,
+                                  uint16_t trackY,
+                                  uint16_t trackHeight,
+                                  int16_t barX,
+                                  int16_t barWidth)
+{
+    const uint32_t colourTrack = Colours565::darker(colour, 0.3f);
+    const int16_t width = (int16_t)bounds.getWidth();
+
+    if (width <= 0) {
+        return;
+    }
+
+    g.setColour(colourTrack);
+    g.fillRect(0, trackY, width, trackHeight);
+
+    /* The bar runs between where it starts - zero, which is the track's left
+     * end unless the fader is bipolar - and where the value has taken it. The
+     * two ends are sorted rather than treated as a position and a length,
+     * because a bipolar fader below its zero runs leftwards. */
+    const int16_t zero = constrain(barX, (int16_t)0, width);
+    const int16_t end =
+        constrain((int16_t)(barX + barWidth), (int16_t)0, width);
+    const int16_t from = (zero < end) ? zero : end;
+    const int16_t to = (zero < end) ? end : zero;
+
+    if (to > from) {
+        g.setColour(colour);
+        g.fillRect(from, trackY, to - from, trackHeight);
+    }
+
+    /* One pixel off each corner, painted back to the background: the whole of
+     * the rounding this has ever had. */
+    g.setColour(backgroundColour);
+    g.drawPixel(0, trackY);
+    g.drawPixel(0, trackY + trackHeight - 1);
+    g.drawPixel(width - 1, trackY);
+    g.drawPixel(width - 1, trackY + trackHeight - 1);
+}
+
 void LookAndFeel::paintBarHorizontal(Graphics &g,
                                      const Rectangle &bounds,
                                      uint32_t colour,

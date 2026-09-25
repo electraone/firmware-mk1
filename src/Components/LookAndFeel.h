@@ -29,6 +29,7 @@
 
 #include "Graphics.h"
 #include "ListData.h"
+#include "ControlMetrics.h"
 
 class LookAndFeel
 {
@@ -49,6 +50,23 @@ public:
                                  int16_t min,
                                  int16_t max,
                                  int16_t val);
+
+    /**
+     * @brief A fader's track, and the bar standing in it.
+     *
+     * `trackY` and `trackHeight` are where the track sits and how tall it is;
+     * `barX` is where the bar starts, which is the left end of the track
+     * unless the fader is bipolar, and `barWidth` how far the value has moved
+     * it. The width is signed because a bipolar fader below zero runs
+     * leftwards from its start.
+     */
+    static void paintFaderTrack(Graphics &g,
+                                const Rectangle &bounds,
+                                uint32_t colour,
+                                uint16_t trackY,
+                                uint16_t trackHeight,
+                                int16_t barX,
+                                int16_t barWidth);
 
     static void paintPad(Graphics &g,
                          const Rectangle &bounds,

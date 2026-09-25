@@ -19,6 +19,7 @@
 * along with this program.
 */
 #include "FaderControl.h"
+#include "ControlMetrics.h"
 
 FaderControl::FaderControl(const Control &control, MainDelegate &newDelegate)
     : ControlComponent(control, newDelegate), thresholdCrossed(false)
@@ -120,7 +121,7 @@ void FaderControl::paint(Graphics &g)
                control.getVariant());
 
     g.user().printText(0,
-                       getHeight() - 20,
+                       getHeight() - controlMetrics.nameInset,
                        getName(),
                        getWidth(),
                        TextAlign::center,
@@ -139,78 +140,52 @@ void FaderControl::paintFader(Graphics &g,
                               Control::Mode mode,
                               Control::Variant variant)
 {
-    uint32_t colourTrack = Colours565::darker(colour, 0.3f);
     uint32_t backgroundColour = getUseAltBackground()
                                     ? LookAndFeel::altBackgroundColour
                                     : LookAndFeel::backgroundColour;
 
-    if (items) {
+    /* An overlay has a word to print and there is no room for one beside a
+     * full-size track. */
+    if (items && controlMetrics.faderListForcesThin) {
         variant = Control::Variant::Thin;
     }
 
-    uint16_t barHeight = 0;
-    uint16_t padding = 0;
+    const bool thin = (variant == Control::Variant::Thin);
+    const uint16_t barHeight = thin ? controlMetrics.faderThinBarHeight
+                                    : controlMetrics.faderBarHeight;
+    const uint16_t inset =
+        thin ? controlMetrics.faderThinInset : controlMetrics.faderInset;
 
-    if (variant == Control::Variant::Thin) {
-        barHeight = 9;
-        padding = bounds.getHeight() - 36;
-    } else {
-        barHeight = 24;
-        padding = bounds.getHeight() - 51;
-    }
+    /* Lua can set a control's bounds to anything, so a control shorter than
+     * the track it is asked for puts the track at the top rather than
+     * underflowing to the bottom of the screen. */
+    const uint16_t trackY = (bounds.getHeight() > inset)
+                                ? (uint16_t)(bounds.getHeight() - inset)
+                                : 0;
 
-    uint16_t barX = 0;
+    int16_t barX = 0;
 
-    // For zero based faders, fing the start position of the bar
+    // For zero based faders, find the start position of the bar
     if (mode == Control::Mode::Bipolar) {
         barX = map(std::max((int16_t)0, min), min, max, 0, bounds.getWidth());
     }
 
-    uint16_t barWidth = map(val, min, max, 0, bounds.getWidth()) - barX;
+    /* Signed: a bipolar fader below its zero has moved the end of the bar to
+     * the left of where it starts. */
+    const int16_t barWidth =
+        (int16_t)(map(val, min, max, 0, bounds.getWidth()) - barX);
 
     // Clear the component area
     g.fillAll(backgroundColour);
 
-    // Paint the track background
-    g.setColour(colourTrack);
-    g.fillRect(0, padding, bounds.getWidth(), barHeight);
+    LookAndFeel::paintFaderTrack(
+        g, bounds, colour, trackY, barHeight, barX, barWidth);
 
-    // Paint the active bar
-    g.setColour(colour);
-    g.fillRect(barX, padding, barWidth, barHeight);
-
-    /*
-    if (barWidth > 1) {
-        g.setColour(Colours565::black);
-        uint16_t separatorX = 0;
-        separatorX = ((val > 0) ? barX + barWidth : barX + barWidth - 1);
-        g.drawLine(
-            separatorX, padding, separatorX, padding + barHeight - 1);
-    }
-*/
-    // Paint the outline
-    g.setColour(backgroundColour);
-    g.drawPixel(0, padding);
-    g.drawPixel(0, padding + barHeight - 1);
-    g.drawPixel(getWidth(), padding);
-    g.drawPixel(getWidth(), padding + barHeight - 1);
-
-    /*
-    g.setColour(Colours565::darker(colourTrack, 0.9f));
-    g.drawPixel(1, padding);
-    g.drawPixel(0, padding + 1);
-    g.drawPixel(1, padding + barHeight - 1);
-    g.drawPixel(0, padding + barHeight - 2);
-    g.drawPixel(getWidth() - 2, padding);
-    g.drawPixel(getWidth(), padding + 1);
-    g.drawPixel(getWidth() - 2, padding + barHeight - 1);
-    g.drawPixel(getWidth(), padding + barHeight - 2);
-*/
-    if (variant == Control::Variant::Thin) {
-        paintValueFixed(g, bounds, colour, val, items, mode, variant);
-    } else {
+    if (!thin && controlMetrics.faderValueFloats) {
         paintValueFloating(
             g, bounds, colour, barX + barWidth, val, items, mode, variant);
+    } else {
+        paintValueFixed(g, bounds, colour, val, items, mode, variant);
     }
 }
 
@@ -222,7 +197,7 @@ void FaderControl::paintValueFixed(Graphics &g,
                                    [[maybe_unused]] Control::Mode mode,
                                    [[maybe_unused]] Control::Variant variant)
 {
-    uint16_t labelYPosition = 0;
+    uint16_t labelYPosition = controlMetrics.faderFixedValueY;
 
     /* Looked up once. getByValue() walks the list to find the entry, so
      * asking it the same question three times searched it three times. */
@@ -265,13 +240,13 @@ void FaderControl::paintValueFixed(Graphics &g,
 void FaderControl::paintValueFloating(Graphics &g,
                                       [[maybe_unused]] const Rectangle &bounds,
                                       [[maybe_unused]] uint32_t colour,
-                                      uint16_t x,
+                                      int16_t x,
                                       int16_t val,
                                       [[maybe_unused]] const ListData *items,
                                       [[maybe_unused]] Control::Mode mode,
                                       [[maybe_unused]] Control::Variant variant)
 {
-    uint16_t labelYPosition = 13;
+    uint16_t labelYPosition = controlMetrics.faderValueY;
 
     char stringValue[ControlValue::MaxLabelLength + 1];
 
