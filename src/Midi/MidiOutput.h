@@ -27,6 +27,8 @@
 
 #pragma once
 
+#include "ArduinoJson.h"
+
 #include "MidiMessage.h"
 #include "MidiMessageTransport.h"
 #define CIRCULAR_BUFFER_INT_SAFE
@@ -82,6 +84,8 @@
 #define FILE_LUA_SCRIPT 0x0C
 #define FUNCTION 0x0D
 #define FILE_UITOOLKIT 0x70
+#define LOCATION 0x34
+#define FILE_DESCRIPTOR 0x35
 #define CTRL_PORT 0x7B
 #define APP_INFO 0x7C
 #define LOGGER 0x7D
@@ -155,6 +159,22 @@ public:
     static bool sendSysExFile(uint8_t port,
                               const char *filename,
                               ElectraCommand::Object fileType);
+
+    /**
+     * @brief The same, base64 encoded on the way out.
+     *
+     * SysEx carries seven bit bytes, so anything that is not text has to be
+     * encoded: the first byte above 0x7F in a picture would be read as a
+     * status byte and end the message where it stands.
+     */
+    static bool sendSysExFileBase64(uint8_t port,
+                                    const char *filename,
+                                    ElectraCommand::Object fileType);
+
+    /** A directory listing, as the file transfer API spells one. */
+    static void sendFileListing(MidiInterface::Type interface,
+                                uint8_t port,
+                                const JsonDocument &listing);
 
     static void
         sendSysExData(const uint8_t *data, uint32_t length, uint8_t port);

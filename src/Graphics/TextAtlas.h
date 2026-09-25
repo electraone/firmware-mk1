@@ -123,6 +123,18 @@ protected:
                             bool clip);
 
     /**
+     * @brief Sets a chroma colour the inks about to be drawn are not.
+     *
+     * The colour expansion paints the clear bits of a mask in the chroma
+     * colour and then drops every pixel of that colour, which is what makes
+     * the background show through. A glyph asked for in the colour the key
+     * happens to hold is therefore dropped along with them - black text
+     * vanished on a fader's bar, because the key was still the black the
+     * bands are keyed against.
+     */
+    void setExpansionKey(uint32_t ink, uint32_t other);
+
+    /**
      * @brief One glyph, expanded in a colour, cropped to `width`.
      *
      * The crop is on the right only: the mask is read a byte at a time, so a

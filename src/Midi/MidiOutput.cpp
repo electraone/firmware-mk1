@@ -20,6 +20,7 @@
 */
 
 #include "MidiOutput.h"
+#include "Base64.h"
 #include "ArduinoJson.h"
 #include "App.h"
 #include "Trace.h"
@@ -485,6 +486,103 @@ bool MidiOutput::sendSysExFile(uint8_t port,
     return (true);
 }
 
+bool MidiOutput::sendSysExFileBase64(uint8_t port,
+                                     const char *filename,
+                                     ElectraCommand::Object fileType)
+{
+    /* Three bytes in, four out: the encoder works in threes, so the file is
+     * read in threes and nothing has to be carried between chunks. 240 is
+     * what the sysex block streams in elsewhere. */
+    static constexpr uint16_t chunkBytes = 240;
+    static uint8_t chunk[chunkBytes];
+    /* Four characters for every three bytes, and chunkBytes is a
+     * multiple of three so there is never a partial group to pad. */
+    static char encoded[((chunkBytes / 3) * 4) + 1];
+    static_assert((chunkBytes % 3) == 0,
+                  "a chunk that is not a multiple of three would be "
+                  "padded in the middle of the file");
+
+    FileIoStream file;
+
+    if (!(file = Hardware::sdcard.createInputStream(filename))) {
+        System::logger.write(
+            LOG_ERROR,
+            "sendSysExFileBase64: the file does not exist: filename=%s",
+            filename);
+        return (false);
+    }
+
+    stopFlush = 1;
+    MidiOutput::sendSysExHeader(port);
+
+    uint8_t header[2] = { FILE_UPLOAD, (uint8_t)fileType };
+
+    MidiOutput::sendSysExData(header, 2, port);
+
+    uint32_t sent = 0;
+
+    while (file.available()) {
+        int read = file.read(chunk, chunkBytes);
+
+        if (read <= 0) {
+            break;
+        }
+
+        int length = base64_encode(encoded, (char *)chunk, read);
+
+        MidiOutput::sendSysExData((const uint8_t *)encoded, length, port);
+
+        /* The same breather sendSysExFile takes. The host reads as fast as
+         * the link delivers, but the device's own USB buffers do not. */
+        sent += read;
+
+        if ((sent % (chunkBytes * 20)) == 0) {
+            delayMicroseconds(50);
+        }
+    }
+
+    file.close();
+
+    uint8_t end = SYSEX_END;
+
+    MidiOutput::sendSysExData(&end, 1, port);
+
+    stopFlush = 0;
+
+    System::logger.write(LOG_INFO,
+                         "sendSysExFileBase64: sent: filename=%s, bytes=%d",
+                         filename,
+                         (int)sent);
+
+    return (true);
+}
+
+void MidiOutput::sendFileListing(MidiInterface::Type interface,
+                                 uint8_t port,
+                                 const JsonDocument &listing)
+{
+    static uint8_t data[2304];
+
+    data[0] = 0xF0;
+    data[1] = 0x00;
+    data[2] = 0x21;
+    data[3] = 0x45;
+    data[4] = FILE_UPLOAD;
+    data[5] = LOCATION;
+
+    char *jsonStart = (char *)&data[6];
+    serializeJson(listing, jsonStart, sizeof(data) - 8);
+    size_t jsonSize = strlen(jsonStart);
+    data[jsonSize + 6] = SYSEX_END;
+
+    SysexBlock sysexBlock = SysexBlock(App::get()->sysexPool.openMemoryBlock());
+    sysexBlock.writeBytes(data, jsonSize + 7);
+    sysexBlock.close();
+
+    MidiMessage message(sysexBlock);
+    sendMessage(interface, port, message);
+}
+
 /*
  * send USB MIDI packets
  */
@@ -640,12 +738,8 @@ void MidiOutput::send(MidiInterface::Type interface,
                       uint8_t data1,
                       uint8_t data2)
 {
-    TRACE_MIDI_OUT(MidiInterface::getName(interface),
-                   port,
-                   "send",
-                   channel,
-                   data1,
-                   data2);
+    TRACE_MIDI_OUT(
+        MidiInterface::getName(interface), port, "send", channel, data1, data2);
     MidiInterface::get(interface)->send(port, type, channel, data1, data2);
     indicate(interface, port, Direction::out, type);
 }

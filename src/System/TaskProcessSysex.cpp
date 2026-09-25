@@ -304,6 +304,12 @@ void processSysexMemory(uint8_t port, const SysexBlock &sysexBlock)
                         "processElectraSysex::Window repaint resumed");
                 }
                 MidiOutput::sendAck(MidiInterface::Type::MidiUsbDev, port);
+            } else {
+                /* A system call this does not know is the application's, the
+                 * same as a file request it does not know. Without this the
+                 * chain simply ran out and the host waited for a reply that
+                 * was never going to come. */
+                App::get()->handleElectraSysex(port, sysexBlock);
             }
         } else {
             App::get()->handleElectraSysex(port, sysexBlock);

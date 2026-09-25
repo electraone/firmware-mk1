@@ -286,6 +286,8 @@ void TextAtlas::drawStringExpanded(uint16_t x,
         xPosition = width - textWidth;
     }
 
+    setExpansionKey(colour, colour);
+
     uint16_t pen = 0;
 
     for (uint16_t i = 0; text[i] != 0; i++) {
@@ -305,6 +307,21 @@ void TextAtlas::drawStringExpanded(uint16_t x,
                     colour);
 
         pen += glyph.advance;
+    }
+}
+
+void TextAtlas::setExpansionKey(uint32_t ink, uint32_t other)
+{
+    /* Three to choose from and two inks to avoid, so one of them is always
+     * free. None of the three is a colour a preset can ask for. */
+    static const uint16_t candidates[] = { 0xF81F, 0x07E0, 0x001F };
+
+    for (uint8_t i = 0; i < 3; i++) {
+        if ((candidates[i] != (uint16_t)ink)
+            && (candidates[i] != (uint16_t)other)) {
+            setBteChromaColor(candidates[i]);
+            return;
+        }
     }
 }
 

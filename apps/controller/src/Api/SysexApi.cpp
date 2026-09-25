@@ -3,6 +3,8 @@
 #include "ArduinoJson.h"
 #include "MidiOutput.h"
 #include "SubscribedEvents.h"
+#include "FileTransfer.h"
+#include "ScreenCapture.h"
 
 SysexApi::SysexApi(MainDelegate &newDelegate) : delegate(newDelegate)
 {
@@ -29,6 +31,10 @@ bool SysexApi::process(uint8_t port, const SysexBlock &sysexBlock)
             sendSnapshot(port, sysexPayload);
         } else if (object == ElectraCommand::Object::PresetList) {
             sendPresetList(port);
+        } else if (object == ElectraCommand::Object::Location) {
+            sendFileListing(port, sysexPayload);
+        } else if (object == ElectraCommand::Object::File) {
+            sendFile(port, sysexPayload);
         }
     } else if (cmd.isMidiLearnSwitch()) {
         if (object == ElectraCommand::Object::MidiLearnOff) {
@@ -70,6 +76,8 @@ bool SysexApi::process(uint8_t port, const SysexBlock &sysexBlock)
     } else if (cmd.isRemove()) {
         if (object == ElectraCommand::Object::SnapshotInfo) {
             removeSnapshot(port, sysexPayload);
+        } else if (object == ElectraCommand::Object::File) {
+            removeFile(port, sysexPayload);
         }
     } else if (cmd.isSwap()) {
         if (object == ElectraCommand::Object::SnapshotInfo) {
@@ -85,8 +93,12 @@ bool SysexApi::process(uint8_t port, const SysexBlock &sysexBlock)
             setCurrentSnapshotBank(port, bankNumber);
         }
     } else if (cmd.isSystemCall()) {
-        System::logger.write(LOG_ERROR,
-                             "SysexApi::process: application system call");
+        if (object == ElectraCommand::Object::Screenshot) {
+            takeScreenshot(port);
+        } else {
+            System::logger.write(LOG_ERROR,
+                                 "SysexApi::process: application system call");
+        }
     } else {
         System::logger.write(LOG_ERROR,
                              "SysexApi::process: unknown sysex request");
@@ -489,5 +501,59 @@ void SysexApi::subscribeEvents(uint8_t port, uint8_t newEvents)
     System::logger.write(
         LOG_ERROR, "subscribeEvents: new events=%02x", newEvents);
     delegate.setSubscribedEvents(newEvents);
+    MidiOutput::sendAck(MidiInterface::Type::MidiUsbDev, port);
+}
+
+void SysexApi::sendFileListing(uint8_t port, MemoryBlock &sysexPayload)
+{
+    char directory[FileTransfer::maxPathLength];
+
+    if (!FileTransfer::resolveLocation(
+            directory, sizeof(directory), sysexPayload)) {
+        MidiOutput::sendNack(MidiInterface::Type::MidiUsbDev, port);
+        return;
+    }
+
+    FileTransfer::sendListing(port, directory);
+}
+
+void SysexApi::sendFile(uint8_t port, MemoryBlock &sysexPayload)
+{
+    char path[FileTransfer::maxPathLength];
+
+    if (!FileTransfer::resolve(path, sizeof(path), sysexPayload)
+        || !FileTransfer::sendFile(port, path)) {
+        MidiOutput::sendNack(MidiInterface::Type::MidiUsbDev, port);
+        return;
+    }
+
+    /* The file first and the acknowledgement after it, which is the shape the
+     * host tools expect: the ACK is what tells them the transfer ended rather
+     * than stopped. */
+    MidiOutput::sendAck(MidiInterface::Type::MidiUsbDev, port);
+}
+
+void SysexApi::removeFile(uint8_t port, MemoryBlock &sysexPayload)
+{
+    char path[FileTransfer::maxPathLength];
+
+    if (!FileTransfer::resolve(path, sizeof(path), sysexPayload)
+        || !Hardware::sdcard.deleteFile(path)) {
+        MidiOutput::sendNack(MidiInterface::Type::MidiUsbDev, port);
+        return;
+    }
+
+    MidiOutput::sendAck(MidiInterface::Type::MidiUsbDev, port);
+}
+
+void SysexApi::takeScreenshot(uint8_t port)
+{
+    char filename[FileTransfer::maxPathLength];
+
+    if (!ScreenCapture::saveNext(filename, sizeof(filename))) {
+        MidiOutput::sendNack(MidiInterface::Type::MidiUsbDev, port);
+        return;
+    }
+
     MidiOutput::sendAck(MidiInterface::Type::MidiUsbDev, port);
 }

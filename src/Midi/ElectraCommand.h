@@ -68,6 +68,9 @@ public:
         FileLua = 0x0C,
         Function = 0x0D,
         Value = 0x0E,
+        Location = 0x34, /* a directory, by descriptor */
+        File = 0x35, /* one file, by descriptor */
+        Screenshot = 0x76,
         EventSubscription = 0x79,
         FileUi = 0x70,
         Window = 0x7A,
@@ -138,6 +141,12 @@ public:
             return (Object::Value);
         } else if (objectByte == 0x70) {
             return (Object::FileUi);
+        } else if (objectByte == 0x34) {
+            return (Object::Location);
+        } else if (objectByte == 0x35) {
+            return (Object::File);
+        } else if (objectByte == 0x76) {
+            return (Object::Screenshot);
         } else if (objectByte == 0x79) {
             return (Object::EventSubscription);
         } else if (objectByte == 0x7A) {

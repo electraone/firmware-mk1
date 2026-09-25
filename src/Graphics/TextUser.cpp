@@ -182,6 +182,8 @@ void TextUser::printTextSplit(uint16_t x,
         xPosition = width - textWidth;
     }
 
+    setExpansionKey(insideColour, outsideColour);
+
     /* The colour of the region a column falls in. */
     auto colourAt = [&](uint16_t at) {
         return (((at >= bandStart) && (at < bandEnd)) ? insideColour

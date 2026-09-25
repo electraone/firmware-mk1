@@ -45,5 +45,11 @@ private:
     void subscribeEvents(uint8_t port, uint8_t newEvents);
     uint8_t getControlPort(void);
 
+    /* The reading half of the file transfer API - see FileTransfer.h. */
+    void sendFileListing(uint8_t port, MemoryBlock &sysexPayload);
+    void sendFile(uint8_t port, MemoryBlock &sysexPayload);
+    void removeFile(uint8_t port, MemoryBlock &sysexPayload);
+    void takeScreenshot(uint8_t port);
+
     MainDelegate &delegate;
 };
