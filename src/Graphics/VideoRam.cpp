@@ -118,9 +118,7 @@ void VideoRam::readRamData(uint32_t address, uint8_t *data, uint16_t size)
 
     setMemoryMode(MemoryMode::LinearBpp8);
     setAddress(address);
-    for (uint16_t i = 0; i < size; i++) {
-        data[i] = readRAM8();
-    }
+    readRamBulk(data, size);
 
     restoreState();
     setMemoryMode(DEFAULT_BPP);
@@ -142,9 +140,7 @@ void VideoRam::writeRamData(uint32_t address,
 
     setMemoryMode(MemoryMode::LinearBpp8);
     setAddress(address);
-    for (uint16_t i = 0; i < size; i++) {
-        writeRAM8(data[i]);
-    }
+    writeRamBulk(data, size);
 
     restoreState();
     setMemoryMode(DEFAULT_BPP);

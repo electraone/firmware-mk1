@@ -31,6 +31,7 @@
 #include "SplashScreen.h"
 #include "MidiOutput.h"
 #include "Trace.h"
+#include "DisplayBenchmark.h"
 
 /*
  * Prototype of the application creation function.
@@ -50,6 +51,9 @@ void initialise(void)
 
     // Initialise hardware components
     Hardware::initialise();
+
+    // Measure the SPI link before the application starts competing for it.
+    DISPLAY_BENCHMARK_RUN();
 
     // Initilise the base system
     System::initialise();

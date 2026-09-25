@@ -113,6 +113,12 @@ LC_FILES := $(wildcard $(LIBRARYPATH)/*/*.c)
 
 # Behavioural trace for the compatibility harness. Off by default; the SEGGER
 # RTT transport is left out of the build entirely unless TRACE=1 is given.
+# Display SPI benchmark. Runs once at boot and reports through the logger, so
+# it needs the trace to be on as well to be visible.
+ifeq ($(BENCHMARK),1)
+  CPPFLAGS += -DELECTRA_BENCHMARK=1
+endif
+
 ifeq ($(TRACE),1)
   CPPFLAGS += -DELECTRA_TRACE=1 \
               -DELECTRA_TRACE_BUFFER_SIZE=$(TRACE_BUFFER_SIZE) \

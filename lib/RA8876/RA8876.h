@@ -11,7 +11,14 @@
 #define RA8876_FONT_FLAG_XLAT_FULLWIDTH                                        \
     0x01 // Translate ASCII to Unicode fullwidth forms
 
+/* The peripheral divides the bus clock, so anything at or above F_BUS/2 gives
+ * the same 30 MHz. Asking for more is silently rounded down, not an error. */
 #define RA8876_SPI_SPEED 32000000
+
+/* Burst reads run slower than writes: the controller cannot serve back to
+ * back reads at the write clock and drops bytes without any indication that
+ * it did. Measured on the hardware, see tools/compat/SPI-PERFORMANCE.md. */
+#define RA8876_SPI_READ_SPEED 10000000
 
 #define RA8876_DATA_WRITE 0x80
 #define RA8876_DATA_READ 0xC0
@@ -517,10 +524,44 @@ public:
 
     // Support for bulk data transfers
     void armMemoryWrite(void);
-    void writeData(uint8_t *p_src, size_t length);
+    void writeData(const uint8_t *p_src, size_t length);
+    void readDataBulk(uint8_t *p_dst, size_t length);
+
+    /** Block access to the memory the address was last set to. These move one
+     *  SPI byte per stored byte; the single value accessors cost four. */
+    void writeRamBulk(const uint8_t *data, size_t length);
+    void readRamBulk(uint8_t *data, size_t length);
 
 private:
     void waitForStatus(uint8_t status);
+
+public:
+    /** How many status polls a wait may take before it gives up. At 30 MHz a
+     *  poll is about one microsecond, so this is roughly a 50 ms ceiling:
+     *  far longer than any legitimate operation, short enough to survive. */
+    static const uint32_t statusWaitLimit = 50000;
+
+    /** Number of waits that hit the limit. Non-zero means the display stopped
+     *  answering at some point, and whatever was drawn then is suspect. */
+    static uint32_t statusWaitTimeouts;
+
+    /** How many bytes a single burst to the memory port may carry before the
+     *  write FIFO is given a chance to drain. The bus can deliver bytes
+     *  faster than the controller consumes them, and a burst that outruns it
+     *  loses bytes with no indication. Zero disables the throttling, which is
+     *  only useful for measuring how bad that is. */
+    static size_t bulkWriteChunk;
+
+    /** Clock used for everything except burst reads. The peripheral rounds
+     *  this down to a divisor of the bus clock, so 30 MHz is the real ceiling
+     *  whatever is asked for. */
+    static uint32_t writeClock;
+
+    /** Clock used for burst reads, which the controller cannot sustain at the
+     *  write clock. Determined by measurement; see DisplayBenchmark. */
+    static uint32_t readClock;
+
+private:
 
     void writeCmd(uint8_t x);
     void writeData(uint8_t x);

@@ -1,6 +1,15 @@
 #include "RA8876.h"
 #include "pins_electra.h"
 
+uint32_t RA8876::statusWaitTimeouts = 0;
+
+/* The write path keeps up at the full clock, so bursts need no throttling.
+ * Left configurable because the benchmark proves it rather than assuming it. */
+size_t RA8876::bulkWriteChunk = 0;
+
+uint32_t RA8876::writeClock = RA8876_SPI_SPEED;
+uint32_t RA8876::readClock = RA8876_SPI_READ_SPEED;
+
 RA8876::SdramInfo defaultSdramInfo = {
     120, // 120 MHz
     3, // CAS latency 3
@@ -734,13 +743,24 @@ bool RA8876::isStateLocked(void)
     return (savedState.locked);
 }
 
+/**
+ * @brief Waits for the given status bits to clear.
+ *
+ * @attention the wait is bounded. It used to spin forever, so a display that
+ * stopped answering, or a bus reading all ones, took the whole firmware down
+ * with it and left no trace of why. Giving up keeps the rest of the system
+ * alive and counts the event so it can be seen.
+ */
 void RA8876::waitForStatus(uint8_t status)
 {
+    uint32_t attempts = 0;
+
     while (readStatus() & status) {
-    //System::logger.write(LOG_ERROR, "gen status: %x", readStatus());
-        asm("nop");
+        if (++attempts > statusWaitLimit) {
+            statusWaitTimeouts++;
+            return;
+        }
     }
-    //System::logger.write(LOG_ERROR, "gen final status: %x", readStatus());
 }
 
 void RA8876::waitCompleted(void)
@@ -1355,11 +1375,15 @@ uint16_t RA8876::getActiveWindowHeight(void)
     return (activeWindowHeight);
 }
 
+/** @attention every one of these two byte cycles is sent as a single 16 bit
+ * frame rather than as two 8 bit transfers. The SPI peripheral stalls on the
+ * transfer complete flag once per frame, so halving the number of frames
+ * halves the stall count. The bytes on the wire are identical.
+ */
 void RA8876::writeCmd(uint8_t x)
 {
     LCD_CS_CLEAR;
-    SPI.transfer(RA8876_CMD_WRITE);
-    SPI.transfer(x);
+    SPI.transfer16(((uint16_t)RA8876_CMD_WRITE << 8) | x);
     LCD_CS_SET;
 }
 
@@ -1368,37 +1392,111 @@ void RA8876::armMemoryWrite(void)
     writeCmd(RA8876_REG_MRWDP);
 }
 
-void RA8876::writeData(uint8_t *p_src, size_t length)
+/**
+ * @brief Streams a buffer into the memory port in one chip select cycle.
+ *
+ * @attention this used to walk the buffer in sixteen byte steps and transfer
+ * four bytes at a time. That read past the end of the buffer whenever the
+ * length was not a multiple of sixteen, and it also passed the caller's
+ * buffer as both source and destination, so the received bytes overwrote it.
+ * One transfer for the whole buffer is both correct and faster, because the
+ * transmit queue is drained once instead of once per chunk.
+ */
+void RA8876::writeData(const uint8_t *p_src, size_t length)
 {
-    LCD_CS_CLEAR;
-    SPI.transfer(RA8876_DATA_WRITE);
-
-    for (uint32_t i = 0; i < length; i += 16) {
-        for (uint8_t a = 0; a < 4; a++) {
-            uint8_t *p_x = (((uint8_t *)p_src) + (i + (a * 4)));
-            SPI.transfer(p_x, 4);
-        }
+    if ((p_src == nullptr) || (length == 0)) {
+        return;
     }
-    
-    LCD_CS_SET;
+
+    /* The display accepts bytes more slowly than the bus can deliver them, so
+     * a burst is broken into pieces and the write FIFO is given the chance to
+     * drain between them. Without this the controller silently drops roughly
+     * three bytes in eight. */
+    size_t remaining = length;
+    const uint8_t *source = p_src;
+
+    while (remaining > 0) {
+        size_t chunk = remaining;
+
+        if ((bulkWriteChunk != 0) && (chunk > bulkWriteChunk)) {
+            chunk = bulkWriteChunk;
+        }
+
+        waitWriteFifo();
+
+        LCD_CS_CLEAR;
+        SPI.transfer(RA8876_DATA_WRITE);
+        SPI.transfer(source, nullptr, chunk);
+        LCD_CS_SET;
+
+        source += chunk;
+        remaining -= chunk;
+    }
+
     waitWriteFifo();
+}
+
+/**
+ * @brief Streams a buffer out of the memory port in one chip select cycle.
+ *
+ * The memory pointer advances by itself after every access, so a single read
+ * cycle can carry any number of consecutive bytes.
+ */
+void RA8876::readDataBulk(uint8_t *p_dst, size_t length)
+{
+    if ((p_dst == nullptr) || (length == 0)) {
+        return;
+    }
+
+    /* The controller cannot serve a continuous read at the clock it happily
+     * accepts writes at: driven flat out it delivers only five bytes in
+     * eight, and the ones it drops are indistinguishable from data. Reads
+     * therefore run at their own, lower clock. Writes keep the full rate. */
+    SPI.beginTransaction(SPISettings(readClock, MSBFIRST, SPI_MODE3));
+
+    LCD_CS_CLEAR;
+    SPI.transfer(RA8876_DATA_READ);
+    SPI.transfer(nullptr, p_dst, length);
+    LCD_CS_SET;
+
+    SPI.beginTransaction(SPISettings(writeClock, MSBFIRST, SPI_MODE3));
+}
+
+/**
+ * @brief Writes a block of bytes to the memory the address was set to.
+ *
+ * One command cycle arms the memory port, then the whole block travels in a
+ * single data cycle. That is one SPI byte per stored byte, where writing the
+ * same block a byte at a time costs four.
+ */
+void RA8876::writeRamBulk(const uint8_t *data, size_t length)
+{
+    armMemoryWrite();
+    writeData(data, length);
+}
+
+/**
+ * @brief Reads a block of bytes from the memory the address was set to.
+ */
+void RA8876::readRamBulk(uint8_t *data, size_t length)
+{
+    writeCmd(RA8876_REG_MRWDP);
+    readDataBulk(data, length);
 }
 
 void RA8876::writeData(uint8_t x)
 {
     LCD_CS_CLEAR;
-    SPI.transfer(RA8876_DATA_WRITE);
-    SPI.transfer(x);
+    SPI.transfer16(((uint16_t)RA8876_DATA_WRITE << 8) | x);
     LCD_CS_SET;
 }
 
 uint8_t RA8876::readData(void)
 {
     LCD_CS_CLEAR;
-    SPI.transfer(RA8876_DATA_READ);
-    uint8_t x = SPI.transfer(0);
+    uint16_t x = SPI.transfer16((uint16_t)RA8876_DATA_READ << 8);
     LCD_CS_SET;
-    return (x);
+    return ((uint8_t)(x & 0xFF));
 }
 
 // Reads the special status register.
@@ -1408,12 +1506,11 @@ uint8_t RA8876::readStatus(void)
 {
     noInterrupts();
     LCD_CS_CLEAR;
-    SPI.transfer(RA8876_STATUS_READ);
-    uint8_t x = SPI.transfer(0);
+    uint16_t x = SPI.transfer16((uint16_t)RA8876_STATUS_READ << 8);
     LCD_CS_SET;
     interrupts();
 
-    return (x);
+    return ((uint8_t)(x & 0xFF));
 }
 
 void RA8876::writeRegNBytes(uint8_t reg, uint8_t numBytes, uint32_t x)
@@ -1449,8 +1546,13 @@ uint32_t RA8876::readRegNBytes(uint8_t reg, uint8_t numBytes)
 
     noInterrupts();
 
+    /** @attention the register number is advanced for every byte, exactly as
+     * writeRegNBytes() does. Without it readReg16()/readReg32() read the same
+     * low byte repeatedly, which silently corrupted saveState() and the
+     * cursor accessors for any coordinate above 255.
+     */
     for (uint8_t i = 0; i < numBytes; i++) {
-        writeCmd(reg);
+        writeCmd(reg + i);
         x |= (readData() << (i * 8));
     }
     interrupts();
