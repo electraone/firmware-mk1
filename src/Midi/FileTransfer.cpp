@@ -143,11 +143,23 @@ bool FileTransfer::resolve(char *path, size_t size, MemoryBlock &descriptor)
 void FileTransfer::sendListing(uint8_t port, const char *directory)
 {
     StaticJsonDocument<listingCapacity> doc;
-    JsonArray files = doc.createNestedArray("files");
+
+    /* The shape the API publishes, and the host tools read by name: a
+     * version, the directory this answers for, whether it is there at all,
+     * and then the files. The editor will not accept a listing without the
+     * path - it is how it tells the answer it asked for from one it did
+     * not - and a listing of nothing but files left it waiting. */
+    doc["version"] = 1;
+    doc["path"] = directory;
 
     FsFile dir;
+    const bool exists = dir.open(directory, O_RDONLY);
 
-    if (dir.open(directory, O_RDONLY)) {
+    doc["exists"] = exists;
+
+    JsonArray files = doc.createNestedArray("files");
+
+    if (exists) {
         FsFile entry;
         char name[64];
 
