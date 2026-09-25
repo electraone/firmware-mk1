@@ -669,10 +669,26 @@ bool Preset::parseGroups(File &file)
         return (true);
     }
 
-    StaticJsonDocument<256> doc;
+    /* Filtered and given room, as a control is. A group used to be read whole
+     * into 256 bytes, which was enough until it was given a font: the nested
+     * object tipped it over, deserializeJson answered NoMemory, and the whole
+     * preset was refused - with nothing on the screen to say which of its
+     * hundred objects had done it. */
+    StaticJsonDocument<512> doc;
+    StaticJsonDocument<256> filter;
+
+    filter["id"] = true;
+    filter["pageId"] = true;
+    filter["name"] = true;
+    filter["color"] = true;
+    filter["variant"] = true;
+    filter["font"] = true;
+    filter["visible"] = true;
+    filter["bounds"] = true;
 
     do {
-        auto err = deserializeJson(doc, file);
+        auto err =
+            deserializeJson(doc, file, DeserializationOption::Filter(filter));
 
         if (err && (err.code() != DeserializationError::InvalidInput)) {
             System::logger.write(
@@ -1098,7 +1114,11 @@ Group Preset::parseGroup(JsonObject jGroup)
     uint32_t colour =
         Colours565::fromString(jGroup["color"].as<const char *>());
     Group::Variant variantType = Group::translateVariant(jGroup["variant"]);
-    return (Group(groupId, pageId, bounds, name, colour, variantType));
+    Group group(groupId, pageId, bounds, name, colour, variantType);
+
+    group.setFont(parseFont(jGroup["font"]));
+
+    return (group);
 }
 
 /*--------------------------------------------------------------------------*/

@@ -32,6 +32,7 @@
 #include "Colours.h"
 #include "Component.h"
 #include "System.h"
+#include "TextBase.h"
 
 class Group
 {
@@ -39,7 +40,12 @@ private:
     static constexpr uint8_t maxLabelLength = 40;
 
 public:
-    enum class Variant { Default = 0, Highlighted = 1 };
+    /* Numbered as the mk2 numbers its control variants, gaps and all, so that
+     * the two read the same preset the same way. */
+    enum class Variant { Default = 0, Highlighted = 1, Buttonlike = 6 };
+
+    /** The face a group draws its label in. */
+    using Font = TextFont;
 
     Group()
         : id(0),
@@ -50,6 +56,7 @@ public:
     {
         setLabel(nullptr);
         variant = (uint8_t)Variant::Default;
+        setFont(Font());
     }
 
     Group(uint16_t newId,
@@ -67,6 +74,7 @@ public:
     {
         setLabel(newLabel);
         variant = (uint8_t)newVariant;
+        setFont(Font());
     }
 
     virtual ~Group() = default;
@@ -136,6 +144,22 @@ public:
         return ((Variant)variant);
     }
 
+    /* Four bits, taken from the ones the bitfield already had going spare.
+     * A group is held for every group of every preset, so a struct or three
+     * bytes here would be paid for on every one of them. */
+    void setFont(const Font &newFont)
+    {
+        fontSize = (uint8_t)newFont.size;
+        fontFace = (uint8_t)newFont.face;
+        fontSpacing = (uint8_t)newFont.spacing;
+    }
+
+    Font getFont(void) const
+    {
+        return (Font{
+            (TextSize)fontSize, (TextFace)fontFace, (TextSpacing)fontSpacing });
+    }
+
     void setVisible(bool shouldBeVisible)
     {
         visible = shouldBeVisible;
@@ -191,6 +215,8 @@ public:
         if (variantText) {
             if (strcmp(variantText, "highlighted") == 0) {
                 return (Variant::Highlighted);
+            } else if (strcmp(variantText, "buttonlike") == 0) {
+                return (Variant::Buttonlike);
             }
         }
         return (Variant::Default);
@@ -202,7 +228,10 @@ private:
         uint8_t pageId : 4;
         uint8_t visible : 1;
         uint32_t colour : 24;
-        uint8_t variant : 2;
+        uint8_t variant : 3;
+        uint8_t fontSize : 2;
+        uint8_t fontFace : 1;
+        uint8_t fontSpacing : 1;
     };
 
     char label[maxLabelLength + 1];
@@ -210,5 +239,9 @@ private:
 
     Component *component;
 };
+
+static_assert(sizeof(Group) == 72,
+              "sizeof(Group) has changed - every preset pays for it once per "
+              "group, so check that it was meant");
 
 typedef std::map<uint16_t, Group> Groups;

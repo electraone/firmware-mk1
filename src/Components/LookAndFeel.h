@@ -77,6 +77,50 @@ public:
     /** The tallest paintCheckbox() draws, whatever bounds it is given. */
     static constexpr uint16_t checkboxMaxHeight = 42;
 
+    /**
+     * @brief How tall the label bar of a group in this face is.
+     *
+     * The line height plus three, which is the fifteen the group painters used
+     * to have written into them: the small face they all drew in is twelve
+     * pixels high. A group asking for a bigger face gets a taller bar rather
+     * than a label sticking out of one.
+     */
+    static uint16_t groupLabelBarHeight(Graphics &g, const TextFont &font);
+
+    /*
+     * The three shapes a group takes. `ground` is what is behind the group -
+     * the page's background, or the alternate one when the group's control set
+     * is not the active one - and is what the label bar is cleared with. The
+     * mk2 has no alternate ground for a group and names none; everything else
+     * about these three is its.
+     */
+
+    /** The frame, with the label sitting in a gap in its top edge. */
+    static void paintStandardGroup(Graphics &g,
+                                   const Rectangle &bounds,
+                                   uint32_t colour,
+                                   const char *label,
+                                   const TextFont &font,
+                                   uint32_t ground = backgroundColour);
+
+    /** The same frame, with the label in a filled bar above it. */
+    static void paintHighlightedGroup(Graphics &g,
+                                      const Rectangle &bounds,
+                                      uint32_t colour,
+                                      const char *label,
+                                      const TextFont &font,
+                                      uint32_t ground = backgroundColour);
+
+    /** A button half the group's width: filled, or an outline when `filled`
+     *  is false - which is what an overlay entry naming black asks for. */
+    static void paintButtonlikeGroup(Graphics &g,
+                                     const Rectangle &bounds,
+                                     uint32_t colour,
+                                     const char *label,
+                                     bool filled,
+                                     const TextFont &font,
+                                     uint32_t ground = backgroundColour);
+
     static void paintPad(Graphics &g,
                          const Rectangle &bounds,
                          uint32_t colour,

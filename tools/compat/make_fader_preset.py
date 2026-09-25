@@ -20,8 +20,10 @@ COLOURS = ["FFFFFF", "F45C51", "F49500", "529DEC", "03A598", "C44795"]
 
 controls = []
 overlays = []
+groups = []
 pages = []
 next_id = 1
+next_group_id = 1
 
 
 def control(page, slot, name, value, **extra):
@@ -102,6 +104,32 @@ def pad(page, slot, name, on, **extra):
     body.update(extra)
     controls.append(body)
     next_id += 1
+
+
+def group(page, column, span, row, rows, label, **extra):
+    """One group, over `span` columns starting at `column`.
+
+    `rows` of zero is the bar on its own, with nothing boxed under it; one or
+    more boxes that many rows of controls.
+    """
+    global next_group_id
+
+    x = COLUMN_X[column]
+    width = COLUMN_X[column + span - 1] + 146 - x
+    y = ROW_Y[row] - 22
+    height = 16 if rows == 0 else (ROW_Y[row + rows - 1] + 56 + 6 - y)
+
+    body = {
+        "id": next_group_id,
+        "pageId": page,
+        "name": label,
+        "color": extra.pop("color", "529DEC"),
+        "bounds": [x, y, width, height],
+        "visible": True,
+    }
+    body.update(extra)
+    groups.append(body)
+    next_group_id += 1
 
 
 def page(number, name):
@@ -327,6 +355,37 @@ for index, colour in enumerate(COLOURS):
     pad(11, index + 6, f"COLOUR {index + 1}", index % 2 == 1,
         variant="checkbox", color=colour)
 
+# Page twelve: groups. Three shapes - the frame with the label in a gap in its
+# top edge, the same frame with the label in a filled bar, and a button half
+# the group's width - each over a pair of faders so the boxing can be seen,
+# then the bar on its own, then the faces.
+page(12, "GROUPS")
+
+group(12, 0, 2, 0, 1, "DEFAULT")
+group(12, 2, 2, 0, 1, "HIGHLIGHTED", variant="highlighted")
+group(12, 4, 2, 0, 1, "BUTTONLIKE", variant="buttonlike")
+
+group(12, 0, 2, 1, 1, "LARGE BOLD", font={"size": "large", "weight": "bold"},
+      color="C44795")
+group(12, 2, 2, 1, 1, "SMALL MONO",
+      font={"size": "small", "spacing": "monospaced"}, color="F45C51")
+group(12, 4, 2, 1, 1, "HUGE", variant="highlighted", font={"size": "huge"})
+
+# The third row falls outside the active control set's band, so these three
+# come up dimmed - which is the one thing about a group this page could not
+# otherwise show.
+group(12, 0, 2, 2, 0, "BAR ONLY")
+group(12, 2, 2, 2, 0, "BAR ONLY", variant="highlighted", color="F49500")
+group(12, 4, 2, 2, 0, "BAR ONLY", variant="buttonlike", color="03A598")
+
+# All on one control set, so none of the three rows is dimmed and the shapes
+# can be compared. Slots four and five are left empty: a buttonlike group is a
+# button, not a frame, and controls placed inside one are drawn over it.
+for slot in range(18):
+    if slot in (4, 5):
+        continue
+    control(12, slot, f"F{slot + 1}", 40 + slot * 4, controlSetId=1)
+
 preset = {
     "version": 2,
     "name": "CONTROLS",
@@ -336,7 +395,7 @@ preset = {
         {"id": 1, "name": "Generic MIDI", "port": 1, "channel": 1},
     ],
     "overlays": overlays,
-    "groups": [],
+    "groups": groups,
     "controls": controls,
 }
 

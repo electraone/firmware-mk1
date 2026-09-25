@@ -30,7 +30,6 @@ GroupControl::GroupControl(const Group &groupToAssign)
 
     setLabel(group.getLabel());
     setName(group.getLabel());
-    setHighlighted(group.getVariant() == Group::Variant::Highlighted);
     setColour(group.getColour565());
     setVisible(group.isVisible());
 }
@@ -47,12 +46,6 @@ void GroupControl::setLabel(const char *newLabel)
     repaint();
 }
 
-void GroupControl::setHighlighted(bool shouldBeHighlighted)
-{
-    isHighligted = shouldBeHighlighted;
-    repaint();
-}
-
 void GroupControl::setUseAltBackground(bool shouldUseAltBackground)
 {
     useAltBackground = shouldUseAltBackground;
@@ -63,60 +56,35 @@ bool GroupControl::getUseAltBackground(void) const
     return (useAltBackground);
 }
 
+/*
+ * Black is what an unlit button is, and a group asking for it is how a
+ * buttonlike group says so - the button is drawn as an outline for that colour
+ * and solid for every other. The outline is drawn in the group's own colour
+ * rather than in black, which would draw nothing.
+ */
 void GroupControl::paint(Graphics &g)
 {
-    Rectangle bounds = getBounds();
-    uint16_t width = bounds.getWidth();
-    uint16_t height = bounds.getHeight();
+    const Rectangle bounds = getBounds();
+    const Group::Font font = group.getFont();
+    const uint32_t ground = getUseAltBackground()
+                                ? LookAndFeel::altBackgroundColour
+                                : LookAndFeel::backgroundColour;
 
-    if (isHighligted) {
-        paintHighligted(g, width, height, colour);
+    if (group.getVariant() == Group::Variant::Highlighted) {
+        LookAndFeel::paintHighlightedGroup(
+            g, bounds, colour, label, font, ground);
+    } else if (group.getVariant() == Group::Variant::Buttonlike) {
+        const bool filled = (colour != Colours565::black);
+
+        LookAndFeel::paintButtonlikeGroup(g,
+                                          bounds,
+                                          filled ? colour
+                                                 : group.getColour565(),
+                                          label,
+                                          filled,
+                                          font,
+                                          ground);
     } else {
-        paintDefault(g, width, height, colour);
-        g.user().paintTextPlaceHolder(0,
-                                      2,
-                                      label,
-                                      width,
-                                      TextAlign::center,
-                                      getUseAltBackground()
-                                          ? LookAndFeel::altBackgroundColour
-                                          : LookAndFeel::backgroundColour,
-                                      TextSize::small);
-    }
-
-    if (strlen(label) > 0) {
-        g.user().printText(0,
-                           2,
-                           label,
-                           width,
-                           TextAlign::center,
-                           Colours565::white,
-                           TextSize::small);
-    }
-}
-
-void GroupControl::paintHighligted(Graphics &g,
-                                   uint16_t width,
-                                   uint16_t height,
-                                   uint32_t colour)
-{
-    if (height > 20) {
-        g.setColour(Colours565::darker(colour, 0.2));
-        g.drawRoundRect(0, 7, width, height - 7, 2);
-    }
-    g.setColour(Colours565::darker(colour, 0.25));
-    g.fillRoundRect(0, 0, width, 15, 2);
-}
-
-void GroupControl::paintDefault(Graphics &g,
-                                uint16_t width,
-                                uint16_t height,
-                                uint32_t colour)
-{
-    g.setColour(Colours565::darker(colour, 0.2));
-    if (height < 20) {
-        g.drawLine(0, 7, width, 7);
-    } else {
-        g.drawRoundRect(0, 7, width, height - 7, 2);
+        LookAndFeel::paintStandardGroup(g, bounds, colour, label, font, ground);
     }
 }

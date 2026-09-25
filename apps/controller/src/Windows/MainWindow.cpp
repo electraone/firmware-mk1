@@ -635,11 +635,12 @@ void MainWindow::setGroupVariant(uint16_t groupId, uint8_t newVariant)
     if (group.isValid()) {
         group.setVariant((Group::Variant)newVariant);
 
-        if (Component *c = group.getComponent()) {
-            if (GroupControl *gc = dynamic_cast<GroupControl *>(c)) {
-                gc->setHighlighted(newVariant);
-                repaintPage();
-            }
+        /* The component reads the variant off the group when it paints, so
+         * there is nothing to push into it - and nothing to get wrong: this
+         * used to hand a variant number to a setter taking a bool, which made
+         * every variant but Default highlighted. */
+        if (group.getComponent()) {
+            repaintPage();
         }
     }
 }

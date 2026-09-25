@@ -730,6 +730,144 @@ void LookAndFeel::paintBarVertical(Graphics &g,
     g.drawRect(padding, 0, barWidth, bounds.getHeight());
 }
 
+uint16_t LookAndFeel::groupLabelBarHeight(Graphics &g, const TextFont &font)
+{
+    return ((uint16_t)(g.user().getLineHeight(font.size, font.face) + 3));
+}
+
+void LookAndFeel::paintStandardGroup(Graphics &g,
+                                     const Rectangle &bounds,
+                                     uint32_t colour,
+                                     const char *label,
+                                     const TextFont &font,
+                                     uint32_t ground)
+{
+    const uint16_t width = bounds.getWidth();
+    const uint16_t height = bounds.getHeight();
+    const uint16_t barHeight = groupLabelBarHeight(g, font);
+    const uint16_t frameY = barHeight / 2;
+
+    g.setColour(ground);
+    g.fillRect(0, 0, width, barHeight);
+
+    g.setColour(Colours565::darker(colour, 0.2));
+    if (height < (barHeight + 5)) {
+        g.drawLine(0, frameY, width, frameY);
+    } else {
+        g.drawRoundRect(0, frameY, width, height - frameY, 2);
+    }
+
+    g.user().paintTextPlaceHolder(0,
+                                  2,
+                                  label,
+                                  width,
+                                  TextAlign::center,
+                                  ground,
+                                  font.size,
+                                  font.face,
+                                  font.spacing);
+
+    /* The label is in the group's own colour, the one the user picked, with
+     * the frame a dimmer shade of it. The highlighted and buttonlike variants
+     * keep a white label. */
+    if (strlen(label) > 0) {
+        g.user().printText(0,
+                           2,
+                           label,
+                           width,
+                           TextAlign::center,
+                           colour,
+                           font.size,
+                           font.face,
+                           font.spacing);
+    }
+}
+
+void LookAndFeel::paintHighlightedGroup(Graphics &g,
+                                        const Rectangle &bounds,
+                                        uint32_t colour,
+                                        const char *label,
+                                        const TextFont &font,
+                                        uint32_t ground)
+{
+    const uint16_t width = bounds.getWidth();
+    const uint16_t height = bounds.getHeight();
+    const uint16_t barHeight = groupLabelBarHeight(g, font);
+    const uint16_t frameY = barHeight / 2;
+
+    g.setColour(ground);
+    g.fillRect(0, 0, width, barHeight);
+
+    if (height > (barHeight + 5)) {
+        g.setColour(Colours565::darker(colour, 0.2));
+        g.drawRoundRect(0, frameY, width, height - frameY, 2);
+    }
+    g.setColour(Colours565::darker(colour, 0.25));
+    g.fillRoundRect(0, 0, width, barHeight, 2);
+
+    if (strlen(label) > 0) {
+        g.user().printText(0,
+                           2,
+                           label,
+                           width,
+                           TextAlign::center,
+                           Colours565::white,
+                           font.size,
+                           font.face,
+                           font.spacing);
+    }
+}
+
+void LookAndFeel::paintButtonlikeGroup(Graphics &g,
+                                       const Rectangle &bounds,
+                                       uint32_t colour,
+                                       const char *label,
+                                       bool filled,
+                                       const TextFont &font,
+                                       uint32_t ground)
+{
+    const uint16_t width = bounds.getWidth();
+    const uint16_t height = bounds.getHeight();
+    const uint16_t buttonWidth = width / 2;
+    const uint16_t buttonX = (width - buttonWidth) / 2;
+    const uint16_t barHeight = groupLabelBarHeight(g, font);
+    const uint16_t labelY =
+        (height > barHeight) ? ((height - barHeight) / 2 + 2) : 2;
+    constexpr uint16_t radius = 4;
+
+    g.setColour(ground);
+    g.fillRect(0, 0, width, height);
+
+    if (filled) {
+        g.setColour(Colours565::darker(colour, 0.25f));
+        g.fillRoundRect(buttonX, 0, buttonWidth, height, radius);
+    } else {
+        g.setColour(Colours565::darker(colour, 0.4f));
+        g.drawRoundRect(buttonX, 0, buttonWidth, height, radius);
+        g.user().paintTextPlaceHolder(buttonX,
+                                      labelY,
+                                      label,
+                                      buttonWidth,
+                                      TextAlign::center,
+                                      ground,
+                                      font.size,
+                                      font.face,
+                                      font.spacing);
+    }
+
+    if (strlen(label) > 0) {
+        g.user().printText(buttonX,
+                           labelY,
+                           label,
+                           buttonWidth,
+                           TextAlign::center,
+                           Colours565::white,
+                           font.size,
+                           font.face,
+                           font.spacing);
+    }
+}
+
 /*
  * A pad: a box in a dark shade of the control's colour, a lighter shade of it
  * while the pad is on, and down the left of a pad that is on a strip of the
