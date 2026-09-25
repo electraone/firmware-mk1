@@ -120,7 +120,6 @@ public:
 
     void setColour(uint32_t newColour)
     {
-        System::logger.write(LOG_ERROR, "setColour: 0x%06x", newColour);
         colour = newColour;
     }
 
