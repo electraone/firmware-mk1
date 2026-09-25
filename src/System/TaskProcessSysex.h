@@ -30,19 +30,29 @@
 struct SysexTransport {
     enum Type { File, Memory, None };
 
-    SysexTransport() : transferType(None)
+    SysexTransport() : transferType(None), transactionId(0)
     {
     }
 
     SysexTransport(LocalFile newFile,
                    ElectraCommand::Object newType,
-                   uint8_t newPort)
-        : transferType(File), file(newFile), type(newType), port(newPort)
+                   uint8_t newPort,
+                   uint16_t newTransactionId = 0)
+        : transferType(File),
+          file(newFile),
+          type(newType),
+          port(newPort),
+          transactionId(newTransactionId)
     {
     }
 
-    SysexTransport(SysexBlock newSysexBlock, uint8_t newPort)
-        : transferType(Memory), sysexBlock(newSysexBlock), port(newPort)
+    SysexTransport(SysexBlock newSysexBlock,
+                   uint8_t newPort,
+                   uint16_t newTransactionId = 0)
+        : transferType(Memory),
+          sysexBlock(newSysexBlock),
+          port(newPort),
+          transactionId(newTransactionId)
     {
     }
 
@@ -53,6 +63,19 @@ struct SysexTransport {
     SysexBlock sysexBlock;
     ElectraCommand::Object type;
     uint8_t port;
+
+    /**
+     * @brief The transaction the request arrived with.
+     *
+     * Carried with the message rather than held in one place, because a
+     * message is parsed when it arrives and answered when the queue reaches
+     * it, and more can arrive in between. A screenshot takes over a second,
+     * and the host's next message overwrote the id before the picture was
+     * finished - so the acknowledgement went out under somebody else's
+     * number, and the editor, which matches replies to requests by that
+     * number, matched nothing and waited.
+     */
+    uint16_t transactionId;
 };
 
 #define SYSEX_QUEUE_SIZE 32

@@ -43,7 +43,8 @@ public:
           fileType(ElectraCommand::Object::Unknown),
           writeToFile(false),
           filename(nullptr),
-          hasTransactionId(false)
+          hasTransactionId(false),
+          transactionId(0)
     {
     }
 
@@ -80,15 +81,13 @@ public:
                                && (sysExData[3] == 0x45)
                                && (sysExData[4] == 0x00);
 
-            MidiOutput::setTransactionId(
-                hasTransactionId
-                    ? (uint16_t)(sysExData[5] | (sysExData[6] << 7))
-                    : 0);
+            transactionId = hasTransactionId
+                                ? (uint16_t)(sysExData[5] | (sysExData[6] << 7))
+                                : 0;
 #ifdef DEBUG
             if (hasTransactionId) {
-                System::logger.write(LOG_ERROR,
-                                     "handleSysEx: transaction id=%d",
-                                     MidiOutput::getTransactionId());
+                System::logger.write(
+                    LOG_ERROR, "handleSysEx: transaction id=%d", transactionId);
             }
 #endif
 
@@ -220,10 +219,11 @@ public:
 
             if (writeToFile) {
                 file.close();
-                sysexQueue.push(
-                    SysexTransport(LocalFile(filename), fileType, portUsed));
+                sysexQueue.push(SysexTransport(
+                    LocalFile(filename), fileType, portUsed, transactionId));
             } else {
-                sysexQueue.push(SysexTransport(sysexBlock, portUsed));
+                sysexQueue.push(
+                    SysexTransport(sysexBlock, portUsed, transactionId));
             }
 
             App::get()->enableMidi = true;
@@ -263,4 +263,5 @@ private:
     uint8_t decodedData[USB_MIDI_SYSEX_MAX];
     const char *filename;
     bool hasTransactionId;
+    uint16_t transactionId;
 };

@@ -38,6 +38,10 @@ void processSysex(void)
     while (sysexQueue.isEmpty() != true) {
         SysexTransport st = sysexQueue.shift();
 
+        /* Published just before the message is answered, not when it arrived:
+         * everything that replies from here reads it. */
+        MidiOutput::setTransactionId(st.transactionId);
+
         if (st.transferType == SysexTransport::Type::File) {
             processSysexFile(st.port, st.file, st.type);
         } else if (st.transferType == SysexTransport::Type::Memory) {
