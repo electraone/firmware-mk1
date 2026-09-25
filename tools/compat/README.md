@@ -139,3 +139,8 @@ slot, and the script has to be on the card by then to be picked up.
 - A reset disconnects the unit from USB. The harness waits for it to enumerate
   again before sending anything, which is why a recording takes a few seconds
   longer than the scenario itself.
+- Close other MIDI software before recording. Anything that queries the unit,
+  an editor or a DAW scanning ports, makes it answer, and that answer lands in
+  the recording as behaviour the firmware did not initiate. It shows up as an
+  addition rather than a break, so it does not fail a comparison, but it is
+  noise.
