@@ -27,6 +27,7 @@ KNOWN_CATEGORIES = {
     "PM": "parameter map change",
     "MARK": "harness marker",
     "LOG": "message the firmware logged",
+    "MEM": "memory in use at a named stage",
 }
 
 # The firmware's own log text is free form and routinely contains '=', so it

@@ -439,19 +439,52 @@ static void testVramStore(void)
                            && (third == VramStore::invalidHandle)
                            && (tiny.getRejectedCount() == 1);
 
+    /* A reserved record is written over and over, which is what a value
+     * label does. It must take its space once, hold whatever was last put in
+     * it, and never reach the record that follows however long the data. */
+    VramStore::Handle reserved = store.reserve(16);
+    VramStore::Handle neighbour = store.storeString("neighbour");
+    size_t usedAfterReserve = store.getUsed();
+
+    store.loadString(reserved, readBack, sizeof(readBack));
+    bool reserveStartsEmpty = (readBack[0] == '\0');
+
+    store.updateString(reserved, "first");
+    store.loadString(reserved, readBack, sizeof(readBack));
+    bool firstWriteReads = (strcmp(readBack, "first") == 0);
+
+    store.updateString(reserved, "a second, longer one");
+    store.loadString(reserved, readBack, sizeof(readBack));
+    bool overlongTruncates = (strlen(readBack) == 15)
+                             && (strncmp(readBack, "a second, longe", 15) == 0);
+
+    store.updateString(reserved, "3rd");
+    store.loadString(reserved, readBack, sizeof(readBack));
+    bool shorterWriteReads = (strcmp(readBack, "3rd") == 0);
+
+    store.loadString(neighbour, readBack, sizeof(readBack));
+    bool neighbourIntact = (strcmp(readBack, "neighbour") == 0);
+    bool rewritesInPlace = (store.getUsed() == usedAfterReserve);
+
     store.reset();
     bool resetFrees = (store.getUsed() == 0);
 
     System::logger.write(
         LOG_ERROR,
         "bench vramstore failures=%lu used=%lu truncate=%d invalid=%d "
-        "full=%d reset=%d",
+        "full=%d reset=%d reserve=%d%d%d%d%d%d",
         (unsigned long)failures,
         (unsigned long)usedAfterStores,
         truncatedSafely ? 1 : 0,
         invalidIsEmpty ? 1 : 0,
         refusedWhenFull ? 1 : 0,
-        resetFrees ? 1 : 0);
+        resetFrees ? 1 : 0,
+        reserveStartsEmpty ? 1 : 0,
+        firstWriteReads ? 1 : 0,
+        overlongTruncates ? 1 : 0,
+        shorterWriteReads ? 1 : 0,
+        neighbourIntact ? 1 : 0,
+        rewritesInPlace ? 1 : 0);
 }
 
 /**

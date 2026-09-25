@@ -23,6 +23,7 @@
 #include "Hardware.h"
 #include "System.h"
 #include "compat.h"
+#include "Trace.h"
 
 void monitorFreeMemory(void)
 {
@@ -35,6 +36,39 @@ void monitorFreeMemory(void)
         Hardware::ram.free(),
         Hardware::ram.heap_used(),
         Hardware::ram.warning_crash());
+
+    /* Traced, but deliberately not put in the snapshot. The snapshot is read
+     * by a host comparing two firmware images at the same point in the same
+     * work, and a timer firing every ten seconds would overwrite that point
+     * with whatever happened to be true later. */
+    TRACE_MEMORY("periodic",
+                 Hardware::ram.adj_free(),
+                 (int32_t)Hardware::ram.heap_used(),
+                 (uint32_t)Hardware::memory.stringPool.getUsed(),
+                 Hardware::memory.stringPool.getRejectedCount());
+}
+
+volatile MemorySnapshot memorySnapshot;
+
+void traceMemory(const char *stage)
+{
+    Hardware::ram.run();
+
+    int32_t freeRam = Hardware::ram.adj_free();
+    int32_t heapUsed = (int32_t)Hardware::ram.heap_used();
+    uint32_t vramUsed = (uint32_t)Hardware::memory.stringPool.getUsed();
+    uint32_t vramRejected = Hardware::memory.stringPool.getRejectedCount();
+
+    copyString((char *)memorySnapshot.stage,
+               stage,
+               sizeof(memorySnapshot.stage) - 1);
+    memorySnapshot.freeRam = freeRam;
+    memorySnapshot.heapUsed = heapUsed;
+    memorySnapshot.vramUsed = vramUsed;
+    memorySnapshot.vramRejected = vramRejected;
+    memorySnapshot.updates++;
+
+    TRACE_MEMORY(stage, freeRam, heapUsed, vramUsed, vramRejected);
 }
 
 int getUsedMemory(void)

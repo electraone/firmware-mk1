@@ -22,6 +22,9 @@
 #include "ControlValue.h"
 #include "Control.h"
 #include "luaExtension.h"
+#include "Hardware.h"
+
+char ControlValue::labelBuffer[ControlValue::MaxLabelLength + 1];
 
 ControlValue::ControlValue()
     : handle(0),
@@ -36,9 +39,10 @@ ControlValue::ControlValue()
       overlay(nullptr),
       relative(false),
       accelerated(false),
+      labelSet(false),
+      labelHandle(VramStore::invalidHandle),
       value(defaultValue)
 {
-    label[0] = '\0';
 }
 
 ControlValue::ControlValue(Control *newControl,
@@ -62,11 +66,12 @@ ControlValue::ControlValue(Control *newControl,
       formatter(newFormatter),
       function(newFunction),
       overlay(newOverlay),
+      labelSet(false),
+      labelHandle(VramStore::invalidHandle),
       value(defaultValue)
 {
     // translate the valueId to the numeric handle
     handle = translateId(newValueId);
-    label[0] = '\0';
     relative = message.isRelative();
     accelerated = message.isAccelerated();
 }
@@ -196,22 +201,49 @@ const std::string ControlValue::getFormatter(void) const
 
 void ControlValue::setLabel(const char *newLabel)
 {
-    copyString(label, newLabel, MaxLabelLength);
+    if ((newLabel == nullptr) || (newLabel[0] == '\0')) {
+        resetLabel();
+        return;
+    }
+
+    /* The space is taken on first use, so a value that never gets a label,
+     * which is most of them, costs nothing in the store. */
+    if (labelHandle == VramStore::invalidHandle) {
+        labelHandle = Hardware::memory.stringPool.reserve(MaxLabelLength + 1);
+
+        if (labelHandle == VramStore::invalidHandle) {
+            return;
+        }
+    }
+
+    char text[MaxLabelLength + 1];
+
+    copyString(text, newLabel, MaxLabelLength);
+    labelSet = Hardware::memory.stringPool.updateString(labelHandle, text);
 }
 
 void ControlValue::resetLabel(void)
 {
-    label[0] = '\0';
+    /* The record itself is kept. Clearing the flag is enough to make the
+     * label gone as far as anything that reads it is concerned, and the space
+     * would not come back anyway. */
+    labelSet = false;
 }
 
 const char *ControlValue::getLabel(void) const
 {
-    return (label);
+    if (!labelSet) {
+        labelBuffer[0] = '\0';
+        return (labelBuffer);
+    }
+
+    return (Hardware::memory.stringPool.loadString(
+        labelHandle, labelBuffer, sizeof(labelBuffer)));
 }
 
 bool ControlValue::isLabelSet(void) const
 {
-    return (label[0] != '\0');
+    return (labelSet);
 }
 
 void ControlValue::setValue(int16_t newValue)
@@ -233,11 +265,21 @@ void ControlValue::callFormatter(int16_t value)
             < luaPreset->luaFunctions.size()) // function Id is within the range
         && !luaPreset->luaFunctions[formatter]
                 .empty()) { // function really exists
+        /* The formatter writes into the buffer only when it returns
+         * something, so an empty one afterwards means the label is to stay
+         * as it was. Starting from empty keeps that behaviour without having
+         * to fetch the current label first. */
+        char formatted[MaxLabelLength + 1] = {};
+
         runFormatter(luaPreset->luaFunctions[formatter].c_str(),
                      this,
                      value,
-                     label,
+                     formatted,
                      MaxLabelLength);
+
+        if (formatted[0] != '\0') {
+            setLabel(formatted);
+        }
     }
 }
 

@@ -2,6 +2,7 @@
 .gcc-flags.json
 build
 build-trace
+build-bench
 docs
 */docs
 */*/doc

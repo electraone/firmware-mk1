@@ -245,6 +245,10 @@ bool Presets::loadPresetById(uint8_t presetId)
         // Enable the ParameterMap sync
         parameterMap.enable(true);
 
+        /* Where the cost of a preset actually shows. Taken after the Lua
+         * script has run too, because that allocates as well. */
+        traceMemory("preset-loaded");
+
         status = true;
     } else {
         reset();

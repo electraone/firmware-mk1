@@ -124,6 +124,19 @@ void mark(const char *label);
 /** Records a message the firmware logged, whatever the logger does with it. */
 void logged(uint8_t level, const char *message);
 
+/**
+ * @brief Records how much memory is in use, on both sides.
+ *
+ * The point of moving data into the display's memory is a number, and this
+ * is where that number comes from. Taken at named stages, so a host script
+ * can compare the same stage across two firmware images.
+ */
+void memory(const char *stage,
+            int32_t freeRam,
+            int32_t heapUsed,
+            uint32_t vramUsed,
+            uint32_t vramRejected);
+
 /** Number of records lost so far because the host was not reading fast
  *  enough. A non-zero value invalidates a comparison run. */
 uint32_t droppedRecords(void);
@@ -134,6 +147,9 @@ uint32_t droppedRecords(void);
 #define TRACE_BOOT(version, app) Trace::boot((version), (app))
 #define TRACE_MARK(label) Trace::mark(label)
 #define TRACE_LOG(level, message) Trace::logged((level), (message))
+#define TRACE_MEMORY(stage, freeRam, heapUsed, vramUsed, vramRejected)         \
+    Trace::memory(                                                            \
+        (stage), (freeRam), (heapUsed), (vramUsed), (vramRejected))
 
 /** A MIDI message received, described by its parsed fields. */
 #define TRACE_MIDI_IN(iface, port, type, channel, data1, data2)                \
@@ -229,6 +245,8 @@ uint32_t droppedRecords(void);
 #define TRACE_BOOT(version, app) ((void)0)
 #define TRACE_MARK(label) ((void)0)
 #define TRACE_LOG(level, message) ((void)0)
+#define TRACE_MEMORY(stage, freeRam, heapUsed, vramUsed, vramRejected)         \
+    ((void)0)
 #define TRACE_MIDI_IN(iface, port, type, channel, data1, data2) ((void)0)
 #define TRACE_MIDI_OUT(iface, port, kind, channel, data1, data2) ((void)0)
 #define TRACE_SYSEX_IN(iface, port, data, len) ((void)0)

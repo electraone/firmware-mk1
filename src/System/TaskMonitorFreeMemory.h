@@ -27,5 +27,41 @@
 
 #pragma once
 
+#include <stdint.h>
+
 void monitorFreeMemory(void);
+
+/**
+ * @brief What memory looked like the last time a stage was reached.
+ *
+ * Kept in a known place so a host can read it straight out of target RAM
+ * over the debug probe. The logger is not a reliable way to get a number out
+ * and the trace only exists in a traced build, but a measurement of how much
+ * a preset costs is only worth having on the build people actually run.
+ */
+struct MemorySnapshot {
+    char stage[16];
+    int32_t freeRam;
+    int32_t heapUsed;
+    uint32_t vramUsed;
+    uint32_t vramRejected;
+
+    /** Incremented on every update, so a reader can tell a fresh
+     *  measurement from one left over from before a restart. */
+    uint32_t updates;
+};
+
+extern volatile MemorySnapshot memorySnapshot;
+
+/**
+ * @brief Records memory use under a named stage.
+ *
+ * Fills in the snapshot above and, in a traced build, puts the same figures
+ * in the trace so they sit in order with everything else.
+ *
+ * Only deliberate measurement points call this. The ten second monitor task
+ * traces its figures but leaves the snapshot alone, so a reader always finds
+ * the last named stage rather than whatever the timer last saw.
+ */
+void traceMemory(const char *stage);
 int getUsedMemory(void);

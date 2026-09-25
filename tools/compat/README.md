@@ -119,20 +119,53 @@ an NRPN, a note, pitch bend and a program change, with Lua formatters, Lua
 control functions, `parameterMap.onChange`, the preset lifecycle handlers and
 the incoming MIDI handlers all defined.
 
-The baselines in `baseline/` were recorded with it loaded. Upload it, into the
-slot the unit currently has selected, with:
+The baselines in `baseline/` were recorded with it loaded. Upload it with the
+electraone CLI:
 
-```python
-import electra_preset, json
-from pathlib import Path
-electra_preset.upload_lua(Path("presets/compat.lua").read_text())
-electra_preset.upload_preset(
-    json.dumps(json.loads(Path("presets/compat.epr").read_text()),
-               separators=(",", ":")))
+```bash
+electraone --port "Electra CTRL" preset switch -b 0 -s 1
+electraone --port "Electra CTRL" lua upload presets/compat.lua
+electraone --port "Electra CTRL" preset upload presets/compat.epr
 ```
 
 Upload the Lua script first. Uploading the preset makes the unit reload the
 slot, and the script has to be on the card by then to be picked up.
+
+`electra_preset.py` uses the same CLI when it can find it, looking at
+`$ELECTRAONE_CLI`, then the path, then `~/Repos/electraone-cli/build`. Without
+it the upload falls back to sendmidi, which works but takes minutes on a
+preset of a few hundred kilobytes rather than seconds. These are the direct
+uploads; the File Transfer API the CLI also offers is not implemented on the
+mk1.
+
+## Measuring what a change saves
+
+`measure_memory.py` answers the only question that matters about moving data
+into the display's memory: how much RAM came back. It uploads a preset,
+restarts the unit so the preset is loaded off the card the way it is on a
+normal boot, and reads the firmware's memory snapshot straight out of target
+RAM over the probe.
+
+```bash
+python3 tools/compat/make_stress_preset.py --profile mixed
+python3 tools/compat/measure_memory.py --serial <probe> \
+    --hex build/firmware.hex --elf build/firmware.elf \
+    --preset stress-mixed --slot 2
+```
+
+Measure the other image next with `--skip-upload`, so both see the same
+preset off the same card.
+
+The snapshot is read from RAM rather than from the trace on purpose. A traced
+build spends tens of kilobytes on its buffer, which is the resource being
+measured, and the firmware refuses a preset that would leave less than 62000
+bytes free — so a preset large enough to be interesting does not load at all
+on a traced build. The snapshot exists in every build.
+
+`make_stress_preset.py` builds the preset for this: twelve pages of
+thirty-six controls, the declared maximum, with long labels and long
+overlays. `--pages` brings it back under the ceiling if the image under test
+refuses it.
 
 ## Caveats
 
@@ -146,6 +179,16 @@ slot, and the script has to be on the card by then to be picked up.
   longer than the scenario itself.
 - Close other MIDI software before recording. Anything that queries the unit,
   an editor or a DAW scanning ports, makes it answer, and that answer lands in
-  the recording as behaviour the firmware did not initiate. It shows up as an
-  addition rather than a break, so it does not fail a comparison, but it is
-  noise.
+  the recording as behaviour the firmware did not initiate.
+
+  That noise is not only extra records. macOS sends an identity request when
+  something opens a port, and where the unit's handling of it lands in the
+  sequence depends on how fast the firmware happens to be at that moment. A
+  change that only makes the firmware quicker can therefore push it somewhere
+  else, which an ordered comparison sees as behaviour disappearing from one
+  place and appearing in another.
+
+  The comparison separates the two: anything that occurs the same number of
+  times on both sides is reported as moved (`~`) rather than lost, and only a
+  real change in count fails the run. A move still deserves a look. Host
+  traffic moves on its own; the firmware's own work moving is a finding.

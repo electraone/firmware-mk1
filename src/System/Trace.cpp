@@ -334,6 +334,21 @@ void logged(uint8_t level, const char *message)
     Record("LOG").num("lvl", level).text(message).emit();
 }
 
+void memory(const char *stage,
+            int32_t freeRam,
+            int32_t heapUsed,
+            uint32_t vramUsed,
+            uint32_t vramRejected)
+{
+    Record("MEM")
+        .str("stage", stage)
+        .num("free", freeRam)
+        .num("heap", heapUsed)
+        .num("vram", (int32_t)vramUsed)
+        .num("rejected", (int32_t)vramRejected)
+        .emit();
+}
+
 } // namespace Trace
 
 /**

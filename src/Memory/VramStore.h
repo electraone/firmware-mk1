@@ -88,6 +88,37 @@ public:
     Handle storeString(const char *text);
 
     /**
+     * @brief Takes space for a record that will be written later, and more
+     *        than once.
+     *
+     * There is no per-record free, so anything that changes during the life
+     * of a preset has to be given its space once and then rewritten in place.
+     * A value label is the case this exists for: a Lua formatter rewrites it
+     * on every value change, and allocating afresh each time would eat the
+     * store in a single knob sweep.
+     *
+     * The record starts empty and stays at the size asked for here, however
+     * little is written into it later.
+     *
+     * @return a handle to write with, or invalidHandle if it did not fit.
+     */
+    Handle reserve(size_t size);
+
+    /**
+     * @brief Replaces the contents of a reserved record.
+     *
+     * Data longer than the reservation is truncated rather than allowed to
+     * run into the record that follows, so a caller that gets the size wrong
+     * loses its own tail instead of somebody else's data.
+     *
+     * @return true if anything was written.
+     */
+    bool update(Handle handle, const void *data, size_t size);
+
+    /** Replaces a reserved record with a string, terminator included. */
+    bool updateString(Handle handle, const char *text);
+
+    /**
      * @brief Copies a record back out.
      *
      * Reads at most what the record holds and at most what the buffer can
@@ -120,9 +151,24 @@ public:
     uint32_t getRejectedCount(void) const;
 
 private:
-    /** Every record starts with its length, so a reader needs no agreement
-     *  with the writer about sizes. */
-    static const size_t headerSize = 2;
+    /**
+     * @brief Every record starts with the space it holds and the length it
+     *        currently carries, in that order, two bytes each.
+     *
+     * A reader therefore needs no agreement with the writer about sizes, and
+     * a record that is rewritten in place can shrink and grow again within
+     * what it was given without any risk of reaching the next one.
+     */
+    static const size_t headerSize = 4;
+
+    /** Reads the two halves of a record's header. Returns false for a handle
+     *  that does not point at one. */
+    bool readHeader(Handle handle, size_t &recordCapacity, size_t &length)
+        const;
+
+    /** Takes space for a record and fills it, or clears it when there is
+     *  nothing to fill it with yet. Shared by store() and reserve(). */
+    Handle allocate(size_t size, const void *data);
 
     /** Records up to this size are fetched in a single transfer through a
      *  stack buffer. Anything larger is read straight into the caller's

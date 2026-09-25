@@ -202,19 +202,54 @@ def _load(path: Path) -> dict:
 
 
 def _diff(baseline: list[str], candidate: list[str]) -> list[tuple[str, str]]:
-    """Longest common subsequence diff, reported as removals and additions."""
-    import difflib
+    """Compares two runs, separating what moved from what went missing.
 
-    changes: list[tuple[str, str]] = []
+    A longest common subsequence diff on its own reports anything that merely
+    changed position as both removed and added, which reads as a loss when
+    nothing was lost. That matters here because the host sends the unit things
+    the scenario did not ask for: macOS probes a port with an identity request
+    when something opens it, and the unit answers. Where that lands in the
+    sequence depends on how fast the firmware happens to be, so a change that
+    only makes the firmware quicker can push it to a different place and look
+    like a break.
+
+    So anything that appears the same number of times on both sides is
+    reported as "moved", and only a genuine change in count is a removal or an
+    addition. A move still deserves a look, because a real reordering of the
+    firmware's own work would show up the same way.
+    """
+    import difflib
+    from collections import Counter
+
+    removed: list[str] = []
+    added: list[str] = []
     matcher = difflib.SequenceMatcher(a=baseline, b=candidate, autojunk=False)
 
     for tag, i1, i2, j1, j2 in matcher.get_opcodes():
         if tag == "equal":
             continue
-        for line in baseline[i1:i2]:
+        removed.extend(baseline[i1:i2])
+        added.extend(candidate[j1:j2])
+
+    moved_counts = Counter(removed) & Counter(added)
+
+    changes: list[tuple[str, str]] = []
+    seen: Counter = Counter()
+
+    for line in removed:
+        if seen[line] < moved_counts[line]:
+            seen[line] += 1
+            changes.append(("moved", line))
+        else:
             changes.append(("removed", line))
-        for line in candidate[j1:j2]:
-            changes.append(("added", line))
+
+    seen = Counter()
+    for line in added:
+        if seen[line] < moved_counts[line]:
+            seen[line] += 1
+            continue  # already reported once, as a move
+        changes.append(("added", line))
+
     return changes
 
 
@@ -260,8 +295,10 @@ def command_compare(args: argparse.Namespace) -> int:
 
     removed_behaviour = [c for c in behaviour_changes if c[0] == "removed"]
     added_behaviour = [c for c in behaviour_changes if c[0] == "added"]
+    moved_behaviour = [c for c in behaviour_changes if c[0] == "moved"]
     removed_midi = [c for c in midi_changes if c[0] == "removed"]
     added_midi = [c for c in midi_changes if c[0] == "added"]
+    moved_midi = [c for c in midi_changes if c[0] == "moved"]
 
     if not behaviour_changes and not midi_changes:
         print("identical. The candidate behaves exactly like the baseline.")
@@ -270,27 +307,39 @@ def command_compare(args: argparse.Namespace) -> int:
     if removed_behaviour or removed_midi:
         print("BROKEN COMPATIBILITY")
         print("The candidate no longer does things the baseline did.")
+    elif moved_behaviour or moved_midi:
+        print("COMPATIBLE, WITH REORDERING")
+        print(
+            "Everything the baseline did still happens, but some of it "
+            "happens in a different place in the sequence. Check the moves "
+            "below: traffic the host sent unasked moves on its own, the "
+            "firmware's own work should not."
+        )
     else:
         print("COMPATIBLE, WITH ADDITIONS")
         print("Everything the baseline did still happens, in the same order.")
     print()
+
+    markers = {"removed": "-", "added": "+", "moved": "~"}
 
     def _report(title: str, changes: list[tuple[str, str]], limit: int) -> None:
         if not changes:
             return
         print(f"{title} ({len(changes)}):")
         for kind, line in changes[:limit]:
-            marker = "-" if kind == "removed" else "+"
-            print(f"  {marker} {line}")
+            print(f"  {markers[kind]} {line}")
         if len(changes) > limit:
             print(f"  ... {len(changes) - limit} more")
         print()
 
     _report("behaviour the baseline had and the candidate lost",
             removed_behaviour, args.limit)
+    _report("behaviour that happens in a different place in the sequence",
+            moved_behaviour, args.limit)
     _report("behaviour the candidate adds", added_behaviour, args.limit)
     _report("MIDI the baseline sent and the candidate does not",
             removed_midi, args.limit)
+    _report("MIDI that is sent at a different point", moved_midi, args.limit)
     _report("MIDI the candidate adds", added_midi, args.limit)
 
     return 1 if (removed_behaviour or removed_midi) else 0

@@ -44,26 +44,46 @@ Declared ceilings, from `apps/controller/src/Model/Preset.h`: 432 controls,
 
 ## Ranked candidates
 
-### 1. Control value labels — the biggest single win
+### 1. ~~Control value labels~~ — done, and measured
 
-`ControlValue::label[16]` at
-[ControlValue.h:139](../../apps/controller/src/Model/ControlValue.h:139).
+`ControlValue::label[16]` is now a 4 byte handle into the store, so every
+value costs 12 bytes less. The flag saying whether a label is set stayed in
+RAM, in padding that was already there, so a painter can ask without paying
+for a transfer.
 
-One per value, and a control has one value for a fader, list, pad or knob,
-three for an ADR envelope, four for an ADSR and eight for a DX7 envelope.
+Measured on the hardware, production build, with
+[make_stress_preset.py](make_stress_preset.py) and
+[compare_memory.py](compare_memory.py):
 
-| Preset size | Saving |
-|---|---|
-| 200 controls, one value each | 3.2 KB |
-| 432 controls, one value each | 6.9 KB |
-| 432 controls, ADSR throughout | 27.6 KB |
+| Preset | Controls | Values | Free before | Free after | Saved |
+|---|---|---|---|---|---|
+| stress-mixed | 288 | 576 | 54416 | 60560 | **6144** |
+| stress-max | 216 | 864 | 43432 | 53808 | **10376** |
 
-Read only while painting:
+The max case is 864 × 12 = 10368 predicted against 10376 measured. The mixed
+case comes out 768 short of its 6912 because the allocator rounds a block up:
+a single-value control goes from 68 bytes to 56, which after rounding saves 8
+rather than 12. Envelopes, being four values in one block, get the full 48.
+
+The cost on the other side is 20 bytes of the display's memory per label that
+is actually set, and the measurement above shows 384 bytes of it in use — few
+values ever get a label, because only a formatter that has run writes one.
+
+The claim that it was read only while painting was not quite right, and this
+is the part that shaped the design. `callFormatter` **writes** the label, and
+`ParameterMap::repaintLookupEntry` calls it on every value change of a control
+that has a formatter. So the label is rewritten on the MIDI path, not written
+once at load. That is why the store had to grow `reserve()` and `update()`:
+the space is taken once and rewritten in place, since a bump allocator handing
+out a fresh record per value change would be emptied by a single knob sweep.
+
+The write costs a header read plus one transfer, on a path that already runs a
+Lua call with a full garbage collection, so it disappears into that.
+
+Readers, all of which copy the result immediately:
 [FaderControl.cpp:243](../../apps/controller/src/Components/FaderControl.cpp:243),
 `KnobControl.cpp:82`, `PadControl.cpp:148`, `RelativeControl.cpp:75`,
-`ListControl.cpp:141`, `ListButtonControl.cpp:157`. No other reader.
-
-This one is clean: the label is fetched, drawn and forgotten.
+`ListControl.cpp:141`, `ListButtonControl.cpp:157`.
 
 ### 2. Group labels — best ratio per instance
 
@@ -190,24 +210,44 @@ the real work in those two, not the storage itself.
 ## Suggested order
 
 1. ~~Fix the double read in the list painters.~~ Done.
-2. Move control value labels. Largest clean win, no lifetime problem.
+2. ~~Move control value labels.~~ Done: 6144 bytes on a 288 control preset,
+   10376 on one with 864 values, both measured on the unit.
 3. Make `Component` own its name, then move control names and group labels.
 4. Move preset slot names, on a store that survives a preset change.
 5. Look at the SysEx templates, which need their own design rather than a
    label-shaped one.
 
-Steps 2 through 4 add up to roughly **13 KB on a 200-control preset and 21 KB
-at the declared maximum**, against 256 KB total. Step 5 is unbounded and
-preset-dependent.
+Steps 3 and 4 should add roughly another 10 KB at the sizes above. Step 5 is
+unbounded and preset-dependent.
 
 ## Reproducing these numbers
 
-The sizes come from the benchmark build, which logs them at boot:
+The type sizes come from the benchmark build, which logs them at boot:
 
 ```bash
 make APPPATH=apps/controller TRACE=1 BENCHMARK=1 BUILDDIR=build-bench hex
 ```
 
-Look for the `bench sizeof` line. The firmware also logs free RAM before and
-after the preset loads, which is the honest before-and-after for any of this
-work.
+Look for the `bench sizeof` line.
+
+The saving is measured rather than counted. Build the two images, put a big
+preset on the unit, and let `compare_memory.py` flash each in turn and read
+the firmware's memory snapshot out of target RAM:
+
+```bash
+python3 tools/compat/make_stress_preset.py --profile max --pages 6
+electraone --port "Electra CTRL" preset switch -b 0 -s 3
+electraone --port "Electra CTRL" preset upload tools/compat/presets/stress-max.epr
+electraone --port "Electra CTRL" lua upload tools/compat/presets/stress-max.lua
+python3 tools/compat/compare_memory.py --serial <probe> \
+    --before ../old/build --after build --slot 3:stress-max
+```
+
+Two things to know about the figures. They are read out of RAM rather than
+the trace, because a traced build spends 56 KB on its buffer and the firmware
+refuses any preset that would leave under 62000 bytes free, so a preset big
+enough to be interesting will not load on one. And free RAM is bounded by the
+allocator's high water mark, which never comes back down, so the absolute
+figure depends on what the unit has loaded since it booted. The comparison is
+valid because both images are put through the same sequence; a single reading
+on its own is not.

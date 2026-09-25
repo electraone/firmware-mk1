@@ -32,6 +32,7 @@
 #include "Message.h"
 #include "Macros.h"
 #include "luaHooks.h"
+#include "VramStore.h"
 #include <cstdint>
 #include <cstring>
 #include <string>
@@ -81,6 +82,14 @@ public:
     const std::string getFormatter(void) const;
     void setLabel(const char *newLabel);
     void resetLabel(void);
+
+    /**
+     * @brief The label, fetched from the display's memory.
+     *
+     * @attention the returned pointer is a shared buffer that the next call
+     * overwrites. Every caller copies it straight into its own storage, and
+     * anyone adding a caller must do the same.
+     */
     const char *getLabel(void) const;
     bool isLabelSet(void) const;
     void setValue(int16_t newValue);
@@ -127,6 +136,11 @@ private:
         uint8_t overlayId : 8;
         bool relative : 1;
         bool accelerated : 1;
+
+        /* Whether the label record holds anything. Kept here rather than
+         * asked of the store, because a painter tests this before deciding
+         * to fetch and the test must not itself cost a transfer. */
+        bool labelSet : 1;
     };
 
     int16_t defaultValue;
@@ -136,8 +150,15 @@ private:
     uint8_t function;
     Control *control;
     Overlay *overlay;
-    char label[MaxLabelLength + 1];
+    /** The label lives in the display's memory. The space is taken the
+     *  first time a label is set, and rewritten in place after that, because
+     *  a Lua formatter rewrites it on every value change. */
+    VramStore::Handle labelHandle;
+
     int16_t value;
+
+    /** Shared scratch the label is handed out through. See getLabel(). */
+    static char labelBuffer[MaxLabelLength + 1];
 
 public:
     Message message;
