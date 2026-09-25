@@ -109,13 +109,13 @@ void Dx7EnvControl::paint(Graphics &g)
                                activeSegment,
                                activeSegmentIsShown);
 
-    g.printText(0,
-                getHeight() - 20,
-                getName(),
-                TextStyle::userMedium,
-                getWidth(),
-                TextAlign::center,
-                2);
+    g.user().printText(0,
+                       getHeight() - 20,
+                       getName(),
+                       getWidth(),
+                       TextAlign::center,
+                       Colours565::white,
+                       TextSize::medium);
     ControlComponent::paint(g);
 }
 

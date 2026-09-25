@@ -143,10 +143,11 @@ void Slider::paintValueBox(Graphics &g)
 {
     char stringValue[10];
     snprintf(stringValue, sizeof(stringValue), formatString, value.get());
-    g.printText(0,
-                getHeight() - 13,
-                stringValue,
-                TextStyle::userMedium,
-                getWidth(),
-                TextAlign::center);
+    g.user().printText(0,
+                       getHeight() - 13,
+                       stringValue,
+                       getWidth(),
+                       TextAlign::center,
+                       Colours565::white,
+                       TextSize::medium);
 }

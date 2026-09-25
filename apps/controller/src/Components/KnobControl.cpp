@@ -88,18 +88,19 @@ void KnobControl::paint(Graphics &g)
                  getValue());
     }
 
-    g.printText(0,
-                getWidth() / 2 - 7,
-                stringValue,
-                TextStyle::userMedium,
-                getWidth(),
-                TextAlign::center);
+    g.user().printText(0,
+                       getWidth() / 2 - 7,
+                       stringValue,
+                       getWidth(),
+                       TextAlign::center,
+                       Colours565::white,
+                       TextSize::medium);
 
-    g.printText(0,
-                getHeight() - 20,
-                getName(),
-                TextStyle::userMedium,
-                getWidth(),
-                TextAlign::center,
-                2);
+    g.user().printText(0,
+                       getHeight() - 20,
+                       getName(),
+                       getWidth(),
+                       TextAlign::center,
+                       Colours565::white,
+                       TextSize::medium);
 }

@@ -51,7 +51,11 @@ namespace DisplayBenchmark {
  * visible, and the benchmark restores nothing on purpose: the page is redrawn
  * from scratch whenever it is next used.
  */
-static const uint32_t scratchAddress = SDRAM_PAGE_8;
+/* Page four rather than page eight: the glyph atlas runs from page five
+ * to the character generator now, and a benchmark writing over it would
+ * take the text with it. Page four is a list detail's scratch canvas,
+ * which a benchmark build is not drawing. */
+static const uint32_t scratchAddress = SDRAM_PAGE_4;
 
 /** Block sizes swept, in bytes. Small sizes expose per-call overhead, large
  *  ones expose the raw transfer rate. */

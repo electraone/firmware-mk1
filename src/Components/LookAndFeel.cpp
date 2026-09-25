@@ -209,12 +209,13 @@ void LookAndFeel::paintList(Graphics &g,
 
     if (item.isBitmapEmpty()) {
         // Print the label
-        g.printText(0,
-                    0,
-                    item.getLabel(),
-                    TextStyle::userMedium,
-                    bounds.getWidth(),
-                    TextAlign::center);
+        g.user().printText(0,
+                           0,
+                           item.getLabel(),
+                           bounds.getWidth(),
+                           TextAlign::center,
+                           Colours565::white,
+                           TextSize::medium);
     } else {
         // display bitmap image
         uint16_t paddingBitmap = ((bounds.getWidth() - BITMAP_WIDTH)) / 2 - 1;
@@ -247,12 +248,13 @@ void LookAndFeel::paintButtonList(Graphics &g,
 
     if (item.isBitmapEmpty()) {
         // Print the label
-        g.printText(0,
-                    bounds.getHeight() * 0.3f,
-                    item.getLabel(),
-                    TextStyle::userMedium,
-                    bounds.getWidth(),
-                    TextAlign::center);
+        g.user().printText(0,
+                           bounds.getHeight() * 0.3f,
+                           item.getLabel(),
+                           bounds.getWidth(),
+                           TextAlign::center,
+                           Colours565::white,
+                           TextSize::medium);
     } else {
         // display bitmap image
         uint16_t paddingBitmap = ((bounds.getWidth() - BITMAP_WIDTH)) / 2 - 1;

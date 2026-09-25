@@ -134,8 +134,8 @@ void StatusBar::statusBarItem(Graphics &g,
 {
     g.setColour(Colours565::black);
     g.fillRect(x, y, 168, 13);
-    g.printText(
-        x, y, label, TextStyle::smallWhiteOnBlack, 168, TextAlign::center);
+    g.system().printText(
+        x, y, label, TextStyle::smallTransparent, 168, TextAlign::center);
 
     if (active == false) {
         g.dim(x, y, 168, 13, Colours565::black);

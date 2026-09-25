@@ -44,12 +44,12 @@ void ActionButton::paint(Graphics &g)
     g.fillRoundRect(0, 0, getWidth(), getHeight(), radius);
     g.setColour(backgroundColour);
     g.fillRoundRect(0, 0, getWidth(), getHeight() - 4, radius);
-    g.printText(0,
-                getHeight() / 2 - 7,
-                getLabel(),
-                TextStyle::smallTransparent,
-                getWidth(),
-                TextAlign::center);
+    g.system().printText(0,
+                         getHeight() / 2 - 7,
+                         getLabel(),
+                         TextStyle::smallTransparent,
+                         getWidth(),
+                         TextAlign::center);
 
     if (selected) {
         g.setColour(Colours565::lighter(backgroundColour, 0.1f));

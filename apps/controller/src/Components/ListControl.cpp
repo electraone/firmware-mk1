@@ -99,13 +99,13 @@ void ListControl::paint(Graphics &g)
     g.fillAll(getUseAltBackground() ? LookAndFeel::altBackgroundColour
                                     : LookAndFeel::backgroundColour);
     paintList(g, listBounds, control.getColour565(), getList(), index);
-    g.printText(0,
-                getHeight() - 20,
-                getName(),
-                TextStyle::userMedium,
-                getWidth(),
-                TextAlign::center,
-                2);
+    g.user().printText(0,
+                       getHeight() - 20,
+                       getName(),
+                       getWidth(),
+                       TextAlign::center,
+                       Colours565::white,
+                       TextSize::medium);
     ControlComponent::paint(g);
 }
 
@@ -149,12 +149,13 @@ void ListControl::paintList(Graphics &g,
                          item.getLabel());
             }
 
-            g.printText(0,
-                        0,
-                        stringValue,
-                        TextStyle::userMedium,
-                        bounds.getWidth(),
-                        TextAlign::center);
+            g.user().printText(0,
+                               0,
+                               stringValue,
+                               bounds.getWidth(),
+                               TextAlign::center,
+                               Colours565::white,
+                               TextSize::medium);
         } else {
             // display bitmap image
             uint16_t paddingBitmap =

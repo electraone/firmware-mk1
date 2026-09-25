@@ -46,11 +46,11 @@ void BottomBar::paint(Graphics &g)
 {
     g.setColour(0x2104);
     g.fillRoundRect(0, 0, getWidth(), getHeight(), 10);
-    g.printText(
+    g.system().printText(
         0, 4, presetName, TextStyle::mediumTransparent, 500, TextAlign::right);
-    g.printText(
+    g.system().printText(
         528, 4, pageName, TextStyle::mediumTransparent, 400, TextAlign::left);
-    g.printText(
+    g.system().printText(
         800, 4, infoText, TextStyle::mediumTransparent, 180, TextAlign::right);
 
     g.setColour(Colours565::white);

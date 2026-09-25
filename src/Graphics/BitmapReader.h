@@ -67,6 +67,4 @@ public:
     void loadBMP(const char *filename,
                  uint16_t lines = 600,
                  bool progressBar = true);
-
-    void initUIToolkit(void);
 };

@@ -20,12 +20,12 @@ public:
                        getHeight() - 20,
                        getWidth() / 2 + 10,
                        getHeight() - 20);
-        g.printText(0,
-                    getHeight() - 13,
-                    "Touch Me",
-                    TextStyle::smallTransparent,
-                    getWidth(),
-                    TextAlign::center);
+        g.system().printText(0,
+                             getHeight() - 13,
+                             "Touch Me",
+                             TextStyle::smallTransparent,
+                             getWidth(),
+                             TextAlign::center);
     }
 
     void onTouchDown(const TouchEvent &touchEvent) override

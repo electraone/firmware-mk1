@@ -46,12 +46,12 @@ public:
         g.dim(0, 0, 1024, 600, Colours565::black);
         g.dim(398, 162, 228, 205, 0x1840);
         g.copyFromToolkit(822, 78, 466, 200, 92, 80);
-        g.printText(398,
-                    320,
-                    "Firmware Update mode",
-                    TextStyle::mediumTransparent,
-                    228,
-                    TextAlign::center);
+        g.system().printText(398,
+                             320,
+                             "Firmware Update mode",
+                             TextStyle::mediumTransparent,
+                             228,
+                             TextAlign::center);
     }
 
 private:

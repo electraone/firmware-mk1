@@ -231,12 +231,12 @@ public:
 
         g.setColour(backgroundColour);
         g.fillRoundRect(0, 0, getWidth(), getHeight(), radius);
-        g.printText(0,
-                    getHeight() / 2 - 7,
-                    label,
-                    TextStyle::smallTransparent,
-                    getWidth(),
-                    TextAlign::center);
+        g.system().printText(0,
+                             getHeight() / 2 - 7,
+                             label,
+                             TextStyle::smallTransparent,
+                             getWidth(),
+                             TextAlign::center);
         if (dimmed == true) {
             g.dimAll();
         }

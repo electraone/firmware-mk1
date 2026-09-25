@@ -74,12 +74,12 @@ void SnapsButton::paintUsed(Graphics &g,
 
     g.setColour(colour);
     g.fillRoundRect(0, 0, width, height, 4);
-    g.printText(0,
-                (height / 2) - 2,
-                label,
-                TextStyle::mediumTransparent,
-                width,
-                TextAlign::center);
+    g.system().printText(0,
+                         (height / 2) - 2,
+                         label,
+                         TextStyle::mediumTransparent,
+                         width,
+                         TextAlign::center);
     printProgramInfo(g, programInfo, true);
 }
 
@@ -100,7 +100,7 @@ void SnapsButton::printProgramInfo(Graphics &g,
                                    const char *programInfo,
                                    bool used)
 {
-    g.printText(
+    g.system().printText(
         5, 5, programInfo, TextStyle::smallTransparent, 40, TextAlign::left);
     if (!used) {
         g.dim(5, 5, 40, 12, Colours565::black);

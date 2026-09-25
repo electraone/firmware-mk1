@@ -87,36 +87,32 @@ public:
         }
 
         if (product[0] != '\0') {
-            g.printText(x + 114,
-                        y,
-                        product,
-                        TextStyle::mediumWhiteOnBlack,
-                        200,
-                        TextAlign::left,
-                        2);
-            g.printText(x + 114,
-                        y + 25,
-                        manufacturer,
-                        TextStyle::smallWhiteOnBlack,
-                        200,
-                        TextAlign::left,
-                        1);
-            g.printText(x + 114,
-                        y + 45,
-                        serial,
-                        TextStyle::smallWhiteOnBlack,
-                        200,
-                        TextAlign::left,
-                        1);
+            g.system().printText(x + 114,
+                                 y,
+                                 product,
+                                 TextStyle::mediumTransparent,
+                                 200,
+                                 TextAlign::left);
+            g.system().printText(x + 114,
+                                 y + 25,
+                                 manufacturer,
+                                 TextStyle::smallTransparent,
+                                 200,
+                                 TextAlign::left);
+            g.system().printText(x + 114,
+                                 y + 45,
+                                 serial,
+                                 TextStyle::smallTransparent,
+                                 200,
+                                 TextAlign::left);
             setDisabled(false);
         } else {
-            g.printText(x + 114,
-                        y,
-                        "NO DEVICE CONNECTED",
-                        TextStyle::mediumWhiteOnBlack,
-                        200,
-                        TextAlign::left,
-                        2);
+            g.system().printText(x + 114,
+                                 y,
+                                 "NO DEVICE CONNECTED",
+                                 TextStyle::mediumTransparent,
+                                 200,
+                                 TextAlign::left);
             setDisabled(true);
         }
 
@@ -163,20 +159,22 @@ public:
 
         if (state == uiState::SELECTED) {
             g.copyFromToolkit(0, 494, x, y, 100, 40);
-            g.printText(x,
-                        y + 14,
-                        label,
-                        TextStyle::mediumBlackOnWhite,
-                        100,
-                        TextAlign::center);
+            g.system().printText(x,
+                                 y + 14,
+                                 label,
+                                 TextStyle::mediumTransparent,
+                                 100,
+                                 TextAlign::center,
+                                 Colours565::black);
         } else {
             g.copyFromToolkit(0, 545, x, y, 100, 40);
-            g.printText(x,
-                        y + 14,
-                        label,
-                        TextStyle::mediumWhiteOnDimmed,
-                        100,
-                        TextAlign::center);
+            g.system().printText(x,
+                                 y + 14,
+                                 label,
+                                 TextStyle::mediumTransparent,
+                                 100,
+                                 TextAlign::center,
+                                 Colours565::dimgrey);
         }
     }
 

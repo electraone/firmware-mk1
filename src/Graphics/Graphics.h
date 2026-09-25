@@ -28,7 +28,9 @@
 #pragma once
 
 #include "Colours.h"
-#include "TextBTE.h"
+#include "TextRenderer.h"
+#include "TextSystem.h"
+#include "TextUser.h"
 #include "TextCGRAM.h"
 #include "Point.h"
 #include "Rectangle.h"
@@ -44,16 +46,29 @@
 /**
  *
  */
-class Graphics : public TextBTE,
+class Graphics : public TextSystem,
+                 public TextUser,
                  public TextCGRAM,
                  public Geometry,
                  public BitmapTools,
                  public BitmapReader,
-                 public VideoRam
+                 public virtual VideoRam
 {
 public:
     Graphics(const uint8_t CSp, const uint8_t RSTp = 255);
     ~Graphics() = default;
 
     void initialise(void);
+
+    /** The renderer for the controller's own interface. */
+    TextRenderer &system(void)
+    {
+        return (*static_cast<TextSystem *>(this));
+    }
+
+    /** The renderer for anything a preset defines. */
+    TextUser &user(void)
+    {
+        return (*static_cast<TextUser *>(this));
+    }
 };

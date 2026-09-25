@@ -45,17 +45,17 @@ void displaySplash(Graphics &g,
 
     g.switchWriteLayer();
     g.setTextColor(COLOR_WHITE);
-    g.printText(0,
-                360,
-                versionText,
-                TextStyle::smallWhiteOnBlack,
-                1024,
-                TextAlign::center);
-    g.printText(0,
-                500,
-                "WWW.ELECTRA.ONE",
-                TextStyle::smallWhiteOnBlack,
-                1024,
-                TextAlign::center);
+    g.system().printText(0,
+                         360,
+                         versionText,
+                         TextStyle::smallTransparent,
+                         1024,
+                         TextAlign::center);
+    g.system().printText(0,
+                         500,
+                         "WWW.ELECTRA.ONE",
+                         TextStyle::smallTransparent,
+                         1024,
+                         TextAlign::center);
     g.showPreparedLayer(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 }

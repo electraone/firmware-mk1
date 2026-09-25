@@ -28,7 +28,8 @@
 #include "Graphics.h"
 
 Graphics::Graphics(const uint8_t CSp, const uint8_t RSTp)
-    : TextBTE(CSp, RSTp),
+    : TextSystem(CSp, RSTp),
+      TextUser(CSp, RSTp),
       TextCGRAM(CSp, RSTp),
       Geometry(CSp, RSTp),
       BitmapTools(CSp, RSTp),

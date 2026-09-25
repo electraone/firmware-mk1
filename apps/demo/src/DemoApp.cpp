@@ -1,5 +1,6 @@
 #include "App.h"
 #include "MainComponent.h"
+#include "FontSpecimen.h"
 #include "MidiInputCallback.h"
 #include "ButtonListener.h"
 
@@ -37,7 +38,10 @@ public:
     public:
         MainWindow()
         {
-            setOwnedContent(new MainComponent());
+            /* The specimen rather than MainComponent: what the
+             * demo is for at the moment is looking at the
+             * faces. MainComponent is still here. */
+            setOwnedContent(new FontSpecimen());
             setVisible(true);
         }
     };

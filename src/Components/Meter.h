@@ -65,14 +65,14 @@ public:
     void paint(Graphics &g)
     {
         uint16_t labelWidth =
-            g.getTextWidth(label, TextStyle::smallWhiteOnBlack);
+            g.system().getTextWidth(label, TextStyle::smallTransparent);
 
-        g.printText(0,
-                    0,
-                    label,
-                    TextStyle::smallTransparent,
-                    getWidth(),
-                    TextAlign::center);
+        g.system().printText(0,
+                             0,
+                             label,
+                             TextStyle::smallTransparent,
+                             getWidth(),
+                             TextAlign::center);
 
         if (active == true) {
             g.setColour(Colours565::white);

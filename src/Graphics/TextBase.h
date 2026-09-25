@@ -27,47 +27,93 @@
 
 #pragma once
 
-#if DEFAULT_BPP == 24
-#define FRAME_UI_TOOLKIT 0x004B0000
-#else
-#define FRAME_UI_TOOLKIT 0x00258000
-#endif
+#include <cstdint>
 
-enum class TextAlign { left, center, right };
+enum class TextAlign { left = 0, center = 1, right = 2 };
 
 /**
- * @brief A face to draw with.
+ * @brief The two styles the UI is written in terms of.
  *
- * These used to be the row a glyph sat on in the UI strip, which is why
- * medium was 13. The strip is packed now and a glyph is found by its own
- * position, so a style is simply a name for a family, a size and a variant.
- *
- * The family is the rule the mk2 follows and this now follows too: the
- * firmware's own windows are written in the system faces, a preset's controls
- * in the user faces. Which one a caller wants is a property of what it is
- * drawing, not of how big it wants it, so it is in the name.
+ * These used to be the row a glyph sat on in the UI toolkit strip, which is
+ * why medium was 13. They are now simply names for a face and a size: small
+ * is the regular weight the strip carried, medium is the bold one.
  */
-enum class TextStyle {
-    systemSmall = 0,
-    systemMedium,
-    systemMediumInverse, /**< black on a white field */
-    systemMediumDimmed, /**< white on a dimmed field */
-    userSmall,
-    userMedium,
-    userLarge,
+enum class TextStyle { smallTransparent = 0, mediumTransparent = 1 };
 
-    /* The names the call sites used when there was only one family. They
-     * draw with the system faces, which is what they did before, so a call
-     * site that has not been looked at yet is unchanged rather than wrong. */
-    smallWhiteOnBlack = systemSmall,
-    smallTransparent = systemSmall,
-    mediumWhiteOnBlack = systemMedium,
-    mediumTransparent = systemMedium,
-    mediumBlackOnWhite = systemMediumInverse,
-    mediumInverseTransparent = systemMediumInverse,
-    mediumWhiteOnDimmed = systemMediumDimmed,
-
-    /* Large only ever draws a preset's values, so it is a user face. */
-    largeWhiteOnBlack = userLarge,
-    largeTransparent = userLarge,
+/**
+ * @brief Which of the faces to draw with.
+ *
+ * Each size is separately rasterised at its own pixel size rather than one
+ * master scaled up and down: a 12 px face and a 47 px face want different stem
+ * weights and different spacing, and resampling gives neither.
+ */
+enum class TextSize {
+    small = 0,
+    medium = 1,
+    large = 2,
+    huge = 3,
 };
+
+/** The two weights. */
+enum class TextFace {
+    regular = 0,
+    bold = 1,
+};
+
+/**
+ * @brief How far one character moves the pen.
+ *
+ * Proportional gives every glyph its own width, which is what all of the UI
+ * uses. Monospaced gives every glyph the same width, so a value that changes
+ * does not shuffle the characters around it - a proportional readout counting
+ * past 1 visibly jitters.
+ *
+ * It selects a face rather than widening the pen. Monospaced used to advance
+ * the proportional face by its widest glyph, which is what a W or an @ costs:
+ * at the Huge size the pen moved 47 px for a digit 26 px wide, and the result
+ * read as loose single characters. The monospaced faces are Menlo, drawn for
+ * a pitch that lands within a pixel of what the proportional digits already
+ * advance by.
+ */
+enum class TextSpacing {
+    proportional = 0,
+    monospaced = 1,
+};
+
+/**
+ * @brief A face: one size, one weight, one spacing.
+ *
+ * Three independent axes, each with its own vocabulary already - sixteen
+ * combinations, which is why this is a triple and not one more enumerator.
+ *
+ * It is here rather than on Control because the components that draw with it
+ * are in src/ and know nothing about a preset - LookAndFeel takes one to paint
+ * a group's label.
+ */
+struct TextFont {
+    TextSize size{ TextSize::medium };
+    TextFace face{ TextFace::regular };
+    TextSpacing spacing{ TextSpacing::proportional };
+};
+
+constexpr int numTextSizes = 4;
+constexpr int numTextFaces = 2;
+constexpr int numTextSpacings = 2;
+
+/** True when the value names one of the sizes. */
+inline bool isTextSize(int value)
+{
+    return ((value >= 0) && (value < numTextSizes));
+}
+
+/** True when the value names a face that exists. */
+inline bool isTextFace(int value)
+{
+    return ((value >= 0) && (value < numTextFaces));
+}
+
+/** True when the value names a spacing that exists. */
+inline bool isTextSpacing(int value)
+{
+    return ((value >= 0) && (value < numTextSpacings));
+}

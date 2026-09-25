@@ -30,7 +30,6 @@
 #include "System.h"
 #include "Hardware.h"
 #include "settings.h"
-#include "Fonts/UiAsset.inc"
 
 BitmapReader::BitmapReader(const uint8_t CSp, const uint8_t RSTp)
     : FrameBuffer(CSp, RSTp)
@@ -145,12 +144,4 @@ bool readUInt(FileIoStream &file, unsigned int *n, int swap)
         return (false);
     }
     return (true);
-}
-
-void BitmapReader::initUIToolkit(void)
-{
-    /* The strip is only as tall as the glyphs packed into it, which the
-     * generator writes into the tables beside them, so this no longer reads a
-     * fixed six hundred rows of mostly nothing. */
-    loadBMP(UI_FILE, uiAssetRows);
 }

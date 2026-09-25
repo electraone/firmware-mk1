@@ -73,20 +73,25 @@ void GroupControl::paint(Graphics &g)
         paintHighligted(g, width, height, colour);
     } else {
         paintDefault(g, width, height, colour);
-        g.paintTextPlaceHolder(0,
-                               2,
-                               label,
-                               TextStyle::userSmall,
-                               width,
-                               TextAlign::center,
-                               getUseAltBackground()
-                                   ? LookAndFeel::altBackgroundColour
-                                   : LookAndFeel::backgroundColour);
+        g.user().paintTextPlaceHolder(0,
+                                      2,
+                                      label,
+                                      width,
+                                      TextAlign::center,
+                                      getUseAltBackground()
+                                          ? LookAndFeel::altBackgroundColour
+                                          : LookAndFeel::backgroundColour,
+                                      TextSize::small);
     }
 
     if (strlen(label) > 0) {
-        g.printText(
-            0, 2, label, TextStyle::userSmall, width, TextAlign::center);
+        g.user().printText(0,
+                           2,
+                           label,
+                           width,
+                           TextAlign::center,
+                           Colours565::white,
+                           TextSize::small);
     }
 }
 

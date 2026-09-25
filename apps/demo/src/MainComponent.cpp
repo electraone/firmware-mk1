@@ -56,12 +56,13 @@ void MainComponent::paint(Graphics &g)
 {
     g.fillAll(Colours565::black);
     return;
-    g.printText(0,
-                40,
-                "Demo Application",
-                TextStyle::largeTransparent,
-                getWidth(),
-                TextAlign::center);
+    g.user().printText(0,
+                       40,
+                       "Demo Application",
+                       getWidth(),
+                       TextAlign::center,
+                       Colours565::white,
+                       TextSize::large);
 }
 
 void MainComponent::resized()

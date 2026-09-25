@@ -34,7 +34,7 @@ class TextGraphics : virtual public Component
 public:
     TextGraphics()
         : text(nullptr),
-          style(TextStyle::smallWhiteOnBlack),
+          style(TextStyle::smallTransparent),
           aligment(TextAlign::left)
     {
     }
@@ -59,7 +59,7 @@ public:
     void paint(Graphics &g)
     {
         if ((text != nullptr) && (strlen(text) > 0)) {
-            g.printText(
+            g.user().printText(
                 0, getHeight() - 12, text, style, getWidth(), aligment, colour);
         }
     }

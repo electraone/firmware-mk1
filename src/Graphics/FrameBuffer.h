@@ -53,6 +53,7 @@
 #define SDRAM_PAGE_8 0x00E10000
 #define SDRAM_CGRAM 0x00E10000
 #define SDRAM_PAGE_SIZE 0x00258000
+#define FRAME_GLYPHS 0x00A8C000
 #else
 #define FRAME_BUFFER_1 0x00000000
 #define FRAME_BUFFER_2 0x0012C000
@@ -69,6 +70,15 @@
 #define SDRAM_PAGE_8 0x00E10000
 #define SDRAM_CGRAM 0x00F3C000
 #define SDRAM_PAGE_SIZE 0x0012C000
+
+/*
+ * The glyph atlas, which does not fit in a page and so does not get one: it
+ * runs from page five to the character generator, four and a half of the six
+ * megabytes nothing else was using. Sixteen user faces in six colours and two
+ * system faces in three is what that buys; TextAtlas.cpp says so at build time
+ * if a face is added that does not fit.
+ */
+#define FRAME_GLYPHS SDRAM_PAGE_5
 #endif
 
 /**

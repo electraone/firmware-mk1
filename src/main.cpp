@@ -72,18 +72,23 @@ void initialise(void)
         Hardware::screen.setBacklightbrightness(electraInfoBrightness);
     }
 
-    // Load the UI toolkit
-    if (Hardware::sdcard.exists(UI_FILE) == false) {
-        System::logger.write(
-            LOG_ERROR, "UI asset file not found: file=%s", UI_FILE);
-    } else {
-        Hardware::screen.initUIToolkit();
-        displaySplash(Hardware::screen,
-                      App::get()->getApplicationName(),
-                      App::get()->getApplicationVersion(),
-                      System::runtimeInfo.getElectraInfoHwRevision());
-    }
-    System::logger.write(LOG_INFO, "UI assets: Loaded and initialised");
+    /* The faces are built here rather than loaded. There is no asset file:
+     * the glyphs live in flash as coverage and the coloured bands are
+     * composited into the display's memory now. */
+    uint32_t fontsStartedAt = millis();
+
+    Hardware::screen.system().uploadFonts();
+    Hardware::screen.user().uploadFonts();
+    displaySplash(Hardware::screen,
+                  App::get()->getApplicationName(),
+                  App::get()->getApplicationVersion(),
+                  System::runtimeInfo.getElectraInfoHwRevision());
+
+    /* Worth a number rather than a note: it is the longest thing the unit
+     * does before it can show anything, and it is the SPI link rather than
+     * the compositing - a face added or dropped moves it. */
+    System::logger.write(
+        LOG_INFO, "UI fonts: built in %d ms", (int)(millis() - fontsStartedAt));
 
     // Initialize MIDI interfaces
     MidiInterface::get(MidiInterface::Type::MidiIo)->initialise();

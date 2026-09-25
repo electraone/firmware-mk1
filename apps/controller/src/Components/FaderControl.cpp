@@ -119,13 +119,13 @@ void FaderControl::paint(Graphics &g)
                control.getMode(),
                control.getVariant());
 
-    g.printText(0,
-                getHeight() - 20,
-                getName(),
-                TextStyle::userMedium,
-                getWidth(),
-                TextAlign::center,
-                2);
+    g.user().printText(0,
+                       getHeight() - 20,
+                       getName(),
+                       getWidth(),
+                       TextAlign::center,
+                       Colours565::white,
+                       TextSize::medium);
     ControlComponent::paint(g);
 }
 
@@ -234,12 +234,13 @@ void FaderControl::paintValueFixed(Graphics &g,
         item.paintBitmap(paddingBitmap, 0, colour);
     } else if (items && !item.isLabelEmpty()) {
         g.setColour(Colours565::white);
-        g.printText(0,
-                    0,
-                    item.getLabel(),
-                    TextStyle::userMedium,
-                    bounds.getWidth(),
-                    TextAlign::center);
+        g.user().printText(0,
+                           0,
+                           item.getLabel(),
+                           bounds.getWidth(),
+                           TextAlign::center,
+                           Colours565::white,
+                           TextSize::medium);
     } else {
         char stringValue[ControlValue::MaxLabelLength + 1];
         if (control.getValue(0).isLabelSet()) {
@@ -251,12 +252,13 @@ void FaderControl::paintValueFixed(Graphics &g,
                 stringValue, ControlValue::MaxLabelLength, formatString, val);
         }
 
-        g.printText(0,
-                    labelYPosition,
-                    stringValue,
-                    TextStyle::userMedium,
-                    getWidth(),
-                    TextAlign::center);
+        g.user().printText(0,
+                           labelYPosition,
+                           stringValue,
+                           getWidth(),
+                           TextAlign::center,
+                           Colours565::white,
+                           TextSize::medium);
     }
 }
 
@@ -281,8 +283,7 @@ void FaderControl::paintValueFloating(Graphics &g,
         snprintf(stringValue, ControlValue::MaxLabelLength, formatString, val);
     }
 
-    uint16_t textWidth =
-        TextBTE::getTextWidth(stringValue, TextStyle::userMedium);
+    uint16_t textWidth = g.user().getTextWidth(stringValue, TextSize::medium);
     g.setColour(x > (bounds.getWidth() - textWidth)
                         && isColorTooBright(colour, 0.7f)
                     ? Colours565::black

@@ -44,10 +44,10 @@ void BankButton::paint(Graphics &g)
 
     g.setColour(getSelectedColour());
     g.drawRoundRect(0, 0, getWidth(), getHeight(), getRadius());
-    g.printText(0,
-                getHeight() / 2 - 7,
-                getLabel(),
-                TextStyle::smallTransparent,
-                getWidth(),
-                TextAlign::center);
+    g.system().printText(0,
+                         getHeight() / 2 - 7,
+                         getLabel(),
+                         TextStyle::smallTransparent,
+                         getWidth(),
+                         TextAlign::center);
 }

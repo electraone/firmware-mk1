@@ -78,12 +78,13 @@ void RelativeControl::paint(Graphics &g)
         snprintf(stringValue, ControlValue::MaxLabelLength, "%d", delta);
     }
 
-    g.printText(0,
-                0,
-                stringValue,
-                TextStyle::userMedium,
-                width,
-                TextAlign::center);
+    g.user().printText(0,
+                       0,
+                       stringValue,
+                       width,
+                       TextAlign::center,
+                       Colours565::white,
+                       TextSize::medium);
 
     for (uint8_t i = 0; i < 3; i++) {
         leftArrow(g,
@@ -108,13 +109,13 @@ void RelativeControl::paint(Graphics &g)
     g.drawPixel(centerX + padding - 1, yPosition);
     g.drawPixel(centerX + padding - 1, yPosition + 6);
 
-    g.printText(0,
-                getHeight() - 20,
-                getName(),
-                TextStyle::userMedium,
-                getWidth(),
-                TextAlign::center,
-                2);
+    g.user().printText(0,
+                       getHeight() - 20,
+                       getName(),
+                       getWidth(),
+                       TextAlign::center,
+                       Colours565::white,
+                       TextSize::medium);
 
     ControlComponent::paint(g);
 }

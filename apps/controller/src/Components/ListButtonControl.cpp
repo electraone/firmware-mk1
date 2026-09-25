@@ -165,12 +165,13 @@ void ListButtonControl::paintButtonList(Graphics &g,
                      item.getLabel());
         }
         // Print the label
-        g.printText(0,
-                    bounds.getHeight() * 0.3f,
-                    stringValue,
-                    TextStyle::userMedium,
-                    bounds.getWidth(),
-                    TextAlign::center);
+        g.user().printText(0,
+                           bounds.getHeight() * 0.3f,
+                           stringValue,
+                           bounds.getWidth(),
+                           TextAlign::center,
+                           Colours565::white,
+                           TextSize::medium);
     } else {
         // display bitmap image
         uint16_t paddingBitmap = ((bounds.getWidth() - BITMAP_WIDTH)) / 2 - 1;

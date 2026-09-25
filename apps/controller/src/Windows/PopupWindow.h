@@ -44,12 +44,12 @@ protected:
         g.setColour(Colours888::toRGB565(colour));
         g.fillRect(0, 10, width, 30);
         paintIcon(g, 16, 15);
-        g.printText(40,
-                    18,
-                    title,
-                    TextStyle::mediumTransparent,
-                    width,
-                    TextAlign::left);
+        g.system().printText(40,
+                             18,
+                             title,
+                             TextStyle::mediumTransparent,
+                             width,
+                             TextAlign::left);
     }
 
     static void paintIcon(Graphics &g, uint16_t x, uint16_t y)

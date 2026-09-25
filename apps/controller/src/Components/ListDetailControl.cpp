@@ -182,12 +182,13 @@ void ListDetailControl::paintListItems(Graphics &g, int16_t offset)
                  "%s",
                  listItem.getLabelAndBitmap(bitmap));
 
-        g.printText(0,
-                    j * listItemHeight + 25,
-                    stringValue,
-                    TextStyle::userMedium,
-                    listItemWidth,
-                    TextAlign::center);
+        g.user().printText(0,
+                           j * listItemHeight + 25,
+                           stringValue,
+                           listItemWidth,
+                           TextAlign::center,
+                           Colours565::white,
+                           TextSize::medium);
 
         if (listItem.isBitmapEmpty() == false) {
             Hardware::memory.bitmapPool.paint(bitmap,
