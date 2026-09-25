@@ -22,44 +22,45 @@
 /**
  * @file ADR.h
  *
- * @brief An ADR envelope component.
+ * @brief An attack / decay / release envelope contour.
  */
 
 #pragma once
 
-#include "Envelope.h"
+#include "EnvelopeShape.h"
+#include <algorithm>
 
-class ADR : public Envelope
+class ADR : public EnvelopeShape
 {
 public:
-    ADR()
+    uint8_t getNumSegments(void) const override
     {
-        points.push_back(Point()); // Attack
-        points.push_back(Point()); // Decay
-        points.push_back(Point()); // Release
-
-        values.push_back(Value()); // Attack
-        values.push_back(Value()); // Decay
-        values.push_back(Value()); // Release
+        return (3);
     }
 
-    virtual ~ADR() = default;
-
-    void computePoints(const Rectangle &bounds)
+    uint8_t getNumPoints(void) const override
     {
-        uint16_t segmentWidth = getSegmentWidth(bounds.getWidth(), 3);
-        uint16_t decayLength = segmentWidth * values[decay].getRelative();
-        float factor = (float)decayLength / (float)segmentWidth;
+        return (5);
+    }
 
-        // Set the baseline
+    void computePoints(const Rectangle &bounds,
+                       const std::vector<Value> &values,
+                       std::vector<Point> &points,
+                       int16_t &baselineY) const override
+    {
+        const uint16_t segmentWidth = getSegmentWidth(bounds, 3);
+        const uint16_t decayLength = segmentWidth * values[decay].getRelative();
+        const float factor =
+            segmentWidth > 0 ? (float)decayLength / (float)segmentWidth : 0.0f;
+
         baselineY = bounds.getHeight() - 1;
 
-        // Starting point
+        // Origin
         points[0].x = 0;
         points[0].y = baselineY;
 
-        // Delay
-        points[1].x = segmentWidth * 0; // values[delay].getRelative();
+        // Where the attack rises from
+        points[1].x = 0;
         points[1].y = baselineY;
 
         // Attack
@@ -79,6 +80,4 @@ public:
     static constexpr uint8_t attack = 0;
     static constexpr uint8_t decay = 1;
     static constexpr uint8_t release = 2;
-
-private:
 };

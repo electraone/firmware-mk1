@@ -20,24 +20,39 @@
 */
 
 /**
- * @file ADSRDetailControl.h
+ * @file EnvelopeDetailControl.h
  *
- * @brief Implements a detailed version of the ADSR envelope Control.
+ * @brief An envelope Control drawn inside a detail window.
  */
 
 #pragma once
 
-#include "ADSRControl.h"
+#include "EnvelopeControl.h"
 
-class ADSRDetailControl : public ADSRControl
+/**
+ * @brief The detail window's version of an EnvelopeControl.
+ *
+ * There were three of these too, one per shape, and the diff between any two
+ * was their names. What actually distinguishes a detail from a control on a
+ * page is three things: it takes the whole window rather than leaving room for
+ * a name, it draws no name and no active underline, and letting go closes it.
+ *
+ * The mk2's can also show other envelopes over its own, in their own colours.
+ * That is not here.
+ */
+class EnvelopeDetailControl : public EnvelopeControl
 {
 public:
-    ADSRDetailControl(const Control &control, MainDelegate &newDelegate);
-    virtual ~ADSRDetailControl() = default;
+    EnvelopeDetailControl(const Control &control,
+                          MainDelegate &newDelegate,
+                          const EnvelopeShape &newShape);
+    virtual ~EnvelopeDetailControl() = default;
 
     void onTouchUp(const TouchEvent &touchEvent) override;
     void onTouchLongHold(const TouchEvent &touchEvent) override;
     void onPotTouchUp(const PotEvent &potEvent) override;
 
-    virtual void paint(Graphics &g) override;
+protected:
+    uint16_t getContourHeight(void) const override;
+    void paintDecorations(Graphics &g) override;
 };

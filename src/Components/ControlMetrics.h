@@ -56,6 +56,17 @@ struct ControlMetrics {
     uint16_t graphicsBottomInset;
 
     /**
+     * @brief How far above the bottom of a control the tall graphics stop.
+     *
+     * An envelope's contour is not a strip beside a name the way a fader's
+     * track is - it is the whole drawing. It ends here, which is the row a
+     * pad's box ends on, so a row of controls has one bottom edge rather than
+     * two. The same as graphicsBottomInset on this model and on the mk2,
+     * whose cell is the same 56 rows; a taller cell is where the two part.
+     */
+    uint16_t boxBottomInset;
+
+    /**
      * @brief How tall the thin graphics are: a thin fader's track, a list's
      *        dots, the bar that stands in for them.
      *
@@ -166,6 +177,7 @@ struct ControlMetrics {
  */
 inline constexpr ControlMetrics controlMetrics = {
     /* graphicsBottomInset */ 27,
+    /* boxBottomInset     */ 27,
     /* stripHeight         */ 7,
     /* faderThinBarHeight  */ 7,
     /* faderThinInset      */ 34,

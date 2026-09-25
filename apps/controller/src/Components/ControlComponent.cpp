@@ -25,14 +25,13 @@
 #include "ListControl.h"
 #include "ListButtonControl.h"
 #include "PadControl.h"
-#include "ADSRControl.h"
-#include "ADRControl.h"
-#include "Dx7EnvControl.h"
+#include "EnvelopeControl.h"
+#include "ADSR.h"
+#include "ADR.h"
+#include "Env5Seg.h"
 #include "FaderDetailControl.h"
 #include "ListDetailControl.h"
-#include "ADSRDetailControl.h"
-#include "ADRDetailControl.h"
-#include "Dx7EnvDetailControl.h"
+#include "EnvelopeDetailControl.h"
 #include "KnobControl.h"
 #include "RelativeControl.h"
 #include "MainWindow.h"
@@ -78,7 +77,7 @@ void ControlComponent::onTouchDoubleClick(
 {
     uint8_t handle = 0;
 
-    if (Envelope *en = dynamic_cast<Envelope *>(this)) {
+    if (MultiValue *en = dynamic_cast<MultiValue *>(this)) {
         handle = en->getActiveSegment();
     }
 
@@ -294,11 +293,11 @@ ControlComponent *
     } else if (control.getType() == Control::Type::Pad) {
         c = new PadControl(control, newDelegate);
     } else if (control.getType() == Control::Type::Adsr) {
-        c = new ADSRControl(control, newDelegate);
+        c = new ShapedEnvelope<ADSR, EnvelopeControl>(control, newDelegate);
     } else if (control.getType() == Control::Type::Adr) {
-        c = new ADRControl(control, newDelegate);
+        c = new ShapedEnvelope<ADR, EnvelopeControl>(control, newDelegate);
     } else if (control.getType() == Control::Type::Dx7envelope) {
-        c = new Dx7EnvControl(control, newDelegate);
+        c = new ShapedEnvelope<Env5Seg, EnvelopeControl>(control, newDelegate);
     } else if (control.getType() == Control::Type::Knob) {
         c = new KnobControl(control, newDelegate);
     } else if (control.getType() == Control::Type::Relative) {
@@ -323,11 +322,14 @@ ControlComponent *
     } else if (control.getType() == Control::Type::List) {
         c = new ListDetailControl(control, newDelegate);
     } else if (control.getType() == Control::Type::Adsr) {
-        c = new ADSRDetailControl(control, newDelegate);
+        c = new ShapedEnvelope<ADSR, EnvelopeDetailControl>(control,
+                                                            newDelegate);
     } else if (control.getType() == Control::Type::Adr) {
-        c = new ADRDetailControl(control, newDelegate);
+        c = new ShapedEnvelope<ADR, EnvelopeDetailControl>(control,
+                                                           newDelegate);
     } else if (control.getType() == Control::Type::Dx7envelope) {
-        c = new Dx7EnvDetailControl(control, newDelegate);
+        c = new ShapedEnvelope<Env5Seg, EnvelopeDetailControl>(control,
+                                                               newDelegate);
     }
 
     if (c) {

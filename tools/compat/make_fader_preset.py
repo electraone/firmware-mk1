@@ -106,6 +106,63 @@ def pad(page, slot, name, on, **extra):
     next_id += 1
 
 
+ENVELOPE_VALUE_IDS = {
+    "adsr": ["attack", "decay", "sustain", "release"],
+    "adr": ["attack", "decay", "release"],
+    "dx7envelope": ["l1", "r1", "l2", "r2", "l3", "r3", "l4", "r4"],
+}
+
+
+def envelope(page, slot, kind, name, levels, **extra):
+    """One envelope, at a slot counted left to right and top to bottom.
+
+    `levels` is one value per segment, in the order the type's value ids run.
+    The pots are assigned from the first one, so the segment a pot turns is the
+    one the control's first input names.
+    """
+    global next_id
+
+    row, column = divmod(slot, 6)
+    ids = ENVELOPE_VALUE_IDS[kind]
+    span = extra.pop("span", 1)
+    width = COLUMN_X[column + span - 1] + 146 - COLUMN_X[column]
+    ranges = extra.pop("ranges", None) or [(0, 127)] * len(ids)
+
+    body = {
+        "id": next_id,
+        "type": kind,
+        "name": name,
+        "color": extra.pop("color", "529DEC"),
+        "bounds": [COLUMN_X[column], ROW_Y[row], width, 56],
+        "pageId": page,
+        "controlSetId": extra.pop("controlSetId", 1),
+        "visible": True,
+        "inputs": [
+            {"potId": (index % 12) + 1, "valueId": valueId}
+            for index, valueId in enumerate(ids)
+        ],
+        "values": [
+            {
+                "id": valueId,
+                "min": ranges[index][0],
+                "max": ranges[index][1],
+                "defaultValue": levels[index],
+                "message": {
+                    "deviceId": 1,
+                    "type": "cc7",
+                    "parameterNumber": next_id * 8 + index,
+                    "min": 0,
+                    "max": 127,
+                },
+            }
+            for index, valueId in enumerate(ids)
+        ],
+    }
+    body.update(extra)
+    controls.append(body)
+    next_id += 1
+
+
 def group(page, column, span, row, rows, label, **extra):
     """One group, over `span` columns starting at `column`.
 
@@ -168,18 +225,18 @@ for index, size in enumerate(["small", "medium", "large", "huge"]):
     control(3, index + 6, size.upper() + " BOLD", 88,
             font={"size": size, "weight": "bold"})
 
-# Page four: the same four, monospaced - where the digits stop shuffling.
-page(4, "MONOSPACED")
+# and the same four monospaced, two rows below - where the digits stop
+# shuffling. A preset may only have twelve pages, so this shares one.
 for index, size in enumerate(["small", "medium", "large", "huge"]):
-    control(4, index, size.upper(), 88,
+    control(3, index + 12, size.upper() + " M", 88,
             font={"size": size, "spacing": "monospaced"})
 for index, size in enumerate(["small", "medium", "large", "huge"]):
-    control(4, index + 6, size.upper() + " BOLD", 88,
+    control(3, index + 18, size.upper() + " M BOLD", 88,
             font={"size": size, "weight": "bold", "spacing": "monospaced"})
 
-# Page five: overlays. A fader with one is drawn thin and prints the word;
+# Page four: overlays. A fader with one is drawn thin and prints the word;
 # an entry may name a colour of its own.
-page(5, "OVERLAYS")
+page(4, "OVERLAYS")
 overlays.append({
     "id": 1,
     "items": [
@@ -200,15 +257,15 @@ overlays.append({
 })
 
 for index, value in enumerate([0, 1, 2, 3]):
-    control(5, index, f"WORD {value}", value, min=0, max=3)
+    control(4, index, f"WORD {value}", value, min=0, max=3)
     controls[-1]["values"][0]["overlayId"] = 1
 for index, value in enumerate([0, 1, 2, 3]):
-    control(5, index + 6, f"TINTED {value}", value, min=0, max=3)
+    control(4, index + 6, f"TINTED {value}", value, min=0, max=3)
     controls[-1]["values"][0]["overlayId"] = 2
 
-# Page six: lists. Few entries draw dots, many draw the bar that stands in
+# Page five: lists. Few entries draw dots, many draw the bar that stands in
 # for them; a long label is cut to the control with a marker.
-page(6, "LISTS")
+page(5, "LISTS")
 
 overlays.append({
     "id": 3,
@@ -243,7 +300,7 @@ overlays.append({
 })
 
 LIST_PAGES = [
-    (6, "list", [
+    (5, "list", [
         ("DOTS", 3, 2, {}),
         ("DOTS FULL", 3, 4, {}),
         ("BAR", 4, 11, {}),
@@ -259,7 +316,7 @@ LIST_PAGES = [
         ("MANY", 7, 5, {}),
         ("MANY LATE", 7, 50, {}),
     ]),
-    (7, "list-button", [
+    (6, "list-button", [
         ("VALUE ONLY", 3, 2, {"variant": "valueOnly"}),
         ("V FULL", 3, 4, {"variant": "valueOnly"}),
         ("V BAR", 4, 11, {"variant": "valueOnly"}),
@@ -269,7 +326,7 @@ LIST_PAGES = [
     ]),
 ]
 
-page(7, "VALUE ONLY")
+page(6, "VALUE ONLY")
 
 for pageId, kind, entries in LIST_PAGES:
     for slot, (name, overlayId, value, extra) in enumerate(entries):
@@ -280,34 +337,34 @@ for pageId, kind, entries in LIST_PAGES:
         controls[-1]["type"] = "list"
         controls[-1]["values"][0]["overlayId"] = overlayId
 
-# Page eight: the default pad. Both states, both modes, and the six colours -
+# Page seven: the default pad. Both states, both modes, and the six colours -
 # a pad that is on carries a strip of its colour down the left whether it is
 # momentary or not.
-page(8, "PADS")
-pad(8, 0, "OFF", False)
-pad(8, 1, "ON", True)
+page(7, "PADS")
+pad(7, 0, "OFF", False)
+pad(7, 1, "ON", True)
 # Only at rest: this firmware writes a momentary pad's off value when the
 # component goes away, so one is always dark by the time a page has been
 # switched to. The lit shape is the same either way - paintPad() draws the
 # strip from the state alone, as the mk2 does.
-pad(8, 2, "MOMENTARY", False, mode="momentary")
-pad(8, 3, "A LONGER NAME", False)
-pad(8, 4, "LIT LONGER", True)
+pad(7, 2, "MOMENTARY", False, mode="momentary")
+pad(7, 3, "A LONGER NAME", False)
+pad(7, 4, "LIT LONGER", True)
 for index, colour in enumerate(COLOURS):
-    pad(8, index + 6, f"COLOUR {index + 1}", False, color=colour)
+    pad(7, index + 6, f"COLOUR {index + 1}", False, color=colour)
 for index, colour in enumerate(COLOURS):
-    pad(8, index + 12, f"LIT {index + 1}", True, color=colour)
+    pad(7, index + 12, f"LIT {index + 1}", True, color=colour)
 
-# Page nine: the faces a pad's word is printed in. A pad prints its name
+# Page eight: the faces a pad's word is printed in. A pad prints its name
 # across the middle here, so the face is the control's own.
-page(9, "PAD FACES")
+page(8, "PAD FACES")
 for index, size in enumerate(["small", "medium", "large", "huge"]):
-    pad(9, index, size.upper(), False, font={"size": size})
+    pad(8, index, size.upper(), False, font={"size": size})
 for index, size in enumerate(["small", "medium", "large", "huge"]):
-    pad(9, index + 6, size.upper(), True,
+    pad(8, index + 6, size.upper(), True,
         font={"size": size, "weight": "bold"})
 
-# Page ten: the valueOnly pad, which shows the state as a word from its
+# Page nine: the valueOnly pad, which shows the state as a word from its
 # overlay - keyed by the MIDI value the state sends, not by an index.
 overlays.append({
     "id": 8,
@@ -324,59 +381,59 @@ overlays.append({
     ],
 })
 
-page(10, "PAD VALUE")
-pad(10, 0, "STATE", False, variant="valueOnly", overlayId=8)
-pad(10, 1, "STATE", True, variant="valueOnly", overlayId=8)
-pad(10, 2, "VOICES", False, variant="valueOnly", overlayId=9)
-pad(10, 3, "VOICES", True, variant="valueOnly", overlayId=9)
+page(9, "PAD VALUE")
+pad(9, 0, "STATE", False, variant="valueOnly", overlayId=8)
+pad(9, 1, "STATE", True, variant="valueOnly", overlayId=8)
+pad(9, 2, "VOICES", False, variant="valueOnly", overlayId=9)
+pad(9, 3, "VOICES", True, variant="valueOnly", overlayId=9)
 # No overlay: the name is what is left to print, as the default pad does.
-pad(10, 4, "NO OVERLAY", False, variant="valueOnly")
-pad(10, 5, "NO OVERLAY", True, variant="valueOnly")
+pad(9, 4, "NO OVERLAY", False, variant="valueOnly")
+pad(9, 5, "NO OVERLAY", True, variant="valueOnly")
 for index, colour in enumerate(COLOURS):
-    pad(10, index + 6, "STATE", index % 2 == 1, variant="valueOnly",
+    pad(9, index + 6, "STATE", index % 2 == 1, variant="valueOnly",
         overlayId=8, color=colour)
-pad(10, 12, "LARGE", False, variant="valueOnly", overlayId=8,
+pad(9, 12, "LARGE", False, variant="valueOnly", overlayId=8,
     font={"size": "large"})
-pad(10, 13, "LARGE", True, variant="valueOnly", overlayId=8,
+pad(9, 13, "LARGE", True, variant="valueOnly", overlayId=8,
     font={"size": "large"})
-pad(10, 14, "SMALL", True, variant="valueOnly", overlayId=8,
+pad(9, 14, "SMALL", True, variant="valueOnly", overlayId=8,
     font={"size": "small"})
 
-# Page eleven: the checkbox, which stands on the row a fader's track ends on
+# Page ten: the checkbox, which stands on the row a fader's track ends on
 # and keeps its name underneath. A checkbox with no name has the whole cell.
-page(11, "CHECKBOX")
-pad(11, 0, "OFF", False, variant="checkbox")
-pad(11, 1, "ON", True, variant="checkbox")
-pad(11, 2, "MOMENTARY", False, variant="checkbox", mode="momentary")
-pad(11, 3, "", True, variant="checkbox")
-pad(11, 4, "", False, variant="checkbox")
-pad(11, 5, "A LONGER NAME", True, variant="checkbox")
+page(10, "CHECKBOX")
+pad(10, 0, "OFF", False, variant="checkbox")
+pad(10, 1, "ON", True, variant="checkbox")
+pad(10, 2, "MOMENTARY", False, variant="checkbox", mode="momentary")
+pad(10, 3, "", True, variant="checkbox")
+pad(10, 4, "", False, variant="checkbox")
+pad(10, 5, "A LONGER NAME", True, variant="checkbox")
 for index, colour in enumerate(COLOURS):
-    pad(11, index + 6, f"COLOUR {index + 1}", index % 2 == 1,
+    pad(10, index + 6, f"COLOUR {index + 1}", index % 2 == 1,
         variant="checkbox", color=colour)
 
-# Page twelve: groups. Three shapes - the frame with the label in a gap in its
+# Page eleven: groups. Three shapes - the frame with the label in a gap in its
 # top edge, the same frame with the label in a filled bar, and a button half
 # the group's width - each over a pair of faders so the boxing can be seen,
 # then the bar on its own, then the faces.
-page(12, "GROUPS")
+page(11, "GROUPS")
 
-group(12, 0, 2, 0, 1, "DEFAULT")
-group(12, 2, 2, 0, 1, "HIGHLIGHTED", variant="highlighted")
-group(12, 4, 2, 0, 1, "BUTTONLIKE", variant="buttonlike")
+group(11, 0, 2, 0, 1, "DEFAULT")
+group(11, 2, 2, 0, 1, "HIGHLIGHTED", variant="highlighted")
+group(11, 4, 2, 0, 1, "BUTTONLIKE", variant="buttonlike")
 
-group(12, 0, 2, 1, 1, "LARGE BOLD", font={"size": "large", "weight": "bold"},
+group(11, 0, 2, 1, 1, "LARGE BOLD", font={"size": "large", "weight": "bold"},
       color="C44795")
-group(12, 2, 2, 1, 1, "SMALL MONO",
+group(11, 2, 2, 1, 1, "SMALL MONO",
       font={"size": "small", "spacing": "monospaced"}, color="F45C51")
-group(12, 4, 2, 1, 1, "HUGE", variant="highlighted", font={"size": "huge"})
+group(11, 4, 2, 1, 1, "HUGE", variant="highlighted", font={"size": "huge"})
 
 # The third row falls outside the active control set's band, so these three
 # come up dimmed - which is the one thing about a group this page could not
 # otherwise show.
-group(12, 0, 2, 2, 0, "BAR ONLY")
-group(12, 2, 2, 2, 0, "BAR ONLY", variant="highlighted", color="F49500")
-group(12, 4, 2, 2, 0, "BAR ONLY", variant="buttonlike", color="03A598")
+group(11, 0, 2, 2, 0, "BAR ONLY")
+group(11, 2, 2, 2, 0, "BAR ONLY", variant="highlighted", color="F49500")
+group(11, 4, 2, 2, 0, "BAR ONLY", variant="buttonlike", color="03A598")
 
 # All on one control set, so none of the three rows is dimmed and the shapes
 # can be compared. Slots four and five are left empty: a buttonlike group is a
@@ -384,7 +441,35 @@ group(12, 4, 2, 2, 0, "BAR ONLY", variant="buttonlike", color="03A598")
 for slot in range(18):
     if slot in (4, 5):
         continue
-    control(12, slot, f"F{slot + 1}", 40 + slot * 4, controlSetId=1)
+    control(11, slot, f"F{slot + 1}", 40 + slot * 4, controlSetId=1)
+
+# Page twelve: envelopes. The three shapes, at the ends of their ranges and
+# in the middle, plus the cases that used to divide by zero - a level range
+# topping out at zero, and one that is a single point.
+page(12, "ENVELOPES")
+
+envelope(12, 0, "adsr", "ADSR", [20, 40, 80, 40])
+envelope(12, 1, "adsr", "SLOW", [110, 110, 100, 120])
+envelope(12, 2, "adsr", "PLUCK", [0, 30, 0, 20])
+envelope(12, 3, "adr", "ADR", [30, 60, 60])
+envelope(12, 4, "adr", "AD", [10, 120, 0])
+envelope(12, 5, "dx7envelope", "DX7", [99, 60, 70, 50, 85, 40, 0, 70],
+         ranges=[(0, 99)] * 8)
+
+envelope(12, 6, "adsr", "WIDE", [20, 40, 80, 40], span=2, color="F45C51")
+envelope(12, 8, "dx7envelope", "DX7 WIDE",
+         [99, 60, 70, 50, 85, 40, 0, 70], span=2, ranges=[(0, 99)] * 8,
+         color="03A598")
+# A sustain that tops out at zero: the old relative-value arithmetic divided
+# by the maximum twice over and made this NaN.
+envelope(12, 10, "adsr", "ZERO TOP", [20, 40, -30, 40],
+         ranges=[(0, 127), (0, 127), (-64, 0), (0, 127)], color="F49500")
+
+envelope(12, 12, "adsr", "FLAT", [20, 40, 0, 40],
+         ranges=[(0, 127), (0, 127), (0, 0), (0, 127)], color="C44795")
+envelope(12, 13, "adsr", "BIPOLAR", [20, 40, -40, 40],
+         ranges=[(0, 127), (0, 127), (-64, 63), (0, 127)])
+envelope(12, 14, "adr", "LONG", [127, 127, 127], color="FFFFFF")
 
 preset = {
     "version": 2,

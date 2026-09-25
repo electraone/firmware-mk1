@@ -1155,10 +1155,12 @@ void LookAndFeel::paintEnvelopeBaseline(Graphics &g,
                                         [[maybe_unused]] uint32_t colour,
                                         uint16_t baselineY)
 {
-    g.setColour(Colours565::black);
+    /* One solid line in the inactive grey. It used to be a black line with a
+     * dotted grey one over it, and the dots cost a bus transaction each - a
+     * thousand of them across a detail, several milliseconds of a frame for a
+     * line that only marks where zero is. */
+    g.setColour(Colours888::toRGB565(InactiveColour));
     g.drawLine(0, baselineY, bounds.getWidth(), baselineY);
-    g.setColour(Colours565::darkgrey);
-    g.drawHorizontalDottedLine(0, bounds.getWidth(), baselineY);
 }
 
 void LookAndFeel::paintEnvelopeMarkers(Graphics &g,

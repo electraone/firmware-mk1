@@ -22,86 +22,82 @@
 /**
  * @file Env5Seg.h
  *
- * @brief A Five-segment Envelope component.
+ * @brief A DX7-style five-segment level and rate envelope contour.
  */
 
 #pragma once
 
-#include "Envelope.h"
+#include "EnvelopeShape.h"
+#include <algorithm>
 
-class Env5Seg : public Envelope
+class Env5Seg : public EnvelopeShape
 {
 public:
-    Env5Seg()
+    uint8_t getNumSegments(void) const override
     {
-        points.push_back(Point()); // Stage 1
-        points.push_back(Point()); // Stage 2
-        points.push_back(Point()); // Stage 3
-        points.push_back(Point()); // Stage 4
-        points.push_back(Point()); // Stage 5
-
-        values.push_back(Value()); // Level 1
-        values.push_back(Value()); // Rate 1
-        values.push_back(Value()); // Level 2
-        values.push_back(Value()); // Rate 2
-        values.push_back(Value()); // Level 3
-        values.push_back(Value()); // Rate 3
-        values.push_back(Value()); // Level 4
-        values.push_back(Value()); // Rate 4
+        return (8);
     }
 
-    virtual ~Env5Seg() = default;
-
-    float getMinimumLevel(void)
+    uint8_t getNumPoints(void) const override
     {
-        float minLevel =
+        return (7);
+    }
+
+    /* A DX7 rate counts down: the larger the number, the faster the segment,
+     * where the contour wants a length. Odd handles are the rates. */
+    int16_t translateSegmentValue(uint8_t segment,
+                                  int16_t value,
+                                  int16_t maxValue) const override
+    {
+        return ((segment % 2) ? (int16_t)(maxValue - value) : value);
+    }
+
+    static float getMinimumLevel(const std::vector<Value> &values)
+    {
+        const float minLevel =
             std::min(std::min(values[level1].get(), values[level2].get()),
                      std::min(values[level3].get(), values[level4].get()));
-        if (minLevel > 0) {
-            minLevel = 0;
-        }
 
-        return (minLevel);
+        return (std::min(0.0f, minLevel));
     }
 
-    float getMaximumLevel(void)
+    static float getMaximumLevel(const std::vector<Value> &values)
     {
-        float maxLevel =
+        const float maxLevel =
             std::max(std::max(values[level1].get(), values[level2].get()),
                      std::max(values[level3].get(), values[level4].get()));
 
-        if (maxLevel < 0) {
-            maxLevel = 0;
-        }
-
-        return (maxLevel);
+        return (std::max(0.0f, maxLevel));
     }
 
-    void computePoints(const Rectangle &bounds)
+    void computePoints(const Rectangle &bounds,
+                       const std::vector<Value> &values,
+                       std::vector<Point> &points,
+                       int16_t &baselineY) const override
     {
-        uint16_t segmentWidth = getSegmentWidth(bounds.getWidth(), 5);
-        float maxY = bounds.getHeight() - 1;
+        const uint16_t segmentWidth = getSegmentWidth(bounds, 5);
+        const float maxY = bounds.getHeight() - 1;
 
-        float boundaryMin = getMinimumLevel();
-        float boundaryMax = getMaximumLevel();
+        const float boundaryMin = getMinimumLevel(values);
+        const float boundaryMax = getMaximumLevel(values);
 
-        int16_t baseline = map(0.0f, boundaryMin, boundaryMax, maxY, 0.0f);
+        const int16_t level1Y = mapLevel(
+            values[level1].get(), boundaryMin, boundaryMax, maxY, 0.0f);
+        const int16_t level2Y = mapLevel(
+            values[level2].get(), boundaryMin, boundaryMax, maxY, 0.0f);
+        const int16_t level3Y = mapLevel(
+            values[level3].get(), boundaryMin, boundaryMax, maxY, 0.0f);
+        const int16_t level4Y = mapLevel(
+            values[level4].get(), boundaryMin, boundaryMax, maxY, 0.0f);
 
-        int16_t level1Y =
-            map(values[level1].get(), boundaryMin, boundaryMax, maxY, 0.0f);
-        int16_t level2Y =
-            map(values[level2].get(), boundaryMin, boundaryMax, maxY, 0.0f);
-        int16_t level3Y =
-            map(values[level3].get(), boundaryMin, boundaryMax, maxY, 0.0f);
-        int16_t level4Y =
-            map(values[level4].get(), boundaryMin, boundaryMax, maxY, 0.0f);
+        baselineY = mapLevel(0.0f, boundaryMin, boundaryMax, maxY, 0.0f);
 
-        // Starting point
+        // Origin
         points[0].x = 0;
         points[0].y = level4Y;
 
-        // Delay
-        points[1].x = segmentWidth * 0; // values[delay].getRelative();
+        // Where the first segment starts from
+        points[1].x = 0;
         points[1].y = level4Y;
 
         // Segment 1
@@ -123,9 +119,6 @@ public:
         // Segment 5
         points[6].x = points[5].x + segmentWidth * values[rate4].getRelative();
         points[6].y = level4Y;
-
-        // Set the baseline
-        baselineY = baseline;
     }
 
     static constexpr uint8_t level1 = 0;
@@ -136,6 +129,4 @@ public:
     static constexpr uint8_t rate3 = 5;
     static constexpr uint8_t level4 = 6;
     static constexpr uint8_t rate4 = 7;
-
-private:
 };

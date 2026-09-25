@@ -71,6 +71,10 @@ public:
     /** The corner radius a pad's box is drawn with. */
     static constexpr uint16_t padRadius = 4;
 
+    /** What is drawn in a shade that says "not the thing being read": an
+     *  envelope's zero line. */
+    static constexpr uint32_t InactiveColour = 0x2b2b2b;
+
     /** The pill a checkbox's handle is drawn in. */
     static constexpr uint32_t HandleColour = 0xeeeeee;
 

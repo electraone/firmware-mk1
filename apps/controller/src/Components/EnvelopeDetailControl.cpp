@@ -19,16 +19,21 @@
 * along with this program.
 */
 
-#include "Dx7EnvDetailControl.h"
-#include "LookAndFeel.h"
+#include "EnvelopeDetailControl.h"
 
-Dx7EnvDetailControl::Dx7EnvDetailControl(const Control &control,
-                                         MainDelegate &newDelegate)
-    : Dx7EnvControl(control, newDelegate)
+EnvelopeDetailControl::EnvelopeDetailControl(const Control &control,
+                                             MainDelegate &newDelegate,
+                                             const EnvelopeShape &newShape)
+    : EnvelopeControl(control, newDelegate, newShape)
 {
 }
 
-void Dx7EnvDetailControl::onTouchUp(
+/*
+ * Neither of these calls up to EnvelopeControl. Letting go of a detail closes
+ * it, and the control is about to be destroyed - hiding its segment marker on
+ * the way out would only queue a repaint of a window that is going away.
+ */
+void EnvelopeDetailControl::onTouchUp(
     [[maybe_unused]] const TouchEvent &touchEvent)
 {
     if (!delegate.isDetailLocked()) {
@@ -36,13 +41,7 @@ void Dx7EnvDetailControl::onTouchUp(
     }
 }
 
-void Dx7EnvDetailControl::onTouchLongHold(
-    [[maybe_unused]] const TouchEvent &touchEvent)
-{
-    // No action for long hold
-}
-
-void Dx7EnvDetailControl::onPotTouchUp(
+void EnvelopeDetailControl::onPotTouchUp(
     [[maybe_unused]] const PotEvent &potEvent)
 {
     if (!delegate.isDetailLocked()) {
@@ -50,12 +49,19 @@ void Dx7EnvDetailControl::onPotTouchUp(
     }
 }
 
-void Dx7EnvDetailControl::paint(Graphics &g)
+/* A long hold on a page control opens the detail. Inside the detail there is
+ * nothing to open. */
+void EnvelopeDetailControl::onTouchLongHold(
+    [[maybe_unused]] const TouchEvent &touchEvent)
 {
-    Rectangle envBounds = getBounds();
-    envBounds.setHeight(envBounds.getHeight());
-    computePoints(envBounds);
-    g.fillAll(LookAndFeel::backgroundColour);
-    LookAndFeel::paintEnvelope(
-        g, envBounds, control.getColour565(), baselineY, points, 0, false);
+}
+
+uint16_t EnvelopeDetailControl::getContourHeight(void) const
+{
+    return (getHeight());
+}
+
+/* A detail has no name and no underline to draw. */
+void EnvelopeDetailControl::paintDecorations([[maybe_unused]] Graphics &g)
+{
 }

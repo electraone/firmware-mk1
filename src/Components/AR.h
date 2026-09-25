@@ -22,40 +22,42 @@
 /**
  * @file AR.h
  *
- * @brief An AR envelope component.
+ * @brief An attack / release envelope contour.
  */
 
 #pragma once
 
-#include "Envelope.h"
+#include "EnvelopeShape.h"
+#include <algorithm>
 
-class AR : public Envelope
+class AR : public EnvelopeShape
 {
 public:
-    AR()
+    uint8_t getNumSegments(void) const override
     {
-        points.push_back(Point()); // Attack
-        points.push_back(Point()); // Release (or Decay)
-
-        values.push_back(Value()); // Attack
-        values.push_back(Value()); // Release (or Decay)
+        return (2);
     }
 
-    virtual ~AR() = default;
-
-    void computePoints(const Rectangle &bounds)
+    uint8_t getNumPoints(void) const override
     {
-        uint16_t segmentWidth = getSegmentWidth(bounds.getWidth(), 2);
+        return (4);
+    }
 
-        // Set the baseline
+    void computePoints(const Rectangle &bounds,
+                       const std::vector<Value> &values,
+                       std::vector<Point> &points,
+                       int16_t &baselineY) const override
+    {
+        const uint16_t segmentWidth = getSegmentWidth(bounds, 2);
+
         baselineY = bounds.getHeight() - 1;
 
-        // Starting point
+        // Origin
         points[0].x = 0;
         points[0].y = baselineY;
 
-        // Delay
-        points[1].x = segmentWidth * 0; // values[delay].getRelative();
+        // Where the attack rises from
+        points[1].x = 0;
         points[1].y = baselineY;
 
         // Attack
@@ -70,6 +72,4 @@ public:
 
     static constexpr uint8_t attack = 0;
     static constexpr uint8_t release = 1;
-
-private:
 };

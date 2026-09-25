@@ -87,42 +87,6 @@ public:
     //       stroke types and all types of lines are supported
 
     /**
-	 * Draws horizontal dotted a line.
-	 *
-	 * @param x1 X coordinate of the start point.
-	 * @param x2 X coordinate of the end point.
-	 * @param y Y coordinate of the line.
-	 */
-    void drawHorizontalDottedLine(uint16_t x1, uint16_t x2, uint16_t y)
-    {
-        if (x1 > x2) {
-            std::swap(x1, x2);
-        }
-
-        for (uint16_t x = x1; x < x2; x += 3) {
-            FrameBuffer::drawPixel(x, y);
-        }
-    }
-
-    /**
-	 * Draws vertical dotted a line.
-	 *
-	 * @param x X coordinate of the line.
-	 * @param y1 Y coordinate of the start point.
-	 * @param y2 Y coordinate of the end point.
-	 */
-    void drawVerticalDottedLine(uint16_t x, uint16_t y1, uint16_t y2)
-    {
-        if (y1 > y2) {
-            std::swap(y1, y2);
-        }
-
-        for (uint16_t y = y1; y < y2; y += 3) {
-            FrameBuffer::drawPixel(x, y);
-        }
-    }
-
-    /**
      * Draws a rectangular shape.
      *
      * @param x X coordinate of the top-left corner.

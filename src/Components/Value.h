@@ -28,6 +28,7 @@
 #pragma once
 
 #include "compat.h"
+#include <cmath>
 
 class Value
 {
@@ -98,9 +99,19 @@ public:
     }
 
 private:
+    /* The relative value is the absolute one expressed as a fraction of the
+     * maximum, which is what the envelope shapes want when they turn a segment
+     * value into a fraction of the segment's width. It used to be spelled as a
+     * map() onto min/max .. 1, which is the same number by a longer route - but
+     * that route divides by max twice over, and a range topping out at zero
+     * (-64 .. 0 is a perfectly ordinary one) made it infinite, then NaN, and
+     * finally an undefined cast to the integer coordinates of a contour point.
+     */
     void calculateRelative(void)
     {
-        relative = map(absolute, min, max, min * (1.0f / max), 1.0f);
+        constexpr float smallestUsefulMax = 1e-6f;
+
+        relative = (fabsf(max) > smallestUsefulMax) ? (absolute / max) : 0.0f;
     }
 
     float absolute;

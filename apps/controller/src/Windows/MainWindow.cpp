@@ -2,7 +2,7 @@
 #include "ListDetailLayout.h"
 #include "ControlComponent.h"
 #include "GroupControl.h"
-#include "Envelope.h"
+#include "MultiValue.h"
 #include "luaExtension.h"
 #include "System.h"
 #include "SubscribedEvents.h"
@@ -1111,21 +1111,21 @@ void MainWindow::switchToPreviousHandleOfActivePotTouch(void)
 
 void MainWindow::showActiveHandle(Component *component, bool shouldBeShown)
 {
-    if (Envelope *en = dynamic_cast<Envelope *>(component)) {
+    if (MultiValue *en = dynamic_cast<MultiValue *>(component)) {
         en->showActiveSegment(shouldBeShown);
     }
 }
 
 void MainWindow::switchToNextHandle(Component *component)
 {
-    if (Envelope *en = dynamic_cast<Envelope *>(component)) {
+    if (MultiValue *en = dynamic_cast<MultiValue *>(component)) {
         en->switchToNextActiveHandle();
     }
 }
 
 void MainWindow::switchToPreviousHandle(Component *component)
 {
-    if (Envelope *en = dynamic_cast<Envelope *>(component)) {
+    if (MultiValue *en = dynamic_cast<MultiValue *>(component)) {
         en->switchToPreviousActiveHandle();
     }
 }
