@@ -26,6 +26,8 @@
  */
 
 #include "Colours.h"
+
+#include <cmath>
 #include <string.h>
 #include "RA8876.h"
 
@@ -212,6 +214,67 @@ namespace Colours565
         uint16_t newGreen = (uint16_t)(green + (0x3f - green) * factor) & 0x3f;
         uint16_t newBlue = (uint16_t)(blue + (0x1f - blue) * factor) & 0x1f;
         return ((newRed << 11) | (newGreen << 5) | newBlue);
+    }
+    uint32_t mix(uint32_t colour, uint32_t other, float amount)
+    {
+        const auto channel = [amount](uint32_t a, uint32_t b) {
+            return (
+                (uint32_t)((float)b + ((float)a - (float)b) * amount + 0.5f));
+        };
+
+        const uint32_t red =
+            channel((colour >> 11) & 0x1f, (other >> 11) & 0x1f) & 0x1f;
+        const uint32_t green =
+            channel((colour >> 5) & 0x3f, (other >> 5) & 0x3f) & 0x3f;
+        const uint32_t blue = channel(colour & 0x1f, other & 0x1f) & 0x1f;
+
+        return ((red << 11) | (green << 5) | blue);
+    }
+
+    /*
+     * Relative luminance as WCAG 2.x defines it - each channel expanded to
+     * eight bits, linearised through the sRGB curve, and weighted by how
+     * bright it looks, green ten times blue.
+     *
+     * The linear values come from two small tables built on first use, so a
+     * paint pays three lookups rather than three pow() calls.
+     */
+    float relativeLuminance(uint16_t colour)
+    {
+        static float fiveBit[32];
+        static float sixBit[64];
+        static bool built = false;
+
+        if (!built) {
+            auto linear = [](float c) {
+                return ((c <= 0.04045f) ? (c / 12.92f)
+                                        : powf((c + 0.055f) / 1.055f, 2.4f));
+            };
+
+            for (uint8_t v = 0; v < 32; v++) {
+                fiveBit[v] = linear((float)((v << 3) | (v >> 2)) / 255.0f);
+            }
+            for (uint8_t v = 0; v < 64; v++) {
+                sixBit[v] = linear((float)((v << 2) | (v >> 4)) / 255.0f);
+            }
+            built = true;
+        }
+
+        return ((0.2126f * fiveBit[(colour >> 11) & 0x1F])
+                + (0.7152f * sixBit[(colour >> 5) & 0x3F])
+                + (0.0722f * fiveBit[colour & 0x1F]));
+    }
+
+    /*
+     * Black or white, whichever has the higher WCAG contrast ratio against the
+     * background. The two ratios are equal at this luminance.
+     */
+    uint32_t textColourOn(uint16_t background)
+    {
+        constexpr float equalContrast = 0.1791f;
+
+        return ((relativeLuminance(background) > equalContrast) ? black
+                                                                : white);
     }
 } // namespace Colours565
 

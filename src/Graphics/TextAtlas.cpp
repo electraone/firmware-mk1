@@ -296,23 +296,48 @@ void TextAtlas::drawStringExpanded(uint16_t x,
             break;
         }
 
-        if ((glyph.width != 0) && (glyph.height != 0)) {
-            /* The source x is a byte and not a pixel: the expansion reads
-             * eight pixels at a time, which is why a mask is packed to byte
-             * columns in the first place. */
-            bteExpansion(maskAddress,
-                         face.maskX[index],
-                         face.maskY[index],
-                         address,
-                         x + xPosition + pen + glyph.left,
-                         y + glyph.top,
-                         glyph.width,
-                         glyph.height,
-                         colour);
-        }
+        expandGlyph(address,
+                    face,
+                    index,
+                    x + xPosition + pen + glyph.left,
+                    y + glyph.top,
+                    glyph.width,
+                    colour);
 
         pen += glyph.advance;
     }
+}
+
+void TextAtlas::expandGlyph(uint32_t address,
+                            const FontFace &face,
+                            uint16_t index,
+                            uint16_t x,
+                            uint16_t y,
+                            uint16_t width,
+                            uint32_t colour)
+{
+    const FontGlyph &glyph = face.glyph[index];
+
+    if ((width == 0) || (glyph.width == 0) || (glyph.height == 0)) {
+        return;
+    }
+
+    if (width > glyph.width) {
+        width = glyph.width;
+    }
+
+    /* The source x is a byte and not a pixel: the expansion reads eight
+     * pixels at a time, which is why a mask is packed to byte columns in the
+     * first place. */
+    bteExpansion(maskAddress,
+                 face.maskX[index],
+                 face.maskY[index],
+                 address,
+                 x,
+                 y,
+                 width,
+                 glyph.height,
+                 colour);
 }
 
 void TextAtlas::drawVertical(uint16_t x,

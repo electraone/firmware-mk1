@@ -30,6 +30,15 @@ const char *valueIdsDx7Env[] = {
     "l1", "r1", "l2", "r2", "l3", "r3", "l4", "r4"
 };
 
+/* A Control is held for every control of every preset - a hundred and thirty
+ * of them on the preset this is measured against - so anything added to it is
+ * paid for that many times. The face cost nothing: it went into padding the
+ * bitfield was already leaving behind. Adding a field that grows this is a
+ * decision, and it should be made on purpose rather than noticed later. */
+static_assert(sizeof(Control) == 68,
+              "sizeof(Control) has changed - every preset pays for it once "
+              "per control, so check that it was meant");
+
 Control::Control() : id(0), pageId(0), controlSetId(0), component(nullptr)
 {
     type = (uint8_t)Control::Type::None;
@@ -37,7 +46,8 @@ Control::Control() : id(0), pageId(0), controlSetId(0), component(nullptr)
     mode = (uint8_t)Control::Mode::Default;
     controlSetId = 0;
     variant = (uint8_t)Control::Variant::Default;
-    visible = (uint8_t) false;
+    visible = (uint8_t)false;
+    setFont(Font());
     name[0] = '\0';
 }
 
@@ -50,7 +60,8 @@ Control::Control(uint16_t id,
                  uint32_t newColour,
                  uint8_t newControlSetId,
                  Variant newVariant,
-                 bool newVisible)
+                 bool newVisible,
+                 const Font &newFont)
     : id(id),
       pageId(newPageId),
       bounds(newBounds),
@@ -63,6 +74,7 @@ Control::Control(uint16_t id,
     mode = (uint8_t)newMode;
     variant = (uint8_t)newVariant;
     visible = (uint8_t)newVisible;
+    setFont(newFont);
 }
 
 bool Control::isValid(void) const
@@ -233,6 +245,49 @@ Control::Mode Control::translateControlMode(const char *modeText)
         }
     }
     return (Control::Mode::Default);
+}
+
+void Control::setFont(const Font &newFont)
+{
+    fontSize = (uint8_t)newFont.size;
+    fontFace = (uint8_t)newFont.face;
+    fontSpacing = (uint8_t)newFont.spacing;
+}
+
+Control::Font Control::getFont(void) const
+{
+    return (Font{
+        (TextSize)fontSize, (TextFace)fontFace, (TextSpacing)fontSpacing });
+}
+
+TextSize Control::translateFontSize(const char *text)
+{
+    if (text) {
+        if (strcmp(text, "small") == 0) {
+            return (TextSize::small);
+        } else if (strcmp(text, "large") == 0) {
+            return (TextSize::large);
+        } else if (strcmp(text, "huge") == 0) {
+            return (TextSize::huge);
+        }
+    }
+    return (TextSize::medium);
+}
+
+TextFace Control::translateFontFace(const char *text)
+{
+    if (text && (strcmp(text, "bold") == 0)) {
+        return (TextFace::bold);
+    }
+    return (TextFace::regular);
+}
+
+TextSpacing Control::translateFontSpacing(const char *text)
+{
+    if (text && (strcmp(text, "monospaced") == 0)) {
+        return (TextSpacing::monospaced);
+    }
+    return (TextSpacing::proportional);
 }
 
 Control::Variant Control::translateVariant(const char *variantText)

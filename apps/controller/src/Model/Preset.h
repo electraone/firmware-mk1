@@ -150,6 +150,15 @@ private:
     Rectangle parseBounds(File &file, size_t startPosition, size_t endPosition);
     Rectangle parseBounds(JsonArray jBounds);
 
+    /**
+     * @brief The {"size","weight","spacing"} object, as the mk2 spells it.
+     *
+     * A member left out keeps the default, so a preset that names only a size
+     * gets the regular proportional face at that size rather than a face
+     * assembled out of nothing.
+     */
+    Control::Font parseFont(JsonObject jFont);
+
     // Static functions
     static uint8_t translateValueId(Control::Type type, const char *valueId);
     static uint8_t getNumValues(Control::Type type);

@@ -51,9 +51,14 @@ public:
         return (id);
     }
 
-    void addItem(int16_t value, const char *label, const char *bitmap = nullptr)
+    void addItem(int16_t value,
+                 const char *label,
+                 const char *bitmap = nullptr,
+                 uint16_t colour = 0,
+                 bool colourIsSet = false)
     {
-        items.push_back(ListDataItem(value, label, bitmap));
+        items.push_back(
+            ListDataItem(value, label, bitmap, colour, colourIsSet));
     }
 
     ListDataItem getByIndex(uint16_t index) const

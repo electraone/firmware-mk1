@@ -169,6 +169,49 @@ private:
                                         const ControlValue &cv);
 
 protected:
+    /**
+     * @brief The colour an overlay item asks for, or the control's own.
+     *
+     * An item that names none is drawn in the colour of whatever is drawing
+     * it, which is what every overlay did before one could name a colour.
+     */
+    uint16_t colourOf(const ListDataItem &item) const
+    {
+        return (item.hasColour() ? item.getColour565()
+                                 : control.getColour565());
+    }
+
+    /** The face the control asks its text to be drawn in. */
+    Control::Font getValueFont(void) const
+    {
+        return (control.getFont());
+    }
+
+    /**
+     * @brief The row a value's line box starts on, to stand above something.
+     *
+     * A line box holds ascender and descender room a number does not use, so
+     * a value placed by its box sits higher than it looks. This places it by
+     * the ink of its digits instead, which is what keeps a control asking for
+     * a bigger face from putting the number on top of its graphics.
+     */
+    uint16_t valueLabelY(Graphics &g, uint16_t graphicsTop) const;
+
+    /** The same, for a value that should look centred on a row. */
+    uint16_t valueLabelYCentredOn(Graphics &g, uint16_t centreY) const;
+
+    /** The control's value, in the face the control asked for. */
+    void printValue(Graphics &g,
+                    uint16_t x,
+                    uint16_t y,
+                    const char *text,
+                    uint16_t width,
+                    TextAlign align,
+                    uint32_t colour = Colours565::white);
+
+    /** How wide that value will be. */
+    uint16_t valueTextWidth(Graphics &g, const char *text) const;
+
     const Control &control;
     MainDelegate &delegate;
 

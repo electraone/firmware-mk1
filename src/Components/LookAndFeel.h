@@ -130,6 +130,63 @@ public:
                          const ListData *items,
                          uint16_t activeIndex);
 
+    /*
+     * The corner treatment. The chip's round rectangle clears one pixel at
+     * each corner at radius 2, and that pixel and its two neighbours at
+     * radius 3; laying the smaller shape down in a colour halfway to what is
+     * behind and the larger over it in the real colour leaves those
+     * neighbours in the blend. A two pixel corner that reads as smooth, for
+     * two commands where writing the pixels would take eight.
+     */
+    static constexpr uint16_t smoothCornerSize = 2;
+    static constexpr uint16_t smoothCornerRadius = 3;
+    static constexpr uint16_t smoothShortestSide = 7;
+    static constexpr float smoothCornerBlend = 0.5f;
+
+    /*
+     * The dial. The track runs from below the left of the ring round to below
+     * its right, which is the gap the two angles leave.
+     */
+    static constexpr float angleTrackStart = 2.007f;
+    static constexpr float angleTrackEnd = 7.418f;
+
+    /**
+     * @brief A dial: a ring of the control's colour with an arc drawn in it.
+     *
+     * `unipolar` draws the arc from the minimum rather than from zero, so a
+     * bipolar dial fills outwards from the middle and a unipolar one fills
+     * from one end.
+     */
+    static void paintKnob(Graphics &g,
+                          uint16_t x,
+                          uint16_t y,
+                          uint16_t width,
+                          uint16_t height,
+                          uint32_t colour,
+                          int16_t min,
+                          int16_t max,
+                          int16_t val,
+                          bool unipolar);
+
+    /** The row the middle of a knob of that size sits on. */
+    static uint16_t knobCentre(uint16_t size);
+
+    /** How far down a knob of that size its ink reaches. */
+    static uint16_t knobInkHeight(uint16_t size);
+
+    /** The largest knob no taller than that, up to `maxSize`. */
+    static uint16_t knobSizeForInkHeight(uint16_t inkHeight, uint16_t maxSize);
+
+    /** A rounded rectangle whose corners are blended into what is behind. */
+    static void fillSmoothRoundRect(Graphics &g,
+                                    uint16_t x,
+                                    uint16_t y,
+                                    uint16_t width,
+                                    uint16_t height,
+                                    uint32_t colour,
+                                    uint32_t behind,
+                                    uint16_t radius = smoothCornerRadius);
+
 private:
     static void paintEnvelopeContour(Graphics &g,
                                      const Rectangle &bounds,
@@ -154,6 +211,53 @@ private:
                                    const std::vector<Point> &points,
                                    uint8_t activeSegment,
                                    bool showActiveSegment);
+
+    static void paintKnobValue(Graphics &g,
+                               uint16_t x,
+                               uint16_t y,
+                               uint16_t width,
+                               uint16_t height,
+                               uint32_t colour,
+                               uint16_t xCentre,
+                               uint16_t yCentre,
+                               uint16_t radius,
+                               float angleZero,
+                               float angle);
+
+    static void drawKnobCurve(Graphics &g,
+                              uint16_t x,
+                              uint16_t y,
+                              uint16_t width,
+                              uint16_t height,
+                              uint32_t colour,
+                              uint16_t xCentre,
+                              uint16_t yCentre,
+                              uint16_t radius,
+                              float angleStart,
+                              float angleEnd);
+
+    static void maskKnobUnused(Graphics &g,
+                               uint16_t x,
+                               uint16_t y,
+                               uint16_t width,
+                               uint16_t height,
+                               uint16_t xCentre,
+                               uint16_t yCentre,
+                               uint8_t quadrant,
+                               uint8_t quadrantStart,
+                               uint8_t quadrantEnd);
+
+    static void maskKnobCurveSeqment(Graphics &g,
+                                     uint16_t x1,
+                                     uint16_t y1,
+                                     uint16_t x2,
+                                     uint16_t y2,
+                                     uint16_t x3,
+                                     uint16_t y3,
+                                     uint16_t x4,
+                                     uint16_t y4);
+
+    static uint8_t getKnobQuadrant(float angle);
 
     static bool findIntersection(uint16_t lineY,
                                  const Point &C,

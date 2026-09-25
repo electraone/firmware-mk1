@@ -181,6 +181,21 @@ namespace Colours565
     uint32_t darker(uint32_t originalColour, float factor);
     uint32_t lighter(uint32_t originalColour, float factor);
 
+    /** `amount` of the first colour over the second, channel by channel. */
+    uint32_t mix(uint32_t colour, uint32_t other, float amount);
+
+    /** How bright the colour looks, as WCAG 2.x weighs it. */
+    float relativeLuminance(uint16_t colour);
+
+    /**
+     * @brief Black or white, whichever reads better on the colour.
+     *
+     * Which is not the same as "dark colour, white text": a saturated yellow
+     * is light enough to want black on it and a saturated blue is not, and
+     * only the luminance says so.
+     */
+    uint32_t textColourOn(uint16_t background);
+
 } // namespace Colours565
 
 namespace Colours888

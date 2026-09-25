@@ -701,6 +701,7 @@ bool Preset::parseControls(File &file)
     filter["name"] = true;
     filter["color"] = true;
     filter["variant"] = true;
+    filter["font"] = true;
     filter["visible"] = true;
     filter["bounds"] = true;
 
@@ -1028,6 +1029,11 @@ bool Preset::parseOverlayItems(File &file, Overlay &overlay)
             int16_t value = item["value"];
             const char *label = item["label"] | "";
             const char *bitmap = item["bitmap"];
+            bool colourIsSet = !item["color"].isNull();
+            uint16_t colour = colourIsSet
+                                  ? Colours888::toRGB565(Colours565::fromString(
+                                        item["color"].as<const char *>()))
+                                  : 0;
 
 #ifdef DEBUG
             System::logger.write(
@@ -1038,7 +1044,7 @@ bool Preset::parseOverlayItems(File &file, Overlay &overlay)
                 bitmap);
 #endif /* DEBUG */
 
-            overlay.addItem(value, label, bitmap);
+            overlay.addItem(value, label, bitmap, colour, colourIsSet);
         } else {
             break;
         }
@@ -1068,6 +1074,29 @@ Group Preset::parseGroup(JsonObject jGroup)
 
 /*--------------------------------------------------------------------------*/
 
+Control::Font Preset::parseFont(JsonObject jFont)
+{
+    Control::Font font;
+
+    if (!jFont) {
+        return (font);
+    }
+
+    if (jFont["size"].is<const char *>()) {
+        font.size = Control::translateFontSize(jFont["size"]);
+    }
+    if (jFont["weight"].is<const char *>()) {
+        font.face = Control::translateFontFace(jFont["weight"]);
+    }
+    if (jFont["spacing"].is<const char *>()) {
+        font.spacing = Control::translateFontSpacing(jFont["spacing"]);
+    }
+
+    return (font);
+}
+
+/*--------------------------------------------------------------------------*/
+
 /** Parse individual Control object
  *
  */
@@ -1085,6 +1114,7 @@ Control Preset::parseControl(JsonObject jControl)
         Control::translateVariant(jControl["variant"]);
     uint8_t controlSetId = constrainControlSetId(jControl["controlSetId"]);
     bool visible = jControl["visible"] | true;
+    Control::Font font = parseFont(jControl["font"]);
 
     if ((controlType == Control::Type::Fader)
         && (controlMode == Control::Mode::Default)) {
@@ -1099,7 +1129,8 @@ Control Preset::parseControl(JsonObject jControl)
                     colour,
                     controlSetId,
                     variantType,
-                    visible));
+                    visible,
+                    font));
 }
 
 /*--------------------------------------------------------------------------*/

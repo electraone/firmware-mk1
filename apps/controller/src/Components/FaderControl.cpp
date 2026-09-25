@@ -20,6 +20,7 @@
 */
 #include "FaderControl.h"
 #include "ControlMetrics.h"
+#include "LookAndFeel.h"
 
 FaderControl::FaderControl(const Control &control, MainDelegate &newDelegate)
     : ControlComponent(control, newDelegate), thresholdCrossed(false)
@@ -109,25 +110,97 @@ void FaderControl::onMidiValueChange(const ControlValue &value,
 void FaderControl::paint(Graphics &g)
 {
     Rectangle sliderBounds = getBounds();
+    const ListData *items = list.getList();
 
-    paintFader(g,
-               sliderBounds,
-               control.getColour565(),
-               value.getMin(),
-               value.getMax(),
-               value.get(),
-               list.getList(),
-               control.getMode(),
-               control.getVariant());
+    /* An overlay entry the fader has landed on may name a colour of its own.
+     * getByValue answers an empty item when the value matches none, and an
+     * empty item names no colour, so this falls back on the control's. */
+    const uint32_t colour = items ? colourOf(items->getByValue(value.get()))
+                                  : control.getColour565();
 
-    g.user().printText(0,
-                       getHeight() - controlMetrics.nameInset,
-                       getName(),
-                       getWidth(),
-                       TextAlign::center,
-                       Colours565::white,
-                       TextSize::medium);
+    if (control.getVariant() == Control::Variant::Dial) {
+        paintDial(g,
+                  sliderBounds,
+                  colour,
+                  value.getMin(),
+                  value.getMax(),
+                  value.get(),
+                  items,
+                  control.getMode());
+    } else {
+        paintFader(g,
+                   sliderBounds,
+                   colour,
+                   value.getMin(),
+                   value.getMax(),
+                   value.get(),
+                   items,
+                   control.getMode(),
+                   control.getVariant());
+    }
+
+    /* A dial on a cell with no room for both prints no name: the knob has
+     * taken the whole of it, and the name would be drawn over the ring. */
+    if ((control.getVariant() != Control::Variant::Dial)
+        || !controlMetrics.faderDialHidesName) {
+        g.user().printText(0,
+                           getHeight() - controlMetrics.nameInset,
+                           getName(),
+                           getWidth(),
+                           TextAlign::center,
+                           Colours565::white,
+                           TextSize::medium);
+    }
+
     ControlComponent::paint(g);
+}
+
+void FaderControl::paintDial(Graphics &g,
+                             const Rectangle &bounds,
+                             uint32_t colour,
+                             int16_t min,
+                             int16_t max,
+                             int16_t val,
+                             const ListData *items,
+                             Control::Mode mode)
+{
+    uint32_t backgroundColour = getUseAltBackground()
+                                    ? LookAndFeel::altBackgroundColour
+                                    : LookAndFeel::backgroundColour;
+
+    g.fillAll(backgroundColour);
+
+    /* Where the name has been dropped the knob takes the cell. Where it has
+     * not, the ring's ink ends where every other control's graphics end, so
+     * that the row has one bottom edge rather than two. */
+    uint16_t dialHeight =
+        controlMetrics.faderDialHidesName
+            ? bounds.getHeight()
+            : LookAndFeel::knobSizeForInkHeight(
+                  (bounds.getHeight() > controlMetrics.graphicsBottomInset)
+                      ? (uint16_t)(bounds.getHeight()
+                                   - controlMetrics.graphicsBottomInset)
+                      : 0,
+                  std::min(bounds.getWidth(), bounds.getHeight()));
+
+    uint16_t dialWidth = dialHeight;
+    uint16_t dialX = (bounds.getWidth() - dialWidth) / 2;
+
+    LookAndFeel::paintKnob(g,
+                           dialX,
+                           0,
+                           dialWidth,
+                           dialHeight,
+                           colour,
+                           min,
+                           max,
+                           val,
+                           mode == Control::Mode::Unipolar);
+
+    /* A dial reads its number from the hole in the middle of the ring, so the
+     * knob's height is what the value is placed against. */
+    paintValueFixed(
+        g, bounds, colour, val, items, Control::Variant::Dial, dialHeight);
 }
 
 void FaderControl::paintFader(Graphics &g,
@@ -183,10 +256,39 @@ void FaderControl::paintFader(Graphics &g,
 
     if (!thin && controlMetrics.faderValueFloats) {
         paintValueFloating(
-            g, bounds, colour, barX + barWidth, val, items, mode, variant);
+            g, bounds, colour, barX, barWidth, trackY, barHeight, val, items);
     } else {
-        paintValueFixed(g, bounds, colour, val, items, mode, variant);
+        paintValueFixed(g, bounds, colour, val, items, variant, trackY);
     }
+}
+
+bool FaderControl::resolveValueText(char *text,
+                                    size_t size,
+                                    int16_t val,
+                                    const ListDataItem &item,
+                                    const ListData *items,
+                                    bool padNegative) const
+{
+    if (items && !item.isBitmapEmpty()) {
+        return (false);
+    }
+
+    if (items && !item.isLabelEmpty()) {
+        copyString(text, item.getLabel(), size - 1);
+        return (true);
+    }
+
+    if (control.getValue(0).isLabelSet()) {
+        copyString(text, control.getValue(0).getLabel(), size - 1);
+        return (true);
+    }
+
+    /* The trailing space on a negative number is what keeps a minus sign from
+     * pulling a centred number off centre. A right aligned one wants no such
+     * thing. */
+    snprintf(text, size, (padNegative && (val < 0)) ? "%d " : "%d", val);
+
+    return (true);
 }
 
 void FaderControl::paintValueFixed(Graphics &g,
@@ -194,106 +296,93 @@ void FaderControl::paintValueFixed(Graphics &g,
                                    uint32_t colour,
                                    int16_t val,
                                    const ListData *items,
-                                   [[maybe_unused]] Control::Mode mode,
-                                   [[maybe_unused]] Control::Variant variant)
+                                   Control::Variant variant,
+                                   uint16_t graphicsTop)
 {
-    uint16_t labelYPosition = controlMetrics.faderFixedValueY;
+    /* Standing the value a gap above what is under it, so a preset asking for
+     * a bigger face gets it without the number landing on the graphics. */
+    uint16_t labelYPosition = valueLabelY(g, graphicsTop);
 
-    /* Looked up once. getByValue() walks the list to find the entry, so
-     * asking it the same question three times searched it three times. */
-    ListDataItem item = items ? items->getByValue(val) : ListDataItem();
-
-    // Print the label text / Bitmap if exists
-    if (items && !item.isBitmapEmpty()) {
-        uint16_t paddingBitmap = ((bounds.getWidth() - BITMAP_WIDTH)) / 2 - 1;
-        item.paintBitmap(paddingBitmap, 0, colour);
-    } else if (items && !item.isLabelEmpty()) {
-        g.setColour(Colours565::white);
-        g.user().printText(0,
-                           0,
-                           item.getLabel(),
-                           bounds.getWidth(),
-                           TextAlign::center,
-                           Colours565::white,
-                           TextSize::medium);
-    } else {
-        char stringValue[ControlValue::MaxLabelLength + 1];
-        if (control.getValue(0).isLabelSet()) {
-            copyString(stringValue,
-                       control.getValue(0).getLabel(),
-                       ControlValue::MaxLabelLength);
-        } else {
-            snprintf(
-                stringValue, ControlValue::MaxLabelLength, formatString, val);
-        }
-
-        g.user().printText(0,
-                           labelYPosition,
-                           stringValue,
-                           getWidth(),
-                           TextAlign::center,
-                           Colours565::white,
-                           TextSize::medium);
+    if (variant == Control::Variant::Dial) {
+        /* A dial's value goes in the hole in the middle of the ring, and it is
+         * the digits that are centred there rather than the line box they sit
+         * in - centring the box leaves the number sitting high. */
+        labelYPosition =
+            valueLabelYCentredOn(g, LookAndFeel::knobCentre(graphicsTop));
     }
-}
 
-void FaderControl::paintValueFloating(Graphics &g,
-                                      [[maybe_unused]] const Rectangle &bounds,
-                                      [[maybe_unused]] uint32_t colour,
-                                      int16_t x,
-                                      int16_t val,
-                                      [[maybe_unused]] const ListData *items,
-                                      [[maybe_unused]] Control::Mode mode,
-                                      [[maybe_unused]] Control::Variant variant)
-{
-    uint16_t labelYPosition = controlMetrics.faderValueY;
+    /* Looked up once. getByValue() walks the list to find the entry, so asking
+     * it the same question twice searches it twice. */
+    ListDataItem item = items ? items->getByValue(val) : ListDataItem();
 
     char stringValue[ControlValue::MaxLabelLength + 1];
 
-    if (control.getValue(0).isLabelSet()) {
-        copyString(stringValue,
-                   control.getValue(0).getLabel(),
-                   ControlValue::MaxLabelLength);
-    } else {
-        snprintf(stringValue, ControlValue::MaxLabelLength, formatString, val);
+    if (!resolveValueText(
+            stringValue, sizeof(stringValue), val, item, items, true)) {
+        uint16_t paddingBitmap = ((bounds.getWidth() - BITMAP_WIDTH)) / 2 - 1;
+        item.paintBitmap(paddingBitmap, 0, colour);
+        return;
     }
 
-    uint16_t textWidth = g.user().getTextWidth(stringValue, TextSize::medium);
-    uint32_t textColour =
-        (x > (bounds.getWidth() - textWidth) && isColorTooBright(colour, 0.7f))
-            ? Colours565::black
-            : Colours565::white;
-
-    /* The value stands on the bar, which is whatever colour the control is,
-     * so it is drawn from the masks rather than from a band blended against
-     * black. See TextAtlas.h. */
-    g.user().setTextBackgroundColour(colour);
-    g.user().printText(0,
-                       labelYPosition,
-                       stringValue,
-                       bounds.getWidth() - textPositionFromRight,
-                       TextAlign::right,
-                       textColour,
-                       TextSize::medium);
-    g.user().setTextBackgroundColour(Colours565::black);
+    printValue(g,
+               0,
+               labelYPosition,
+               stringValue,
+               bounds.getWidth(),
+               TextAlign::center,
+               Colours565::white);
 }
 
-bool FaderControl::isColorTooBright(uint16_t color, float brightnessThreshold)
+void FaderControl::paintValueFloating(Graphics &g,
+                                      const Rectangle &bounds,
+                                      uint32_t colour,
+                                      int16_t barX,
+                                      int16_t barWidth,
+                                      uint16_t trackY,
+                                      uint16_t trackHeight,
+                                      int16_t val,
+                                      const ListData *items)
 {
-    uint16_t r = (color >> 11) & 0x1F;
-    uint16_t g = (color >> 5) & 0x3F;
-    uint16_t b = color & 0x1F;
+    ListDataItem item = items ? items->getByValue(val) : ListDataItem();
 
-    // Normalize the components to the [0, 1] range
-    float R = static_cast<float>(r) / 31.0f;
-    float G = static_cast<float>(g) / 63.0f;
-    float B = static_cast<float>(b) / 31.0f;
+    char stringValue[ControlValue::MaxLabelLength + 1];
 
-    float maxColor = std::max({ R, G, B });
-    float minColor = std::min({ R, G, B });
+    if (!resolveValueText(
+            stringValue, sizeof(stringValue), val, item, items, false)) {
+        uint16_t paddingBitmap = ((bounds.getWidth() - BITMAP_WIDTH)) / 2 - 1;
+        item.paintBitmap(paddingBitmap, 0, colour);
+        return;
+    }
 
-    // Calculate lightness in the HSL color space using float
-    float lightness = (maxColor + minColor) / 2.0f;
+    /* Centred on the bar by the digits' ink rather than set at a fixed row, so
+     * a preset's bigger or smaller face still sits in the middle of it. */
+    const Control::Font font = getValueFont();
+    const uint16_t centreY = trackY + (trackHeight / 2);
+    const uint16_t y = valueLabelYCentredOn(g, centreY);
 
-    return (lightness > brightnessThreshold);
+    /* The whole number used to turn black once the end of the bar had passed
+     * under any of it. It splits where the bar ends now, each half in the
+     * colour that reads on what is under it. */
+    const uint32_t track = Colours565::darker(colour, 0.3f);
+    const int16_t barEnd = (int16_t)(barX + barWidth);
+    const int16_t from = (barX < barEnd) ? barX : barEnd;
+    const int16_t to = (barX < barEnd) ? barEnd : barX;
+
+    g.user().printTextSplit(
+        0,
+        y,
+        stringValue,
+        (bounds.getWidth() > textPositionFromRight)
+            ? (uint16_t)(bounds.getWidth() - textPositionFromRight)
+            : 0,
+        TextAlign::right,
+        (uint16_t)std::max((int16_t)0, from),
+        (uint16_t)std::max((int16_t)0, to),
+        Colours565::textColourOn(colour),
+        colour,
+        Colours565::textColourOn(track),
+        track,
+        font.size,
+        font.face,
+        font.spacing);
 }

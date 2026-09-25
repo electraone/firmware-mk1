@@ -152,6 +152,81 @@ void TextUser::printText(uint16_t x,
     }
 }
 
+void TextUser::printTextSplit(uint16_t x,
+                              uint16_t y,
+                              const char *text,
+                              uint16_t width,
+                              TextAlign align,
+                              uint16_t bandStart,
+                              uint16_t bandEnd,
+                              uint32_t insideColour,
+                              [[maybe_unused]] uint32_t insideBackground,
+                              uint32_t outsideColour,
+                              [[maybe_unused]] uint32_t outsideBackground,
+                              TextSize size,
+                              TextFace face,
+                              TextSpacing spacing)
+{
+    const FontFace &font = fontFor(size, face, spacing);
+    const uint32_t address = getCanvasAddress();
+    uint16_t textWidth = measureString(text, font);
+    uint16_t xPosition = 0;
+
+    if (textWidth > width) {
+        textWidth = width;
+    }
+
+    if (align == TextAlign::center) {
+        xPosition = (width - textWidth) / 2;
+    } else if (align == TextAlign::right) {
+        xPosition = width - textWidth;
+    }
+
+    /* The colour of the region a column falls in. */
+    auto colourAt = [&](uint16_t at) {
+        return (((at >= bandStart) && (at < bandEnd)) ? insideColour
+                                                      : outsideColour);
+    };
+
+    uint16_t pen = 0;
+
+    for (uint16_t i = 0; text[i] != 0; i++) {
+        const uint16_t index = glyphIndex(text[i]);
+        const FontGlyph &glyph = font.glyph[index];
+        const uint16_t left = x + xPosition + pen + glyph.left;
+        const uint16_t right = left + glyph.width;
+
+        /* Drawn whole in the colour its right hand end stands on, and then
+         * again for each edge that falls inside it, cropped at that edge and
+         * in the colour to the left of it - rightmost edge first, so that a
+         * glyph both edges cross ends up with three colours in the right
+         * order. */
+        expandGlyph(address,
+                    font,
+                    index,
+                    left,
+                    y + glyph.top,
+                    glyph.width,
+                    colourAt((right > 0) ? (uint16_t)(right - 1) : 0));
+
+        const uint16_t edges[2] = { bandEnd, bandStart };
+
+        for (uint16_t edge : edges) {
+            if ((edge > left) && (edge < right)) {
+                expandGlyph(address,
+                            font,
+                            index,
+                            left,
+                            y + glyph.top,
+                            (uint16_t)(edge - left),
+                            colourAt((uint16_t)(edge - 1)));
+            }
+        }
+
+        pen += glyph.advance;
+    }
+}
+
 void TextUser::printText(uint16_t x,
                          uint16_t y,
                          const char *text,

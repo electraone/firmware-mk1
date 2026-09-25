@@ -34,6 +34,7 @@
 #include "Input.h"
 #include "Rectangle.h"
 #include "Colours.h"
+#include "TextBase.h"
 #include "Component.h"
 
 extern const char *valueIdsAdsr[];
@@ -66,6 +67,21 @@ public:
 
     enum class Variant { Default = 0, Thin = 2, ValueOnly = 3, Dial = 4 };
 
+    /**
+     * @brief The face a control draws its text in.
+     *
+     * Three independent choices - four sizes, two weights, two spacings - so
+     * a triple rather than one more Variant enumerator, which could only ever
+     * carry one of them.
+     *
+     * It costs four bits, and they were already there: the bitfield below had
+     * eleven going spare inside the words it occupies. A Control is held for
+     * every control of every preset, so the alternative - three bytes, or a
+     * struct - would have been paid a hundred and thirty times over on the
+     * preset this was measured against.
+     */
+    using Font = TextFont;
+
     Control();
     Control(uint16_t id,
             uint8_t pageId,
@@ -76,7 +92,8 @@ public:
             uint32_t colour,
             uint8_t controlSetId,
             Variant variant,
-            bool visible);
+            bool visible,
+            const Font &font = Font());
 
     virtual ~Control() = default;
 
@@ -98,6 +115,9 @@ public:
     Variant getVariant(void) const;
     void setVisible(bool shouldBeVisible);
     bool isVisible(void) const;
+
+    void setFont(const Font &newFont);
+    Font getFont(void) const;
     Rectangle getBounds(void) const;
     void setBounds(const Rectangle &bounds);
     void setValues(std::vector<ControlValue> values);
@@ -109,6 +129,9 @@ public:
     static Type translateType(const char *typeText);
     static Mode translateControlMode(const char *modeText);
     static Variant translateVariant(const char *variantText);
+    static TextSize translateFontSize(const char *text);
+    static TextFace translateFontFace(const char *text);
+    static TextSpacing translateFontSpacing(const char *text);
 
     const char *translateValueId(uint8_t id) const;
     uint8_t translateValueId(const char *handle) const;
@@ -137,6 +160,10 @@ private:
         uint8_t controlSetId : 3;
         uint8_t variant : 4;
         uint8_t visible : 1;
+        /* The face, in the padding the fields above leave behind. */
+        uint8_t fontSize : 2;
+        uint8_t fontFace : 1;
+        uint8_t fontSpacing : 1;
         uint32_t colour : 24;
     };
 

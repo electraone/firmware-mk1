@@ -56,41 +56,31 @@ void FaderDetailControl::paint(Graphics &g)
     int16_t max = value.getMax();
     Control::Mode mode = control.getMode();
 
-    g.fillAll(Colours565::black);
-
-    uint32_t colourTrack = Colours565::darker(colour, 0.3f);
     uint32_t backgroundColour = getUseAltBackground()
                                     ? LookAndFeel::altBackgroundColour
                                     : LookAndFeel::backgroundColour;
 
-    uint16_t barHeight = bounds.getHeight();
-    uint16_t padding = 0;
-    uint16_t barX = 0;
+    int16_t barX = 0;
 
     // For zero based faders, find the start position of the bar
     if (mode == Control::Mode::Bipolar) {
         barX = map(std::max((int16_t)0, min), min, max, 0, bounds.getWidth());
     }
 
-    uint16_t barWidth = map(val, min, max, 0, bounds.getWidth()) - barX;
+    /* Signed, as on a page: a bipolar fader below its zero has moved the end
+     * of the bar to the left of where it starts. */
+    const int16_t barWidth =
+        (int16_t)(map(val, min, max, 0, bounds.getWidth()) - barX);
 
-    // Clear the component area
     g.fillAll(backgroundColour);
 
-    // Paint the track background
-    g.setColour(colourTrack);
-    g.fillRect(0, padding, bounds.getWidth(), barHeight);
-
-    // Paint the active bar
-    g.setColour(colour);
-    g.fillRect(barX, padding, barWidth, barHeight);
-
-    if (barWidth > 1) {
-        g.setColour(Colours565::black);
-        uint16_t separatorX =
-            ((val > 0) ? barX + barWidth : barX + barWidth - 1);
-        g.drawLine(separatorX, padding, separatorX, padding + barHeight - 1);
-    }
+    /* The same track a fader on a page draws, at the height of the detail:
+     * the same rounded ends, the same mark where a bipolar fader sits on its
+     * zero, and the same bar running leftwards below it. The black line that
+     * used to be drawn at the end of the bar is gone with them - it was there
+     * because the bar had no end of its own to see. */
+    LookAndFeel::paintFaderTrack(
+        g, bounds, colour, 0, bounds.getHeight(), barX, barWidth);
 }
 
 void FaderDetailControl::onTouchUp(

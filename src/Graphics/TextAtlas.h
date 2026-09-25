@@ -122,6 +122,22 @@ protected:
                             TextAlign align,
                             bool clip);
 
+    /**
+     * @brief One glyph, expanded in a colour, cropped to `width`.
+     *
+     * The crop is on the right only: the mask is read a byte at a time, so a
+     * glyph can lose its right hand columns and not its left. Drawing it
+     * whole and then again cropped, in the other colour, is what puts two
+     * colours in one character.
+     */
+    void expandGlyph(uint32_t address,
+                     const FontFace &face,
+                     uint16_t index,
+                     uint16_t x,
+                     uint16_t y,
+                     uint16_t width,
+                     uint32_t colour);
+
     /** The width the string will occupy in the face. */
     static uint16_t measureString(const char *text, const FontFace &face);
 

@@ -86,6 +86,40 @@ public:
                    TextSpacing spacing = TextSpacing::proportional);
 
     /**
+     * @brief Draws a string in two colours, split along a vertical edge.
+     *
+     * Pixels whose x falls inside [bandStart, bandEnd) take insideColour and
+     * everything else outsideColour, through the middle of a glyph if that is
+     * where an edge is. The value inside a fader - one colour over the filled
+     * part of the bar and another over the track - is what it is for.
+     *
+     * Drawn from the masks, so the two backgrounds are taken and not used:
+     * there is no fringe to blend and therefore nothing to blend it against.
+     * They are in the signature because the mk2 needs them and a call site
+     * should read the same on both.
+     *
+     * It costs what printText() does, plus one more blit for each glyph an
+     * edge crosses. A mask can be cropped on the right but not on the left -
+     * it is read in whole bytes - so a crossed glyph is drawn whole in the
+     * colour of its right hand end and then again, cropped at the edge, in
+     * the colour to the left of it.
+     */
+    void printTextSplit(uint16_t x,
+                        uint16_t y,
+                        const char *text,
+                        uint16_t width,
+                        TextAlign align,
+                        uint16_t bandStart,
+                        uint16_t bandEnd,
+                        uint32_t insideColour,
+                        uint32_t insideBackground,
+                        uint32_t outsideColour,
+                        uint32_t outsideBackground,
+                        TextSize size = TextSize::medium,
+                        TextFace face = TextFace::regular,
+                        TextSpacing spacing = TextSpacing::proportional);
+
+    /**
      * @name Style based entry points
      *
      * The same shapes the components were already written against, taking a

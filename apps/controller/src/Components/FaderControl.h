@@ -53,6 +53,15 @@ public:
     AssignableList list;
 
 private:
+    void paintDial(Graphics &g,
+                   const Rectangle &bounds,
+                   uint32_t colour,
+                   int16_t min,
+                   int16_t max,
+                   int16_t val,
+                   const ListData *items,
+                   Control::Mode mode);
+
     void paintFader(Graphics &g,
                     const Rectangle &bounds,
                     uint32_t colour,
@@ -63,23 +72,51 @@ private:
                     Control::Mode mode,
                     Control::Variant variant);
 
+    /**
+     * @brief The value above the track, centred.
+     *
+     * `graphicsTop` is what it stands on - the top of the track, or the
+     * height of the knob for a dial, whose value goes in the hole in the ring
+     * instead.
+     */
     void paintValueFixed(Graphics &g,
                          const Rectangle &bounds,
                          uint32_t colour,
                          int16_t val,
                          const ListData *items,
-                         Control::Mode mode,
-                         Control::Variant variant);
+                         Control::Variant variant,
+                         uint16_t graphicsTop);
 
+    /**
+     * @brief The value inside the bar, right aligned short of its end.
+     *
+     * Centred on the track's height by the digits' ink, and split where the
+     * bar ends: over the filled part in a colour that reads on the fader's
+     * own colour, over the track in one that reads on the track - through the
+     * middle of a glyph if that is where the end of the bar is.
+     */
     void paintValueFloating(Graphics &g,
                             const Rectangle &bounds,
                             uint32_t colour,
-                            int16_t x,
+                            int16_t barX,
+                            int16_t barWidth,
+                            uint16_t trackY,
+                            uint16_t trackHeight,
                             int16_t val,
-                            const ListData *items,
-                            Control::Mode mode,
-                            Control::Variant variant);
-    bool isColorTooBright(uint16_t color, float brightnessThreshold);
+                            const ListData *items);
+
+    /**
+     * @brief What the control has to say about its value, as text.
+     *
+     * Answers false when the item carries a bitmap instead, which the caller
+     * paints rather than prints.
+     */
+    bool resolveValueText(char *text,
+                          size_t size,
+                          int16_t val,
+                          const ListDataItem &item,
+                          const ListData *items,
+                          bool padNegative) const;
 
     struct {
         uint16_t previousScreenX : 10;

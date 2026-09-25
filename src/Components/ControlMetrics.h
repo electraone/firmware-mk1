@@ -39,6 +39,11 @@
  * One model, so one instance. The mk2 carries a column per model because it
  * builds for three; this does not, and a second column should arrive with a
  * second model rather than before one.
+ *
+ * The fader's numbers are the mk2's, because the cell is: 146 by 56 on both.
+ * They are not what this drew before - the track was five rows shorter and
+ * started five rows lower - and the difference was nothing but two products
+ * drifting apart while nobody could see both sets of numbers at once.
  */
 
 #pragma once
@@ -46,6 +51,10 @@
 #include <cstdint>
 
 struct ControlMetrics {
+    /** How far above the bottom of a control its graphics end - the row a
+     *  track's bottom edge and an envelope's baseline both land on. */
+    uint16_t graphicsBottomInset;
+
     /*
      * Faders
      */
@@ -65,11 +74,24 @@ struct ControlMetrics {
      *  or sits in a fixed place above it. */
     bool faderValueFloats;
 
-    /** The row a floating value's line box starts on, and the row a fixed one
-     *  starts on. The mk2 derives both from the track and from the face the
-     *  preset asked for; these are what this draws today. */
-    uint16_t faderValueY;
-    uint16_t faderFixedValueY;
+    /**
+     * @brief Whether a dial carries no name of its own.
+     *
+     * A cell is 146 by 56, and a dial drawn there with room kept back for a
+     * name leaves a knob barely thirty pixels across. The name is the part
+     * that gives: it is the same word on every control of a row, while the
+     * knob is the part that has to be read from across a desk.
+     */
+    bool faderDialHidesName;
+
+    /**
+     * @brief The empty rows between a value's baseline and what is under it.
+     *
+     * A thin fader's number stands this far above its track, so that a
+     * control asking for a bigger face gets it without the number landing on
+     * the graphics.
+     */
+    uint16_t valueGap;
 
     /** How far a control's name sits above the bottom of the control. */
     uint16_t nameInset;
@@ -82,14 +104,15 @@ struct ControlMetrics {
  * has been changed; collecting them is the whole of it.
  */
 inline constexpr ControlMetrics controlMetrics = {
-    /* faderThinBarHeight  */ 9,
-    /* faderThinInset      */ 36,
-    /* faderBarHeight      */ 24,
-    /* faderInset          */ 51,
+    /* graphicsBottomInset */ 27,
+    /* faderThinBarHeight  */ 7,
+    /* faderThinInset      */ 34,
+    /* faderBarHeight      */ 29,
+    /* faderInset          */ 56,
     /* faderListForcesThin */ true,
     /* faderValueFloats    */ true,
-    /* faderValueY         */ 13,
-    /* faderFixedValueY    */ 0,
+    /* faderDialHidesName  */ true,
+    /* valueGap            */ 6,
     /* nameInset           */ 20,
 };
 
@@ -100,3 +123,8 @@ static_assert(controlMetrics.faderThinInset - controlMetrics.faderThinBarHeight
                   == controlMetrics.faderInset - controlMetrics.faderBarHeight,
               "the two fader variants would leave different gaps under the "
               "track, so a fader changing variant would move its name");
+
+static_assert(controlMetrics.faderInset - controlMetrics.faderBarHeight
+                  == controlMetrics.graphicsBottomInset,
+              "a fader's track would not end where every other control's "
+              "graphics end");

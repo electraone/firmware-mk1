@@ -30,6 +30,444 @@
 uint32_t LookAndFeel::backgroundColour = Colours565::black;
 uint32_t LookAndFeel::altBackgroundColour = 0x0022;
 
+/*
+ * The chip's round rectangle clears one pixel at each corner when asked for
+ * radius 2, and that pixel and its two neighbours along the edges at radius 3.
+ * Laying the radius 2 shape down in a colour halfway to what is behind, and
+ * the radius 3 shape over it in the real colour, leaves those two neighbours
+ * in the blend: a two pixel corner that reads as smooth, for two commands
+ * where writing the pixels by hand would take eight.
+ *
+ * A side too short for the radius is filled square instead, because the shape
+ * then reaches past itself.
+ */
+void LookAndFeel::fillSmoothRoundRect(Graphics &g,
+                                      uint16_t x,
+                                      uint16_t y,
+                                      uint16_t width,
+                                      uint16_t height,
+                                      uint32_t colour,
+                                      uint32_t behind,
+                                      uint16_t radius)
+{
+    const uint16_t side = (width < height) ? width : height;
+    const uint16_t blendRadius = (radius > 0) ? radius - 1 : 0;
+
+    g.setColour(colour);
+
+    if ((radius == 0) || (side < (2 * blendRadius) + 3)) {
+        g.fillRect(x, y, width, height);
+        return;
+    }
+
+    g.setColour(Colours565::mix(colour, behind, smoothCornerBlend));
+    g.fillRoundRect(x, y, width, height, blendRadius);
+    g.setColour(colour);
+
+    if (side >= (2 * radius) + 3) {
+        g.fillRoundRect(x, y, width, height, radius);
+        return;
+    }
+
+    g.fillRoundRect(x, y, width, height, blendRadius);
+}
+
+namespace
+{
+    /**
+     * @brief One horizontal run inside a fader's track.
+     *
+     * Each end is rounded or square on its own, because the end a bar grows
+     * from is the track's own end on a unipolar fader and a point inside it on
+     * a bipolar one - square there, or the corner would show in the middle of
+     * the track.
+     */
+    struct FaderRun {
+        Graphics &g;
+        uint16_t top;
+        uint16_t thickness;
+        uint16_t trackLength;
+
+        void fill(uint16_t from, uint16_t length) const
+        {
+            g.fillRect(from, top, length, thickness);
+        }
+
+        void paint(uint16_t from,
+                   uint16_t to,
+                   bool roundFrom,
+                   bool roundTo,
+                   uint32_t colour,
+                   uint32_t behind,
+                   uint32_t trackColour) const
+        {
+            if (to <= from) {
+                return;
+            }
+
+            const uint16_t shortest = LookAndFeel::smoothShortestSide;
+            const uint16_t corner = LookAndFeel::smoothCornerSize;
+            const uint16_t length = to - from;
+
+            if ((!roundFrom && !roundTo) || (thickness < shortest)
+                || (trackLength < shortest)) {
+                g.setColour(colour);
+                fill(from, length);
+                return;
+            }
+
+            if (length >= shortest) {
+                LookAndFeel::fillSmoothRoundRect(
+                    g, from, top, length, thickness, colour, behind);
+
+                /* A rounded shape was drawn for a run with a square end, so
+                 * the square end is filled back in over its corner. */
+                if (!roundFrom) {
+                    g.setColour(colour);
+                    fill(from, corner);
+                }
+                if (!roundTo) {
+                    g.setColour(colour);
+                    fill(to - corner, corner);
+                }
+                return;
+            }
+
+            /* Shorter than the corner treatment needs. A run against a
+             * rounded end of the track is drawn at the shortest length that
+             * rounds and then cut back to length in the track's colour, so
+             * that the corner is still the track's corner. */
+            if (roundFrom && (from == 0) && (length >= corner)) {
+                LookAndFeel::fillSmoothRoundRect(
+                    g, 0, top, shortest, thickness, colour, behind);
+                g.setColour(trackColour);
+                fill(from + length, shortest - length);
+            } else if (roundTo && (to == trackLength) && (length >= corner)) {
+                LookAndFeel::fillSmoothRoundRect(g,
+                                                 trackLength - shortest,
+                                                 top,
+                                                 shortest,
+                                                 thickness,
+                                                 colour,
+                                                 behind);
+                g.setColour(trackColour);
+                fill(trackLength - shortest, shortest - length);
+            } else if ((roundFrom && (from == 0))
+                       || (roundTo && (to == trackLength))) {
+                /* A single column against a rounded end would stand out past
+                 * the track's corner, and is too thin to read as a value. */
+            } else {
+                g.setColour(colour);
+                fill(from, length);
+            }
+        }
+    };
+} // namespace
+
+uint16_t LookAndFeel::knobCentre(uint16_t size)
+{
+    return ((size > 2) ? (uint16_t)(size / 2 - 1) : 0);
+}
+
+uint16_t LookAndFeel::knobInkHeight(uint16_t size)
+{
+    /* paintKnob's own arithmetic for the end of the track, and the two rows
+     * the ring's outline and its mask leave under that point. */
+    const uint16_t radius = knobCentre(size);
+    const uint16_t yTrackStart = sinf(angleTrackStart) * (float)radius + radius;
+
+    return (yTrackStart + 2);
+}
+
+uint16_t LookAndFeel::knobSizeForInkHeight(uint16_t inkHeight, uint16_t maxSize)
+{
+    uint16_t size = maxSize;
+
+    while ((size > 1) && (knobInkHeight(size) > inkHeight)) {
+        size--;
+    }
+
+    return (size);
+}
+
+void LookAndFeel::paintKnob(Graphics &g,
+                            uint16_t x,
+                            uint16_t y,
+                            uint16_t width,
+                            uint16_t height,
+                            uint32_t colour,
+                            int16_t min,
+                            int16_t max,
+                            int16_t val,
+                            bool unipolar)
+{
+    uint32_t colourCenter = Colours565::darker(colour, 0.25f);
+    uint32_t colourOutline1 = Colours565::darker(colour, 0.15f);
+    uint32_t colourOutline = Colours565::darker(colour, 0.35f);
+    uint32_t colourTrack = colour;
+
+    float angle = map((float)val, min, max, angleTrackStart, angleTrackEnd);
+    float angleZero = angleTrackStart;
+
+    const bool zeroInside = !unipolar && (min < 0) && (max > 0);
+
+    if (zeroInside) {
+        angleZero = map((float)0.0f, min, max, angleTrackStart, angleTrackEnd);
+    } else {
+        angleZero = map((float)min, min, max, angleTrackStart, angleTrackEnd);
+    }
+
+    /* The centre one row above the middle, so the ring's top is on y rather
+     * than a row below it - where every other control's graphics start. */
+    uint16_t xCentre = (width / 2) + x;
+    uint16_t radius = knobCentre(width);
+    uint16_t yCentre = radius + y;
+
+    // Track start and end points
+    uint16_t xTrackStart = cosf(angleTrackStart) * (float)radius + xCentre;
+    uint16_t yTrackStart = sinf(angleTrackStart) * (float)radius + yCentre;
+    uint16_t xTrackEnd = cosf(angleTrackEnd) * (float)radius + xCentre;
+    uint16_t yTrackEnd = sinf(angleTrackEnd) * (float)radius + yCentre;
+
+    uint16_t xOrigin = cosf(angleZero) * (float)radius + xCentre;
+    uint16_t yOrigin = sinf(angleZero) * (float)radius + yCentre;
+
+    // Paint and apply the active arc
+    paintKnobValue(g,
+                   x,
+                   y,
+                   width,
+                   height,
+                   colourTrack,
+                   xCentre,
+                   yCentre,
+                   radius,
+                   angleZero,
+                   angle);
+
+    // Paint the outline
+    g.setColour(colourOutline);
+    g.drawCircle(xCentre, yCentre, radius - 1);
+    g.setColour(colourOutline1);
+    g.drawCircle(xCentre, yCentre, radius);
+
+    // Mask the track
+    g.setColour(Colours565::black);
+    g.fillTriangle(
+        xCentre, yCentre, xTrackStart, yTrackStart, xTrackEnd, yTrackEnd);
+    g.fillRect(xTrackStart,
+               yTrackStart,
+               xTrackEnd - xTrackStart,
+               height - yTrackStart + 1);
+
+    /* The line to the origin. Where the value sits exactly on it the arc has
+     * no length, and a bipolar dial would show nothing at all of where it
+     * stands - so the line is the value, and takes the control's own colour
+     * rather than the outline's. Only where zero is inside the range: a
+     * unipolar dial draws its arc from the minimum, and one at its minimum is
+     * meant to look empty. */
+    g.setColour((zeroInside && (val == 0)) ? colourTrack : colourOutline);
+    g.drawLine(xCentre, yCentre, xOrigin, yOrigin);
+
+    // Mask the centre
+    g.setColour(colourCenter);
+    g.fillCircle(xCentre, yCentre, width / 3 - 1);
+}
+
+void LookAndFeel::paintKnobValue(Graphics &g,
+                                 uint16_t x,
+                                 uint16_t y,
+                                 uint16_t width,
+                                 uint16_t height,
+                                 uint32_t colour,
+                                 uint16_t xCentre,
+                                 uint16_t yCentre,
+                                 uint16_t radius,
+                                 float angleZero,
+                                 float angle)
+{
+    if (angleZero < angle) {
+        drawKnobCurve(g,
+                      x,
+                      y,
+                      width,
+                      height,
+                      colour,
+                      xCentre,
+                      yCentre,
+                      radius,
+                      angleZero,
+                      angle);
+    } else {
+        drawKnobCurve(g,
+                      x,
+                      y,
+                      width,
+                      height,
+                      colour,
+                      xCentre,
+                      yCentre,
+                      radius,
+                      angle,
+                      angleZero);
+    }
+}
+
+void LookAndFeel::drawKnobCurve(Graphics &g,
+                                uint16_t x,
+                                uint16_t y,
+                                uint16_t width,
+                                uint16_t height,
+                                uint32_t colour,
+                                uint16_t xCentre,
+                                uint16_t yCentre,
+                                uint16_t radius,
+                                float angleStart,
+                                float angleEnd)
+{
+    // Translate angles to coordinates
+    uint16_t xStart = cosf(angleStart) * (float)radius + xCentre;
+    uint16_t yStart = sinf(angleStart) * (float)radius + yCentre;
+    uint16_t xEnd = cosf(angleEnd) * (float)radius + xCentre;
+    uint16_t yEnd = sinf(angleEnd) * (float)radius + yCentre;
+
+    // Find the quadrants the start and end points are in
+    uint8_t quadrantStart = getKnobQuadrant(angleStart);
+    uint8_t quadrantEnd = getKnobQuadrant(angleEnd);
+
+    // Clear the curve area
+    g.setColour(Colours565::black);
+    g.fillRect(x, y, width, height);
+
+    // Paint the full circle
+    g.setColour(colour);
+    g.fillCircle(xCentre, yCentre, radius);
+
+    // Hide the unused segments
+    for (uint8_t i = 0; i < 4; i++) {
+        maskKnobUnused(g,
+                       x,
+                       y,
+                       width,
+                       height,
+                       xCentre,
+                       yCentre,
+                       i,
+                       quadrantStart,
+                       quadrantEnd);
+    }
+
+    uint16_t x1 = 0;
+    uint16_t y1 = 0;
+    uint16_t x2 = 0;
+    uint16_t y2 = 0;
+
+    g.setColour(Colours565::black);
+
+    // Mask the end of the curve
+    if (quadrantEnd == 0) {
+        x1 = x;
+        y1 = yCentre;
+        x2 = x;
+        y2 = height - 1;
+    } else if (quadrantEnd == 1) {
+        x1 = xCentre;
+        y1 = 0;
+        x2 = x;
+        y2 = 0;
+    } else if (quadrantEnd == 2) {
+        x1 = x + width - 1;
+        y1 = yCentre;
+        x2 = x + width - 1;
+        y2 = 0;
+    } else if (quadrantEnd == 3) {
+        x1 = xCentre;
+        y1 = height - 1;
+        x2 = x + width - 1;
+        y2 = height - 1;
+    }
+
+    maskKnobCurveSeqment(g, xCentre, yCentre, xEnd, yEnd, x1, y1, x2, y2);
+
+    // Mask the start of the curve
+    if (quadrantStart == 0) {
+        x1 = xCentre;
+        y1 = height - 1;
+        x2 = x;
+        y2 = height - 1;
+    } else if (quadrantStart == 1) {
+        x1 = x;
+        y1 = yCentre;
+        x2 = x;
+        y2 = 0;
+    } else if (quadrantStart == 2) {
+        x1 = xCentre;
+        y1 = 0;
+        x2 = x + width - 1;
+        y2 = 0;
+    } else if (quadrantStart == 3) {
+        x1 = x + width - 1;
+        y1 = yCentre;
+        x2 = x + width - 1;
+        y2 = height - 1;
+    }
+
+    maskKnobCurveSeqment(g, xCentre, yCentre, xStart, yStart, x1, y1, x2, y2);
+}
+
+void LookAndFeel::maskKnobUnused(Graphics &g,
+                                 [[maybe_unused]] uint16_t x,
+                                 [[maybe_unused]] uint16_t y,
+                                 uint16_t width,
+                                 uint16_t height,
+                                 uint16_t xCentre,
+                                 uint16_t yCentre,
+                                 uint8_t quadrant,
+                                 uint8_t quadrantStart,
+                                 uint8_t quadrantEnd)
+{
+    uint16_t x1 = 0;
+    uint16_t y1 = 0;
+
+    if (!((quadrant >= quadrantStart) && (quadrant <= quadrantEnd))) {
+        if (quadrant == 0) {
+            x1 = -(width / 2);
+            y1 = height / 2;
+        } else if (quadrant == 1) {
+            x1 = -(width / 2);
+            y1 = -(height / 2);
+        } else if (quadrant == 2) {
+            x1 = width / 2;
+            y1 = -(height / 2);
+        } else if (quadrant == 3) {
+            x1 = width / 2;
+            y1 = height / 2;
+        }
+
+        g.setColour(Colours565::black);
+        g.fillRect(xCentre, yCentre, x1, y1);
+    }
+}
+
+void LookAndFeel::maskKnobCurveSeqment(Graphics &g,
+                                       uint16_t x1,
+                                       uint16_t y1,
+                                       uint16_t x2,
+                                       uint16_t y2,
+                                       uint16_t x3,
+                                       uint16_t y3,
+                                       uint16_t x4,
+                                       uint16_t y4)
+{
+    g.fillTriangle(x1, y1, x2, y2, x3, y3);
+    g.fillTriangle(x2, y2, x3, y3, x4, y4);
+}
+
+uint8_t LookAndFeel::getKnobQuadrant(float angle)
+{
+    return ((int)(floor((angle / 1.571f) - 1)) % 4);
+}
+
 void LookAndFeel::paintFaderTrack(Graphics &g,
                                   const Rectangle &bounds,
                                   uint32_t colour,
@@ -45,31 +483,63 @@ void LookAndFeel::paintFaderTrack(Graphics &g,
         return;
     }
 
-    g.setColour(colourTrack);
-    g.fillRect(0, trackY, width, trackHeight);
+    const FaderRun run{ g, trackY, trackHeight, (uint16_t)width };
+
+    // The track the bar stands in
+    run.paint(0,
+              (uint16_t)width,
+              true,
+              true,
+              colourTrack,
+              backgroundColour,
+              colourTrack);
 
     /* The bar runs between where it starts - zero, which is the track's left
      * end unless the fader is bipolar - and where the value has taken it. The
      * two ends are sorted rather than treated as a position and a length,
-     * because a bipolar fader below its zero runs leftwards. */
+     * because a bipolar fader below its zero runs leftwards.
+     *
+     * The end it starts from is rounded only where it is the track's own end;
+     * the end the value has moved to always is. */
     const int16_t zero = constrain(barX, (int16_t)0, width);
     const int16_t end =
         constrain((int16_t)(barX + barWidth), (int16_t)0, width);
-    const int16_t from = (zero < end) ? zero : end;
-    const int16_t to = (zero < end) ? end : zero;
+    const bool zeroRounded = (zero == 0) || (zero == width);
 
-    if (to > from) {
-        g.setColour(colour);
-        g.fillRect(from, trackY, to - from, trackHeight);
+    if (end > zero) {
+        run.paint((uint16_t)zero,
+                  (uint16_t)end,
+                  zeroRounded,
+                  true,
+                  colour,
+                  colourTrack,
+                  colourTrack);
+    } else if (end < zero) {
+        run.paint((uint16_t)end,
+                  (uint16_t)zero,
+                  true,
+                  zeroRounded,
+                  colour,
+                  colourTrack,
+                  colourTrack);
+    } else if ((zero > 0) && (zero < width)) {
+        /* The value is sitting exactly on the zero of a bipolar fader, so the
+         * bar has no length and the track alone says nothing about where the
+         * value stands - an empty track reads as a fader at its minimum. One
+         * column in the control's own colour marks the spot. Square at both
+         * ends: it is nowhere near a corner of the track.
+         *
+         * Only where zero is inside the track. A unipolar fader starts its
+         * bar at the left end, and one at its minimum is meant to look
+         * empty. */
+        run.paint((uint16_t)zero,
+                  (uint16_t)(zero + 1),
+                  false,
+                  false,
+                  colour,
+                  colourTrack,
+                  colourTrack);
     }
-
-    /* One pixel off each corner, painted back to the background: the whole of
-     * the rounding this has ever had. */
-    g.setColour(backgroundColour);
-    g.drawPixel(0, trackY);
-    g.drawPixel(0, trackY + trackHeight - 1);
-    g.drawPixel(width - 1, trackY);
-    g.drawPixel(width - 1, trackY + trackHeight - 1);
 }
 
 void LookAndFeel::paintBarHorizontal(Graphics &g,

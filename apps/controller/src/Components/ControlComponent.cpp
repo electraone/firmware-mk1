@@ -20,6 +20,7 @@
 */
 
 #include "ControlComponent.h"
+#include "ControlMetrics.h"
 #include "FaderControl.h"
 #include "ListControl.h"
 #include "ListButtonControl.h"
@@ -137,6 +138,50 @@ void ControlComponent::emitValueChange(int16_t newDisplayValue,
                          "emitValueChange: display=%d, midi=%d",
                          newDisplayValue,
                          midiValue);
+}
+
+uint16_t ControlComponent::valueLabelY(Graphics &g, uint16_t graphicsTop) const
+{
+    const Control::Font font = getValueFont();
+    const uint16_t aboveBaseline = g.user().getInkTop(font.size, font.face)
+                                   + g.user().getInkHeight(font.size, font.face)
+                                   + controlMetrics.valueGap;
+
+    return ((graphicsTop > aboveBaseline)
+                ? (uint16_t)(graphicsTop - aboveBaseline)
+                : 0);
+}
+
+uint16_t ControlComponent::valueLabelYCentredOn(Graphics &g,
+                                                uint16_t centreY) const
+{
+    const Control::Font font = getValueFont();
+    const uint16_t above =
+        (uint16_t)(g.user().getInkTop(font.size, font.face)
+                   + g.user().getInkHeight(font.size, font.face) / 2);
+
+    return ((centreY > above) ? (uint16_t)(centreY - above) : 0);
+}
+
+void ControlComponent::printValue(Graphics &g,
+                                  uint16_t x,
+                                  uint16_t y,
+                                  const char *text,
+                                  uint16_t width,
+                                  TextAlign align,
+                                  uint32_t colour)
+{
+    const Control::Font font = getValueFont();
+
+    g.user().printText(
+        x, y, text, width, align, colour, font.size, font.face, font.spacing);
+}
+
+uint16_t ControlComponent::valueTextWidth(Graphics &g, const char *text) const
+{
+    const Control::Font font = getValueFont();
+
+    return (g.user().getTextWidth(text, font.size, font.face, font.spacing));
 }
 
 void ControlComponent::setUseAltBackground(bool shouldUseAltBackground)

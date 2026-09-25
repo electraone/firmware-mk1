@@ -27,6 +27,8 @@
 
 #pragma once
 
+#include <cstddef>
+
 #include <cstdint>
 #include "Hardware.h"
 #include "Bitmap.h"
@@ -39,17 +41,21 @@ public:
         : value(0),
           address(VramStore::invalidHandle),
           labelIsEmpty(true),
-          bitmapIsEmpty(true)
+          bitmapIsEmpty(true),
+          colourIsSet(false)
     {
     }
 
     ListDataItem(int16_t newValue,
                  const char *label,
-                 const char *encodedBitmap = nullptr)
+                 const char *encodedBitmap = nullptr,
+                 uint16_t colour = 0,
+                 bool newColourIsSet = false)
         : value(newValue),
           address(VramStore::invalidHandle),
           labelIsEmpty(false),
-          bitmapIsEmpty(true)
+          bitmapIsEmpty(true),
+          colourIsSet(newColourIsSet)
     {
         Bitmap bitmap;
 
@@ -58,7 +64,7 @@ public:
             bitmapIsEmpty = false;
         }
 
-        address = saveRecord(bitmap.getAddress(), label);
+        address = saveRecord(bitmap.getAddress(), colour, label);
     }
 
     virtual ~ListDataItem() = default;
@@ -141,6 +147,33 @@ public:
         return (bitmapIsEmpty);
     }
 
+    /**
+     * @brief Whether this item names a colour of its own.
+     *
+     * An item without one is drawn in the colour of whatever is drawing it.
+     * The colour itself is in the display's memory beside the label rather
+     * than here: an overlay can run to hundreds of items, and two bytes each
+     * in main memory would be paid for every one of them whether it names a
+     * colour or not.
+     */
+    bool hasColour(void) const
+    {
+        return (colourIsSet);
+    }
+
+    uint16_t getColour565(void) const
+    {
+        if (!colourIsSet) {
+            return (0);
+        }
+
+        Record record;
+
+        readRecord(record);
+
+        return (record.colour);
+    }
+
 private:
     /** Longest label kept for an item. Anything longer is truncated when it
      *  is stored, so the reader never has to deal with a partial one. */
@@ -155,8 +188,13 @@ private:
      */
     struct Record {
         uint32_t bitmapAddress;
+        uint16_t colour;
         char label[maxLabelLength + 1];
     };
+
+    /** Everything in a record that is not the label, which is what a stored
+     *  record carries before the characters start. */
+    static constexpr size_t recordPrefix = offsetof(Record, label);
 
     /** Parse bitmap data
 	 *
@@ -170,34 +208,38 @@ private:
         return (Hardware::memory.bitmapPool.saveBitmap(bytes));
     }
 
-    VramStore::Handle saveRecord(uint32_t bitmapAddress, const char *label)
+    VramStore::Handle
+        saveRecord(uint32_t bitmapAddress, uint16_t colour, const char *label)
     {
         Record record;
 
         record.bitmapAddress = bitmapAddress;
+        record.colour = colour;
         copyString(record.label, label ? label : "", maxLabelLength);
 
         return (Hardware::memory.stringPool.store(
-            &record, sizeof(record.bitmapAddress) + strlen(record.label) + 1));
+            &record, recordPrefix + strlen(record.label) + 1));
     }
 
     void readRecord(Record &record) const
     {
         record.bitmapAddress = 0;
+        record.colour = 0;
         record.label[0] = '\0';
 
-        size_t read = Hardware::memory.stringPool.load(
-            address, &record, sizeof(record));
+        size_t read =
+            Hardware::memory.stringPool.load(address, &record, sizeof(record));
 
         /* A record that did not survive, because the store was full when it
          * was written, reads back as nothing rather than as somebody else's
          * label. */
-        if (read <= sizeof(record.bitmapAddress)) {
+        if (read <= recordPrefix) {
             record.bitmapAddress = 0;
+            record.colour = 0;
             record.label[0] = '\0';
             return;
         }
-        record.label[read - sizeof(record.bitmapAddress) - 1] = '\0';
+        record.label[read - recordPrefix - 1] = '\0';
     }
 
     int16_t value;
@@ -206,6 +248,7 @@ private:
     struct {
         bool labelIsEmpty : 1;
         bool bitmapIsEmpty : 1;
+        bool colourIsSet : 1;
     };
 
     /** Shared scratch the label is handed out through. See getLabel(). */
