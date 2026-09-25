@@ -131,7 +131,12 @@ def send(port: str, arguments: list[str]) -> None:
 
 _TIMESTAMP = re.compile(r"^\s*\d+:\d+:\d+\.\d+\s+")
 
-
 def normalise(lines: list[str]) -> list[str]:
-    """Strips timestamps so two captures can be compared."""
+    """Strips timestamps so two captures can be compared.
+
+    Nothing else is stripped. What the host heard is what the host heard, and
+    where it heard less than the firmware sent, that is for the comparison to
+    say rather than for this to hide - see the boot window note in
+    electra_compat.
+    """
     return [_TIMESTAMP.sub("", line).strip() for line in lines]

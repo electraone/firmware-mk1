@@ -183,9 +183,16 @@ refuses it.
 - A reset disconnects the unit from USB. The harness waits for it to enumerate
   again before sending anything, which is why a recording takes a few seconds
   longer than the scenario itself.
-- Close other MIDI software before recording. Anything that queries the unit,
-  an editor or a DAW scanning ports, makes it answer, and that answer lands in
-  the recording as behaviour the firmware did not initiate.
+- Close other MIDI software before recording, and take this seriously: it is
+  the single biggest source of false verdicts. Anything that queries the unit,
+  an editor, a DAW scanning ports, a MIDI monitor, makes it answer, and that
+  answer lands in the recording as behaviour the firmware did not initiate.
+
+  It is worse than noise because it is not reliably present. A query that
+  arrives during the baseline and not during the candidate reads as the
+  candidate having stopped doing something - thirty four records of a perfectly
+  correct ElectraInfo reply, reported as a loss. Same recording a minute later,
+  clean.
 
   That noise is not only extra records. macOS sends an identity request when
   something opens a port, and where the unit's handling of it lands in the
@@ -198,3 +205,17 @@ refuses it.
   times on both sides is reported as moved (`~`) rather than lost, and only a
   real change in count fails the run. A move still deserves a look. Host
   traffic moves on its own; the firmware's own work moving is a finding.
+
+- The verdict rests on the firmware trace, not on the host capture. The trace
+  is taken inside the firmware as the bytes leave the USB port; the host can
+  only start listening once the unit has enumerated after its reset, so
+  whatever the unit said before that is simply not in the recording. How much
+  that is depends on how fast the firmware boots - cutting the UI asset load
+  from 1.35 MB to 240 KB moved five Lua loading messages out of earshot of a
+  firmware that was still sending all five. A difference that appears only in
+  the capture is reported as `COMPATIBLE, BUT THE HOST HEARD LESS` and does
+  not fail the run.
+
+- A recording that dropped trace records is refused rather than compared. One
+  with 182 dropped was once reported as the candidate having gained 281
+  behaviours and lost 4, which is a confident verdict built on the hole.

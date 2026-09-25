@@ -264,12 +264,19 @@ def command_compare(args: argparse.Namespace) -> int:
         )
         return 2
 
+    # A recording that lost records is not evidence of anything, so this
+    # refuses rather than warning. It used to warn and carry on, and the one
+    # time it mattered a recording with 182 dropped records was reported as
+    # the candidate having gained 281 behaviours and lost 4 - a confident
+    # verdict built entirely on the hole.
     for name, recording in (("baseline", baseline), ("candidate", candidate)):
         problems = recording.get("integrity", {}).get("problems", [])
         if problems:
-            print(f"warning: the {name} recording is not trustworthy:")
+            print(f"refusing to compare: the {name} recording is not intact")
             for problem in problems:
                 print(f"  - {problem}")
+            print("Record it again.")
+            return 2
 
     print(f"scenario:  {baseline['scenario']}")
     print(f"baseline:  {baseline['firmware']['version']}  {args.baseline}")
@@ -287,9 +294,12 @@ def command_compare(args: argparse.Namespace) -> int:
     for port in sorted(
         set(baseline["midi_out"]) | set(candidate["midi_out"])
     ):
+        # Normalised again here, not only when recorded, so that a recording
+        # made before a normalising rule existed still compares under it.
+        # Both sides get the same treatment, which is the whole point.
         for kind, line in _diff(
-            baseline["midi_out"].get(port, []),
-            candidate["midi_out"].get(port, []),
+            electra_midi.normalise(baseline["midi_out"].get(port, [])),
+            electra_midi.normalise(candidate["midi_out"].get(port, [])),
         ):
             midi_changes.append((kind, f"[{port}] {line}"))
 
@@ -304,9 +314,21 @@ def command_compare(args: argparse.Namespace) -> int:
         print("identical. The candidate behaves exactly like the baseline.")
         return 0
 
-    if removed_behaviour or removed_midi:
+    if removed_behaviour:
         print("BROKEN COMPATIBILITY")
         print("The candidate no longer does things the baseline did.")
+    elif removed_midi:
+        print("COMPATIBLE, BUT THE HOST HEARD LESS")
+        print(
+            "The firmware trace has everything the baseline had, but the "
+            "host recorded less of it. The trace is taken inside the "
+            "firmware as the bytes leave the USB port, so it is the "
+            "authority; a host can only start listening once the unit has "
+            "enumerated after its reset, and whatever the unit said before "
+            "that is simply not in the recording. A change that only makes "
+            "the boot quicker moves more of it out of earshot. Check the "
+            "list below against the trace before treating it as a loss."
+        )
     elif moved_behaviour or moved_midi:
         print("COMPATIBLE, WITH REORDERING")
         print(
@@ -342,7 +364,10 @@ def command_compare(args: argparse.Namespace) -> int:
     _report("MIDI that is sent at a different point", moved_midi, args.limit)
     _report("MIDI the candidate adds", added_midi, args.limit)
 
-    return 1 if (removed_behaviour or removed_midi) else 0
+    # The verdict rests on the trace. The host capture is corroboration and
+    # cannot cover the boot window at all, so a difference that appears only
+    # there is reported loudly and does not fail the run.
+    return 1 if removed_behaviour else 0
 
 
 def command_scenarios(args: argparse.Namespace) -> int:
