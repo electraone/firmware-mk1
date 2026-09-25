@@ -206,10 +206,33 @@ void MidiOutput::sendUsbHostChanged(MidiInterface::Type interface, uint8_t port)
     sendMessage(interface, port, message);
 }
 
+namespace
+{
+    /** The transaction the message being answered arrived with. */
+    uint16_t currentTransactionId = 0;
+} // namespace
+
+void MidiOutput::setTransactionId(uint16_t newTransactionId)
+{
+    currentTransactionId = newTransactionId;
+}
+
+uint16_t MidiOutput::getTransactionId(void)
+{
+    return (currentTransactionId);
+}
+
 void MidiOutput::sendAck(MidiInterface::Type interface, uint8_t port)
 {
-    uint8_t data[9] = { 0xF0, 0x00, 0x21, 0x45, EVENT_MESSAGE,
-                        ACK,  0x00, 0x00, 0xF7 };
+    uint8_t data[9] = { 0xF0,
+                        0x00,
+                        0x21,
+                        0x45,
+                        EVENT_MESSAGE,
+                        ACK,
+                        (uint8_t)(currentTransactionId & 0x7F),
+                        (uint8_t)((currentTransactionId >> 7) & 0x7F),
+                        0xF7 };
 
     SysexBlock sysexBlock = SysexBlock(App::get()->sysexPool.openMemoryBlock());
     sysexBlock.writeBytes(data, sizeof(data));
@@ -221,8 +244,15 @@ void MidiOutput::sendAck(MidiInterface::Type interface, uint8_t port)
 
 void MidiOutput::sendNack(MidiInterface::Type interface, uint8_t port)
 {
-    uint8_t data[9] = { 0xF0, 0x00, 0x21, 0x45, EVENT_MESSAGE,
-                        NACK, 0x00, 0x00, 0xF7 };
+    uint8_t data[9] = { 0xF0,
+                        0x00,
+                        0x21,
+                        0x45,
+                        EVENT_MESSAGE,
+                        NACK,
+                        (uint8_t)(currentTransactionId & 0x7F),
+                        (uint8_t)((currentTransactionId >> 7) & 0x7F),
+                        0xF7 };
 
     SysexBlock sysexBlock = SysexBlock(App::get()->sysexPool.openMemoryBlock());
     sysexBlock.writeBytes(data, sizeof(data));

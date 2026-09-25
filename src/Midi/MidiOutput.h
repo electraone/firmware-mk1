@@ -176,6 +176,25 @@ public:
                                 uint8_t port,
                                 const JsonDocument &listing);
 
+    /**
+     * @name The transaction a reply belongs to
+     *
+     * A host may put a 14 bit transaction id in front of a request, and it
+     * matches the reply to the request by that id rather than by arrival
+     * order. An acknowledgement that always says nought is one the editor
+     * cannot match, so its queue fills with messages it thinks are still in
+     * flight - which is what it did.
+     *
+     * Held here rather than passed down because every acknowledgement in the
+     * firmware would otherwise need the id threaded to it through code that
+     * has no other reason to know about transactions. One message is parsed
+     * at a time, so there is one current transaction.
+     * @{
+     */
+    static void setTransactionId(uint16_t newTransactionId);
+    static uint16_t getTransactionId(void);
+    /** @} */
+
     static void
         sendSysExData(const uint8_t *data, uint32_t length, uint8_t port);
     static void sendSysExHeader(uint8_t port);

@@ -726,7 +726,12 @@ void MainWindow::switchPreset(uint8_t bankNumber, uint8_t slot)
     }
 
     if (!presets.loadPresetById(bankNumber * Preset::MaxNumPots + slot)) {
-        setInfoText("out of memory!");
+        /* Whatever went wrong - a version this firmware does not read, a
+         * file that is not there, a document that will not parse - this is
+         * the one thing the user is told, so it had better not name a cause
+         * it does not know. It said "out of memory!" and sent at least one
+         * person looking for a memory problem that was not there. */
+        setInfoText("preset could not be loaded");
     } else {
         setInfoText("");
         if (!snapshots.initialise(preset.getProjectId())) {

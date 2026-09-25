@@ -315,6 +315,35 @@ void Preset::resetComponents(void)
 /** Parse individual preset objects
  *
  */
+namespace
+{
+    /**
+ * @brief The preset format versions this firmware reads.
+ *
+ * Three is what the editor writes now. It is two with more in it - fonts,
+ * macros, control events - and every field this knows about is still in the
+ * same place, so a document that says three is read with what is understood
+ * and the rest is left alone.
+ *
+ * A preset that said three used to be refused, and the refusal reached the
+ * panel as "out of memory!" - which is what the one caller says when a load
+ * fails, whatever went wrong. Two wrong answers in a row: the preset was
+ * fine, and so was the memory.
+ */
+    constexpr uint8_t supportedPresetVersions[] = { 2, 3 };
+
+    bool isSupportedVersion(uint8_t version)
+    {
+        for (uint8_t supported : supportedPresetVersions) {
+            if (version == supported) {
+                return (true);
+            }
+        }
+
+        return (false);
+    }
+} // namespace
+
 bool Preset::parse(File &file)
 {
     if (!parseRoot(file)) {
@@ -322,10 +351,10 @@ bool Preset::parse(File &file)
         reset();
         return (false);
     }
-    if (version != 2) {
+    if (!isSupportedVersion(version)) {
         System::logger.write(
             LOG_ERROR,
-            "Preset::parse: incorrect preset version number: version=%d",
+            "Preset::parse: unsupported preset version number: version=%d",
             version);
         reset();
         return (false);

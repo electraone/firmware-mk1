@@ -31,6 +31,7 @@
 #include "LocalFile.h"
 #include "System.h"
 #include "Base64.h"
+#include "MidiOutput.h"
 
 enum class FileType { preset, config, luaScript, uiToolkit, unknown };
 
@@ -41,7 +42,8 @@ public:
         : SysexHandler(newMidiInterface, newPort),
           fileType(ElectraCommand::Object::Unknown),
           writeToFile(false),
-          filename(nullptr)
+          filename(nullptr),
+          hasTransactionId(false)
     {
     }
 
@@ -57,25 +59,60 @@ public:
         if (packetNr == 0) {
             App::get()->enableMidi = false;
 
+            /* A host may put a transaction id in front of the command, as
+             * three bytes after the manufacturer id: a nought where a command
+             * byte would be, then the id, fourteen bits, low seven first. No
+             * command is nought, so the nought is what says it is there.
+             *
+             * It is taken off here and the rest of the firmware never sees
+             * it. Without this the nought was read as the command and every
+             * request carrying one did nothing at all - the editor's uploads
+             * among them, and its queue filled with messages it was still
+             * waiting for.
+             *
+             * Only in an Electra message. Everything on this port comes
+             * through here, and another manufacturer's id can have a nought
+             * in that byte for reasons of its own; stripping seven bytes off
+             * one of those and putting an Electra header in front of what was
+             * left would turn somebody else's message into nonsense. */
+            hasTransactionId = (sysExSize >= 7) && (sysExData[1] == 0x00)
+                               && (sysExData[2] == 0x21)
+                               && (sysExData[3] == 0x45)
+                               && (sysExData[4] == 0x00);
+
+            MidiOutput::setTransactionId(
+                hasTransactionId
+                    ? (uint16_t)(sysExData[5] | (sysExData[6] << 7))
+                    : 0);
+#ifdef DEBUG
+            if (hasTransactionId) {
+                System::logger.write(LOG_ERROR,
+                                     "handleSysEx: transaction id=%d",
+                                     MidiOutput::getTransactionId());
+            }
+#endif
+
             // if it is a upload of a file
-            if ((sysExData[4] == (uint8_t)ElectraCommand::Type::FileUpload)
-                && ((sysExData[5]
+            if ((commandByte(sysExData, 0)
+                 == (uint8_t)ElectraCommand::Type::FileUpload)
+                && ((commandByte(sysExData, 1)
                      == (uint8_t)ElectraCommand::Object::FilePresetLegacy)
-                    || (sysExData[5]
+                    || (commandByte(sysExData, 1)
                         == (uint8_t)ElectraCommand::Object::FilePreset)
-                    || (sysExData[5]
+                    || (commandByte(sysExData, 1)
                         == (uint8_t)ElectraCommand::Object::FileLua)
-                    || (sysExData[5]
+                    || (commandByte(sysExData, 1)
                         == (uint8_t)ElectraCommand::Object::FileUi))) {
                 System::tasks.enableCtrlMidi();
 
                 // write preset directly to the current preset file
-                if (sysExData[5] == (uint8_t)ElectraCommand::Object::FileUi) {
+                if (commandByte(sysExData, 1)
+                    == (uint8_t)ElectraCommand::Object::FileUi) {
                     System::logger.write(
                         LOG_ERROR, "handleSysEx: toolkit transfer initiated");
                     filename = UI_FILE;
                     fileType = ElectraCommand::Object::FileUi;
-                } else if (sysExData[5]
+                } else if (commandByte(sysExData, 1)
                            == (uint8_t)ElectraCommand::Object::FileLua) {
                     filename = System::context.getCurrentLuaFile();
                     fileType = ElectraCommand::Object::FileLua;
@@ -83,9 +120,9 @@ public:
                         LOG_ERROR,
                         "handleSysEx: lua script transfer initiated: filename=%s",
                         filename);
-                } else if ((sysExData[5]
+                } else if ((commandByte(sysExData, 1)
                             == (uint8_t)ElectraCommand::Object::FilePreset)
-                           || (sysExData[5]
+                           || (commandByte(sysExData, 1)
                                == (uint8_t)
                                    ElectraCommand::Object::FilePresetLegacy)) {
                     filename = System::context.getCurrentPresetFile();
@@ -113,8 +150,9 @@ public:
                     writeToFile = true;
 
                     // strip the leading bytes
-                    sysExData += 6; // remove sysex header
-                    sysExSize -= 6;
+                    uint16_t header = headerLength();
+                    sysExData += header; // remove sysex header
+                    sysExSize -= header;
 
                     if (fileType == ElectraCommand::Object::FileUi) {
                         sysExData +=
@@ -138,6 +176,17 @@ public:
         /*
     	 * Process each packet according to if it is a preset transfer or other sysex message
     	 */
+        /* The block is given the message without the transaction prefix, so
+         * that everything downstream sees the same bytes whether a host used
+         * one or not. */
+        if (!writeToFile && (packetNr == 0) && hasTransactionId) {
+            static const uint8_t header[4] = { 0xF0, 0x00, 0x21, 0x45 };
+
+            sysexBlock.writeBytes(header, sizeof(header));
+            sysExData += 7;
+            sysExSize -= 7;
+        }
+
         if (writeToFile) {
             // Check if it is a last packet with 0xF7. If so, trim it
             if (sysExData[sysExSize - 1] == 0xF7) {
@@ -191,13 +240,27 @@ public:
             fileType = ElectraCommand::Object::Unknown;
             writeToFile = false;
             filename = nullptr;
+            hasTransactionId = false;
         }
     }
 
 private:
+    /** The command byte, or the object byte after it, wherever they are. */
+    uint8_t commandByte(const uint8_t *sysExData, uint8_t index) const
+    {
+        return (sysExData[(hasTransactionId ? 7 : 4) + index]);
+    }
+
+    /** Everything in front of a file's own bytes. */
+    uint16_t headerLength(void) const
+    {
+        return (hasTransactionId ? 9 : 6);
+    }
+
     File file;
     ElectraCommand::Object fileType;
     bool writeToFile;
     uint8_t decodedData[USB_MIDI_SYSEX_MAX];
     const char *filename;
+    bool hasTransactionId;
 };
