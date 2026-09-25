@@ -14,7 +14,7 @@ docs
 .cproject
 .project
 .settings
-controller/
 
-apps/
-!apps/Demo
+apps/*
+!apps/demo
+!apps/controller

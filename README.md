@@ -12,6 +12,16 @@ The following steps will compile ElectraOne base firmware with the Demo applicat
 If you got compilation errors when running `./scripts/install-tools`, the `make upload` will fail. In that case you can upload the firmware image using the ElectraOneConsole app. You can find the `firmware.img` file in the `build` directory.
 
 
+## Building the MIDI Controller app
+The MIDI Controller application lives in `apps/controller` and is built from this
+same repository:
+
+1. Run `make APPPATH=apps/controller all` to build the firmware image.
+1. Run `make APPPATH=apps/controller upload` to build it and upload it to the unit.
+
+`apps/demo` is still the default, so a plain `make all` builds the Demo app.
+
+
 ## Building custom app
 If you were able to compile and run the firmware with the default Demo app, you can compile a custom app by taking following steps. Minimal HelloWorld application will be used to demonstrate that.
 
