@@ -70,7 +70,9 @@ The unit is reset first so every recording starts from the same state.
 A recording is only usable if the harness reports no problems. It refuses to
 call a run trustworthy when trace records were dropped, when the sequence
 numbers have gaps, or when the trace buffer filled up. Raise
-`TRACE_BUFFER_SIZE` in the Makefile if a long scenario overruns the buffer.
+`TRACE_BUFFER_SIZE` in the Makefile if a long scenario overruns the buffer; it
+must stay a power of two, because the buffer is aligned to its own size so
+that it cannot straddle the boundary between the two SRAM banks.
 
 ## Comparing
 

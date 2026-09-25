@@ -56,7 +56,7 @@ SD_FORCE_1BIT_BUS = 0
 # the firmware is built with TRACE=1. Must be a power of two: the buffer is
 # aligned to its own size so that it cannot straddle the boundary between the
 # two SRAM banks, which a single access may not cross.
-TRACE_BUFFER_SIZE = 16384
+TRACE_BUFFER_SIZE = 32768
 
 # CPU speed
 CPU_SPEED = 180000000
@@ -111,14 +111,14 @@ SIZE = $(abspath $(COMPILERPATH))/arm-none-eabi-size
 # automatically create lists of the sources and objects
 LC_FILES := $(wildcard $(LIBRARYPATH)/*/*.c)
 
-# Behavioural trace for the compatibility harness. Off by default; the SEGGER
-# RTT transport is left out of the build entirely unless TRACE=1 is given.
 # Display SPI benchmark. Runs once at boot and reports through the logger, so
-# it needs the trace to be on as well to be visible.
+# it needs TRACE=1 as well to be visible.
 ifeq ($(BENCHMARK),1)
   CPPFLAGS += -DELECTRA_BENCHMARK=1
 endif
 
+# Behavioural trace for the compatibility harness. Off by default; the SEGGER
+# RTT transport is left out of the build entirely unless TRACE=1 is given.
 ifeq ($(TRACE),1)
   CPPFLAGS += -DELECTRA_TRACE=1 \
               -DELECTRA_TRACE_BUFFER_SIZE=$(TRACE_BUFFER_SIZE) \
