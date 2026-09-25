@@ -35,7 +35,21 @@ public:
     PersistentStorage();
     ~PersistentStorage() = default;
 
-    void mount(void);
+    /**
+     * @brief Brings the card up, or gives up and says so.
+     *
+     * Bounded. It used to retry for ever, so a card that would not
+     * initialise stopped the boot where it stood: no USB, no MIDI, nothing on
+     * the panel, and no way to tell a failing card from failed hardware
+     * without a debug probe. A unit that boots and says it has no storage is
+     * worth more than one that looks dead.
+     *
+     * @return whether the card came up
+     */
+    bool mount(void);
+
+    /** Whether the card came up, and is worth asking for a file. */
+    bool isMounted(void) const;
     bool createDirectory(const char *path, bool pFlag = true);
     bool exists(const char *path);
     bool directoryExists(const char *path);
@@ -48,4 +62,6 @@ public:
     bool copyFile(const char *src, const char *dest);
 
 private:
+private:
+    bool mounted;
 };

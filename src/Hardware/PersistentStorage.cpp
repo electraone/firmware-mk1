@@ -28,20 +28,52 @@
 #include "PersistentStorage.h"
 #include "System.h"
 
-PersistentStorage::PersistentStorage()
+PersistentStorage::PersistentStorage() : mounted(false)
 {
 }
 
-void PersistentStorage::mount(void)
+bool PersistentStorage::mount(void)
 {
-    while (!begin(SdioConfig(FIFO_SDIO))) {
+    /* Ten tries at a fifth of a second each, which is two seconds of a card
+     * that is merely slow to wake and no more than that of one that never
+     * will. */
+    static constexpr uint8_t maxAttempts = 10;
+
+    mounted = false;
+
+    for (uint8_t attempt = 0; attempt < maxAttempts; attempt++) {
+        if (begin(SdioConfig(FIFO_SDIO))) {
+            mounted = true;
+            System::logger.write(LOG_ERROR, "internal storage: Initialized");
+            delay(100);
+            return (true);
+        }
+
         System::logger.write(LOG_ERROR,
-                             "Waiting for internal storage to initialize");
+                             "internal storage: not ready, attempt %d of %d: "
+                             "sdError=0x%02X, data=0x%02X",
+                             attempt + 1,
+                             maxAttempts,
+                             sdErrorCode(),
+                             sdErrorData());
         delay(200);
     }
-    System::logger.write(LOG_ERROR, "internal storage: Initialized");
 
-    delay(100);
+    /* Said once more at the end, because the attempts above scroll past and
+     * this is the line that explains everything that follows: no preset, no
+     * configuration, and every file the firmware asks for missing. */
+    System::logger.write(LOG_ERROR,
+                         "internal storage: FAILED to initialize, "
+                         "continuing without it: sdError=0x%02X, data=0x%02X",
+                         sdErrorCode(),
+                         sdErrorData());
+
+    return (false);
+}
+
+bool PersistentStorage::isMounted(void) const
+{
+    return (mounted);
 }
 
 bool PersistentStorage::createDirectory(const char *path, bool pFlag)

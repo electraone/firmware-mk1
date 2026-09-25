@@ -155,6 +155,13 @@ overlays.append({
         {"value": 2, "label": "WWWWWWWWWWWWWWWW"},
     ],
 })
+# Fifty-five: three pages of the detail's grid with the last one part full, so
+# both strips have something to turn and the end of the list is not a tidy
+# multiple of a page.
+overlays.append({
+    "id": 7,
+    "items": [{"value": v, "label": f"NOTE {v:02d}"} for v in range(55)],
+})
 overlays.append({
     "id": 6,
     "items": [
@@ -178,6 +185,8 @@ LIST_PAGES = [
         ("BOLD", 3, 3, {"font": {"weight": "bold"}}),
         ("SMALL", 3, 1, {"font": {"size": "small"}}),
         ("MONO", 4, 7, {"font": {"spacing": "monospaced"}}),
+        ("MANY", 7, 5, {}),
+        ("MANY LATE", 7, 50, {}),
     ]),
     (7, "list-button", [
         ("VALUE ONLY", 3, 2, {"variant": "valueOnly"}),
