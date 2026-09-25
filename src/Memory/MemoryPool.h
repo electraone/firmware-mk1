@@ -23,13 +23,17 @@
  * @file MemoryPool.h
  *
  * @brief A representation of the E1 style memory pool for MemoryBlocks.
+ *
+ * This holds system exclusive messages, and nothing else. It used to carry a
+ * second interface for keeping strings and list items here as well; VramStore
+ * does that now, and does it with records that know their own length, so
+ * those went with it.
  */
 
 #pragma once
 
 #include "MemoryBlock.h"
 #include "helpers.h"
-#include <cstring>
 
 class MemoryPool
 {
@@ -40,17 +44,6 @@ public:
     void assignStorageDriver(Graphics *newFb);
     MemoryBlock openMemoryBlock(void);
     uint32_t openAddress(void);
-
-    uint32_t saveString(const char *text);
-    size_t getString(uint32_t address, char *buffer, size_t maxLength);
-
-    uint32_t saveItem(uint32_t bitmap, const char *text);
-    size_t getItem(uint32_t address,
-                   char *buffer,
-                   size_t maxLength,
-                   uint32_t *bitmap);
-
-    void readData(uint32_t address, uint8_t *buffer, size_t maxLevel);
 
     /** Blocks refused because the pool had no room left for them. Non-zero
      *  means a message was truncated, which is a great deal better than the

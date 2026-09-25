@@ -169,12 +169,18 @@ slot with no script: the recording then has no Lua calls in it at all, which
 looks exactly like a firmware that stopped calling Lua. The README is
 corrected.
 
-## Left alone
+## Deleted rather than repaired
 
-`MemoryPool::saveString`, `saveItem`, `getString` and `getItem` are the older
-string storage that `VramStore` replaced. They still have unbounded reads and
-a variable length array on the stack, but nothing calls them any more. They
-should be deleted rather than repaired.
+`MemoryPool::saveString`, `saveItem`, `getString`, `getItem` and `readData`
+were the older string storage that `VramStore` replaced. They had unbounded
+reads and a variable length array on the stack, and nothing had called them
+since the list items moved. They are gone, so `MemoryPool` now does one job:
+it holds system exclusive messages.
+
+The firmware is the same size afterwards, to the byte, which is the clearest
+evidence there is that they were already dead.
+
+## Left alone
 
 `MidiIo::sendSysExPartial` ignores its `complete` argument and always tells
 the MIDI library the array carries its own boundaries. That is correct, since

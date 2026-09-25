@@ -22,12 +22,12 @@
 /**
  * @file Memory.cpp
  *
- * @brief An E1 style memory pool for list data.
+ * @brief The stores the loaded preset keeps its data in, over in the display
+ *        controller's memory.
  */
 
 #pragma once
 
-#include "MemoryPool.h"
 #include "BitmapPool.h"
 #include "VramStore.h"
 

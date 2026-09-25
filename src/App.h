@@ -29,6 +29,7 @@
 #include "Hardware.h"
 #include "System.h"
 #include "LocalFile.h"
+#include "MemoryPool.h"
 #include "WindowManager.h"
 #include "StatusBar.h"
 #include "Spinner.h"
