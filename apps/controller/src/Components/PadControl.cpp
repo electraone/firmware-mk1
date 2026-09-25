@@ -148,7 +148,7 @@ void PadControl::paint(Graphics &g)
                    control.getValue(0).getLabel(),
                    ControlValue::MaxLabelLength);
     } else {
-        snprintf(stringValue, ControlValue::MaxLabelLength, "%s", getName());
+        snprintf(stringValue, sizeof(stringValue), "%s", getName());
     }
 
     /* The pad is painted in the control's colour under this, so the text is

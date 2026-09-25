@@ -42,7 +42,10 @@ class Control;
 class ControlValue
 {
 public:
-    static constexpr int MaxLabelLength = 15;
+    /* Twenty, as on the mk2. A list's values are words and fifteen cut
+     * several of them; the label itself lives in the display's memory, so the
+     * only thing this costs in main memory is the one shared buffer. */
+    static constexpr int MaxLabelLength = 20;
 
     ControlValue();
     ControlValue(Control *newControl,

@@ -72,6 +72,64 @@ void LookAndFeel::fillSmoothRoundRect(Graphics &g,
     g.fillRoundRect(x, y, width, height, blendRadius);
 }
 
+void LookAndFeel::drawSmoothRoundRect(Graphics &g,
+                                      uint16_t x,
+                                      uint16_t y,
+                                      uint16_t width,
+                                      uint16_t height,
+                                      uint32_t colour,
+                                      uint32_t inside,
+                                      uint32_t outside,
+                                      uint16_t radius)
+{
+    const uint16_t side = (width < height) ? width : height;
+
+    /* The outline drawn twice more, a radius either side of itself and each
+     * in a colour halfway to what is on that side, which leaves the corner
+     * reading as a curve rather than as three steps. */
+    if ((radius > 0) && (side >= (2 * (radius + 1)) + 3)) {
+        g.setColour(Colours565::mix(colour, inside, smoothCornerBlend));
+        g.drawRoundRect(x, y, width, height, radius - 1);
+        g.setColour(Colours565::mix(colour, outside, smoothCornerBlend));
+        g.drawRoundRect(x, y, width, height, radius + 1);
+    }
+
+    g.setColour(colour);
+    g.drawRoundRect(x, y, width, height, radius);
+}
+
+void LookAndFeel::paintValueBox(Graphics &g,
+                                const Rectangle &bounds,
+                                uint32_t colour,
+                                uint16_t boxHeight,
+                                bool filled)
+{
+    const uint32_t fill = Colours565::darker(colour, 0.2f);
+    const uint32_t outline = Colours565::darker(colour, 0.4f);
+    constexpr uint16_t radius = 5;
+
+    if (filled) {
+        fillSmoothRoundRect(g,
+                            0,
+                            0,
+                            bounds.getWidth(),
+                            boxHeight,
+                            fill,
+                            backgroundColour,
+                            radius);
+    }
+
+    drawSmoothRoundRect(g,
+                        0,
+                        0,
+                        bounds.getWidth(),
+                        boxHeight,
+                        outline,
+                        filled ? fill : backgroundColour,
+                        backgroundColour,
+                        radius);
+}
+
 namespace
 {
     /**
@@ -86,6 +144,7 @@ namespace
         Graphics &g;
         uint16_t top;
         uint16_t thickness;
+        uint16_t origin; /**< where the track starts, which is not always 0 */
         uint16_t trackLength;
 
         void fill(uint16_t from, uint16_t length) const
@@ -137,23 +196,25 @@ namespace
              * rounded end of the track is drawn at the shortest length that
              * rounds and then cut back to length in the track's colour, so
              * that the corner is still the track's corner. */
-            if (roundFrom && (from == 0) && (length >= corner)) {
+            const uint16_t trackEnd = origin + trackLength;
+
+            if (roundFrom && (from == origin) && (length >= corner)) {
                 LookAndFeel::fillSmoothRoundRect(
-                    g, 0, top, shortest, thickness, colour, behind);
+                    g, origin, top, shortest, thickness, colour, behind);
                 g.setColour(trackColour);
                 fill(from + length, shortest - length);
-            } else if (roundTo && (to == trackLength) && (length >= corner)) {
+            } else if (roundTo && (to == trackEnd) && (length >= corner)) {
                 LookAndFeel::fillSmoothRoundRect(g,
-                                                 trackLength - shortest,
+                                                 trackEnd - shortest,
                                                  top,
                                                  shortest,
                                                  thickness,
                                                  colour,
                                                  behind);
                 g.setColour(trackColour);
-                fill(trackLength - shortest, shortest - length);
-            } else if ((roundFrom && (from == 0))
-                       || (roundTo && (to == trackLength))) {
+                fill(trackEnd - shortest, shortest - length);
+            } else if ((roundFrom && (from == origin))
+                       || (roundTo && (to == trackEnd))) {
                 /* A single column against a rounded end would stand out past
                  * the track's corner, and is too thin to read as a value. */
             } else {
@@ -483,7 +544,7 @@ void LookAndFeel::paintFaderTrack(Graphics &g,
         return;
     }
 
-    const FaderRun run{ g, trackY, trackHeight, (uint16_t)width };
+    const FaderRun run{ g, trackY, trackHeight, 0, (uint16_t)width };
 
     // The track the bar stands in
     run.paint(0,
@@ -937,18 +998,19 @@ void LookAndFeel::paintDots(Graphics &g,
                             const Rectangle &bounds,
                             uint32_t colour,
                             const ListData *items,
-                            uint16_t activeIndex)
+                            uint16_t activeIndex,
+                            uint16_t radius,
+                            uint16_t spacing)
 {
-    // Paint the dots
-    uint8_t paddingDots =
-        (bounds.getWidth() - (items->getNumItems() * 8)) / 2 + 4;
-    uint16_t yPosition = 23;
+    uint16_t paddingDots =
+        (bounds.getWidth() - (items->getNumItems() * spacing)) / 2
+        + (spacing / 2);
+    uint16_t yPosition = bounds.getY();
 
-    // paint dots
     for (uint16_t i = 0; i < items->getNumItems(); i++) {
         g.setColour((i == activeIndex) ? colour
                                        : Colours565::darker(colour, 0.5));
-        g.fillCircle(paddingDots + i * 8, yPosition, 2);
+        g.fillCircle(paddingDots + i * spacing, yPosition, radius);
     }
 }
 
@@ -956,7 +1018,8 @@ void LookAndFeel::paintBar(Graphics &g,
                            const Rectangle &bounds,
                            uint32_t colour,
                            const ListData *items,
-                           uint16_t activeIndex)
+                           uint16_t activeIndex,
+                           uint16_t height)
 {
     uint16_t lastItem = items->getMaxIndex();
     uint32_t dark = Colours565::darker(colour, 0.5);
@@ -966,30 +1029,53 @@ void LookAndFeel::paintBar(Graphics &g,
     float step = (float)fullFaderLength / (float)lastItem;
     fullFaderLength += step;
     uint16_t paddingFader = (bounds.getWidth() - fullFaderLength) / 2;
-    float faderLength = std::max(1.0f, abs(step * (activeIndex))) + step;
-    uint16_t yPosition = 25;
+    const uint16_t top = bounds.getY();
+    const uint16_t bottom = top + ((height > 0) ? height - 1 : 0);
+    const FaderRun run{ g, top, height, paddingFader, fullFaderLength };
 
-    // Paint the track
-    g.setColour(dark);
-    g.fillRect(paddingFader, yPosition - 2, fullFaderLength, 5);
+    // The track, rounded at both ends as a fader's is
+    run.paint(paddingFader,
+              paddingFader + fullFaderLength,
+              true,
+              true,
+              dark,
+              backgroundColour,
+              dark);
 
-    g.setColour(backgroundColour);
-    if (step > 2) {
+    const auto paintSeparators = [&](uint16_t from, uint16_t to) {
+        if (step <= 2) {
+            return;
+        }
+
+        g.setColour(backgroundColour);
+
         for (uint16_t x = step + paddingFader;
              x <= (fullFaderLength + paddingFader);
              x += step) {
-            g.drawLine(x, yPosition - 2, x, yPosition + 2);
+            if ((x >= from) && (x < to)) {
+                g.drawLine(x, top, x, bottom);
+            }
+        }
+    };
+
+    paintSeparators(0, bounds.getWidth());
+
+    /* The active item, rounded as the track is. One too short for the chip to
+     * round is drawn at the shortest length it rounds safely where it stands
+     * against an end of the track, and the overhang painted back - which
+     * paints over the separators under it, so those are drawn again. */
+    const uint16_t activeFrom = paddingFader + (uint16_t)(step * activeIndex);
+    const uint16_t activeTo =
+        std::min((uint16_t)(activeFrom + step),
+                 (uint16_t)(paddingFader + fullFaderLength));
+
+    run.paint(activeFrom, activeTo, true, true, light, dark, dark);
+
+    if ((uint16_t)step < smoothShortestSide) {
+        if (activeFrom == paddingFader) {
+            paintSeparators(activeTo, paddingFader + smoothShortestSide);
+        } else if (activeTo == (paddingFader + fullFaderLength)) {
+            paintSeparators(activeTo - smoothShortestSide, activeFrom);
         }
     }
-
-    // Paint the active
-    g.setColour(light);
-    g.fillRect(paddingFader + faderLength - step, yPosition - 2, step, 5);
-
-    // Round the conrners
-    g.setColour(Colours565::black);
-    g.drawPixel(paddingFader, yPosition - 2);
-    g.drawPixel(paddingFader, yPosition + 2);
-    g.drawPixel(paddingFader + fullFaderLength - 1, yPosition - 2);
-    g.drawPixel(paddingFader + fullFaderLength - 1, yPosition + 2);
 }

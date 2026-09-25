@@ -82,10 +82,7 @@ void KnobControl::paint(Graphics &g)
                    control.getValue(0).getLabel(),
                    ControlValue::MaxLabelLength);
     } else {
-        snprintf(stringValue,
-                 ControlValue::MaxLabelLength,
-                 formatString,
-                 getValue());
+        snprintf(stringValue, sizeof(stringValue), formatString, getValue());
     }
 
     g.user().printText(0,

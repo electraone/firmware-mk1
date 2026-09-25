@@ -212,6 +212,31 @@ protected:
     /** How wide that value will be. */
     uint16_t valueTextWidth(Graphics &g, const char *text) const;
 
+    /**
+     * @brief The text, cut to fit the width, with a marker where it was cut.
+     *
+     * A label wider than its control used to run off the edge and be cropped
+     * there, which says nothing about whether anything was lost. A list's
+     * values are words rather than numbers, and a preset can ask for a face
+     * far too wide for them, so this is where it shows.
+     */
+    void fitValueText(Graphics &g,
+                      char *out,
+                      size_t size,
+                      const char *text,
+                      uint16_t maxWidth) const;
+
+    /**
+     * @brief The row the bottom of a control's name sits on.
+     *
+     * The name's own ink, not its line box: a box drawn to the line box's
+     * bottom would end below the letters it is meant to line up with.
+     */
+    uint16_t nameBaseline(Graphics &g) const;
+
+    /** The colour of the entry at that position, or the control's own. */
+    uint16_t colourOfIndex(const ListData *items, uint16_t index) const;
+
     const Control &control;
     MainDelegate &delegate;
 

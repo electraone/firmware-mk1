@@ -20,6 +20,7 @@
 */
 
 #include "ListControl.h"
+#include "ControlMetrics.h"
 
 Overlay ListControl::empty;
 
@@ -95,12 +96,18 @@ void ListControl::onMidiValueChange(const ControlValue &value,
 void ListControl::paint(Graphics &g)
 {
     Rectangle listBounds = getBounds();
-    listBounds.setHeight(listBounds.getHeight() / 2);
+
+    /* The entry being shown may name a colour of its own. */
+    const uint32_t colour = colourOfIndex(getList(), index);
+
     g.fillAll(getUseAltBackground() ? LookAndFeel::altBackgroundColour
                                     : LookAndFeel::backgroundColour);
-    paintList(g, listBounds, control.getColour565(), getList(), index);
+
+    listBounds.setHeight(listBounds.getHeight() / 2);
+    paintList(g, listBounds, colour, getList(), index);
+
     g.user().printText(0,
-                       getHeight() - 20,
+                       getHeight() - controlMetrics.nameInset,
                        getName(),
                        getWidth(),
                        TextAlign::center,
@@ -133,40 +140,85 @@ void ListControl::paintList(Graphics &g,
                             const ListData *items,
                             uint16_t activeIndex)
 {
-    if (items) {
-        ListDataItem item = items->getByIndex(activeIndex);
+    if (!items) {
+        return;
+    }
 
-        if (item.isBitmapEmpty()) {
-            char stringValue[ControlValue::MaxLabelLength + 1];
-            if (control.getValue(0).isLabelSet()) {
-                copyString(stringValue,
-                           control.getValue(0).getLabel(),
-                           ControlValue::MaxLabelLength);
-            } else {
-                snprintf(stringValue,
-                         ControlValue::MaxLabelLength,
-                         "%s",
-                         item.getLabel());
-            }
+    /* A list finds its overlay item by position, not by value. Held in a
+     * local because getByIndex() answers with a copy. */
+    ListDataItem item = items->getByIndex(activeIndex);
 
-            g.user().printText(0,
-                               0,
-                               stringValue,
-                               bounds.getWidth(),
-                               TextAlign::center,
-                               Colours565::white,
-                               TextSize::medium);
+    /*
+     * The dots, or the bar that stands in for them, end where every control's
+     * graphics end - the same row a fader's track ends on. They used to sit
+     * at a row written into the painter, which finished higher than the fader
+     * beside them and made a row of controls read as several things.
+     *
+     * The two shapes are anchored differently: paintDots takes the centre of
+     * its circles and paintBar the top of its track. Both are as tall as the
+     * strip, so both are placed here from the one bottom edge rather than
+     * from a y that means something different to each.
+     */
+    const uint16_t dotsHeight = controlMetrics.stripHeight;
+    const uint16_t graphicsEnd =
+        (getHeight() > controlMetrics.graphicsBottomInset)
+            ? (uint16_t)(getHeight() - controlMetrics.graphicsBottomInset)
+            : 0;
+    const uint16_t graphicsTop =
+        (graphicsEnd > dotsHeight) ? (uint16_t)(graphicsEnd - dotsHeight) : 0;
+
+    /* The value a gap above them, in the face the preset asked for. */
+    const uint16_t labelY = valueLabelY(g, graphicsTop);
+
+    if (item.isBitmapEmpty()) {
+        char stringValue[ControlValue::MaxLabelLength + 1];
+
+        if (control.getValue(0).isLabelSet()) {
+            copyString(stringValue,
+                       control.getValue(0).getLabel(),
+                       ControlValue::MaxLabelLength);
         } else {
-            // display bitmap image
-            uint16_t paddingBitmap =
-                ((bounds.getWidth() - BITMAP_WIDTH)) / 2 - 1;
-            item.paintBitmap(paddingBitmap, 0, colour);
+            snprintf(stringValue, sizeof(stringValue), "%s", item.getLabel());
         }
-        // Paint the graphics
-        if (items->getNumItems() < 16) {
-            LookAndFeel::paintDots(g, bounds, colour, items, activeIndex);
-        } else {
-            LookAndFeel::paintBar(g, bounds, colour, items, activeIndex);
-        }
+
+        /* Cut to the control with a marker when the face is too wide for it -
+         * a huge face makes that likely, and a label clipped at the edge says
+         * less than one that says it was cut. */
+        char fitted[ControlValue::MaxLabelLength + 2];
+
+        fitValueText(g, fitted, sizeof(fitted), stringValue, bounds.getWidth());
+        printValue(g,
+                   0,
+                   labelY,
+                   fitted,
+                   bounds.getWidth(),
+                   TextAlign::center,
+                   Colours565::white);
+    } else {
+        uint16_t paddingBitmap = ((bounds.getWidth() - BITMAP_WIDTH)) / 2 - 1;
+
+        item.paintBitmap(paddingBitmap, labelY, colour);
+    }
+
+    Rectangle dotBounds = bounds;
+    dotBounds.setHeight(dotsHeight);
+
+    const uint16_t radius = (dotsHeight - 1) / 2;
+    const uint16_t spacing = (2 * radius) + 3;
+
+    /* Dots while they fit across the control, the bar once they would not.
+     * This used to be a count of sixteen whatever the width, which asks the
+     * wrong question: it is the width that runs out. */
+    const bool dotsFit = (items->getNumItems() * spacing) <= bounds.getWidth();
+
+    if (dotsFit) {
+        /* The centre of the circles, which is a radius below the top. */
+        dotBounds.setY(graphicsTop + radius);
+        LookAndFeel::paintDots(
+            g, dotBounds, colour, items, activeIndex, radius, spacing);
+    } else {
+        dotBounds.setY(graphicsTop);
+        LookAndFeel::paintBar(
+            g, dotBounds, colour, items, activeIndex, dotsHeight);
     }
 }

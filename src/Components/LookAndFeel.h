@@ -118,17 +118,31 @@ public:
                               uint8_t activeSegment,
                               bool showActiveSegment);
 
+    /**
+     * @brief The dots under a list: one a entry, the active one lit.
+     *
+     * `bounds.getY()` is the centre of the circles, not their top - a circle
+     * is placed by its middle and the bar below is placed by its top edge, so
+     * a caller that has one bottom edge in mind has to be told which it is
+     * giving. The default radius and spacing are the small marks a value-only
+     * list carries; a list with a strip of its own passes its own.
+     */
     static void paintDots(Graphics &g,
                           const Rectangle &bounds,
                           uint32_t colour,
                           const ListData *items,
-                          uint16_t activeIndex);
+                          uint16_t activeIndex,
+                          uint16_t radius = 2,
+                          uint16_t spacing = 8);
 
+    /** The bar that stands in for the dots once they would not fit.
+     *  `bounds.getY()` is its top edge. */
     static void paintBar(Graphics &g,
                          const Rectangle &bounds,
                          uint32_t colour,
                          const ListData *items,
-                         uint16_t activeIndex);
+                         uint16_t activeIndex,
+                         uint16_t height = 5);
 
     /*
      * The corner treatment. The chip's round rectangle clears one pixel at
@@ -176,6 +190,24 @@ public:
 
     /** The largest knob no taller than that, up to `maxSize`. */
     static uint16_t knobSizeForInkHeight(uint16_t inkHeight, uint16_t maxSize);
+
+    /** The outline of a rounded rectangle, its corners blended both ways. */
+    static void drawSmoothRoundRect(Graphics &g,
+                                    uint16_t x,
+                                    uint16_t y,
+                                    uint16_t width,
+                                    uint16_t height,
+                                    uint32_t colour,
+                                    uint32_t inside,
+                                    uint32_t outside,
+                                    uint16_t radius = smoothCornerRadius);
+
+    /** The box a value-only control's reading sits in. */
+    static void paintValueBox(Graphics &g,
+                              const Rectangle &bounds,
+                              uint32_t colour,
+                              uint16_t boxHeight,
+                              bool filled);
 
     /** A rounded rectangle whose corners are blended into what is behind. */
     static void fillSmoothRoundRect(Graphics &g,

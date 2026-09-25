@@ -55,6 +55,15 @@ struct ControlMetrics {
      *  track's bottom edge and an envelope's baseline both land on. */
     uint16_t graphicsBottomInset;
 
+    /**
+     * @brief How tall the thin graphics are: a thin fader's track, a list's
+     *        dots, the bar that stands in for them.
+     *
+     * One number so that a row of controls reads as one row rather than as
+     * several things that happen to be near each other.
+     */
+    uint16_t stripHeight;
+
     /*
      * Faders
      */
@@ -93,6 +102,34 @@ struct ControlMetrics {
      */
     uint16_t valueGap;
 
+    /*
+     * Lists
+     */
+
+    /** Taken off a value-only list's height before its box is drawn. */
+    uint16_t listButtonBoxInset;
+
+    /**
+     * @brief How far a value-only list's dots sit above the bottom of its box.
+     *
+     * An inset rather than a row. The mk2 names the row, 35, because its cell
+     * is always 56 tall; this cell is 81, and 35 would put the dots halfway up
+     * the box instead of just inside its bottom edge. Fourteen is what 35 is
+     * on the mk2, measured from the end of the box rather than from the top of
+     * the control - the one of the two that means the same thing on a cell of
+     * any height.
+     */
+    uint16_t listButtonDotsInset;
+
+    /**
+     * @brief Whether a box ends level with the names beside it.
+     *
+     * A value-only control prints no name of its own here, so its box has the
+     * whole cell. Ending it where the neighbouring faders' names end is what
+     * makes the row read as one row rather than as a box that overshoots.
+     */
+    bool boxesEndOnNameBaseline;
+
     /** How far a control's name sits above the bottom of the control. */
     uint16_t nameInset;
 };
@@ -105,6 +142,7 @@ struct ControlMetrics {
  */
 inline constexpr ControlMetrics controlMetrics = {
     /* graphicsBottomInset */ 27,
+    /* stripHeight         */ 7,
     /* faderThinBarHeight  */ 7,
     /* faderThinInset      */ 34,
     /* faderBarHeight      */ 29,
@@ -113,6 +151,9 @@ inline constexpr ControlMetrics controlMetrics = {
     /* faderValueFloats    */ true,
     /* faderDialHidesName  */ true,
     /* valueGap            */ 6,
+    /* listButtonBoxInset  */ 0,
+    /* listButtonDotsInset */ 14,
+    /* boxesEndOnNameBaseline */ true,
     /* nameInset           */ 20,
 };
 

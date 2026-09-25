@@ -184,6 +184,77 @@ uint16_t ControlComponent::valueTextWidth(Graphics &g, const char *text) const
     return (g.user().getTextWidth(text, font.size, font.face, font.spacing));
 }
 
+void ControlComponent::fitValueText(Graphics &g,
+                                    char *out,
+                                    size_t size,
+                                    const char *text,
+                                    uint16_t maxWidth) const
+{
+    if (size == 0) {
+        return;
+    }
+
+    copyString(out, text, (uint16_t)(size - 1));
+
+    if (valueTextWidth(g, out) <= maxWidth) {
+        return;
+    }
+
+    /* Dropped a character at a time and measured again, because the face is
+     * proportional - there is no width per character to divide by. The
+     * strings are at most MaxLabelLength long, so this is bounded at twenty
+     * passes over a very short buffer. */
+    size_t length = strlen(out);
+
+    while (length > 0) {
+        length--;
+        out[length] = '\0';
+
+        /* A cut that lands after a space would put the marker a word's gap
+         * away from the text it marks. */
+        if ((length > 0) && (out[length - 1] == ' ')) {
+            continue;
+        }
+
+        char candidate[ControlValue::MaxLabelLength + 2];
+
+        snprintf(candidate, sizeof(candidate), "%s.", out);
+
+        if (valueTextWidth(g, candidate) <= maxWidth) {
+            copyString(out, candidate, (uint16_t)(size - 1));
+            return;
+        }
+    }
+
+    /* Narrower than a single character and its marker. Nothing legible fits,
+     * and the marker alone would say less than nothing does. */
+    out[0] = '\0';
+}
+
+uint16_t ControlComponent::nameBaseline(Graphics &g) const
+{
+    const uint16_t y = (getHeight() > controlMetrics.nameInset)
+                           ? (uint16_t)(getHeight() - controlMetrics.nameInset)
+                           : 0;
+
+    return ((uint16_t)(y
+                       + g.user().getInkTop(TextSize::medium, TextFace::regular)
+                       + g.user().getInkHeight(TextSize::medium,
+                                               TextFace::regular)));
+}
+
+uint16_t ControlComponent::colourOfIndex(const ListData *items,
+                                         uint16_t index) const
+{
+    /* getByIndex indexes the vector without checking, so the bounds are
+     * checked here rather than at every call site. */
+    if ((items == nullptr) || (index >= items->getNumItems())) {
+        return (control.getColour565());
+    }
+
+    return (colourOf(items->getByIndex(index)));
+}
+
 void ControlComponent::setUseAltBackground(bool shouldUseAltBackground)
 {
     useAltBackground = shouldUseAltBackground;

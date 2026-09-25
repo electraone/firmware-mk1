@@ -75,7 +75,7 @@ void RelativeControl::paint(Graphics &g)
                    control.getValue(0).getLabel(),
                    ControlValue::MaxLabelLength);
     } else {
-        snprintf(stringValue, ControlValue::MaxLabelLength, "%d", delta);
+        snprintf(stringValue, sizeof(stringValue), "%d", delta);
     }
 
     g.user().printText(0,

@@ -135,9 +135,74 @@ for index, value in enumerate([0, 1, 2, 3]):
     control(5, index + 6, f"TINTED {value}", value, min=0, max=3)
     controls[-1]["values"][0]["overlayId"] = 2
 
+# Page six: lists. Few entries draw dots, many draw the bar that stands in
+# for them; a long label is cut to the control with a marker.
+page(6, "LISTS")
+
+overlays.append({
+    "id": 3,
+    "items": [{"value": v, "label": f"ITEM {v}"} for v in range(5)],
+})
+overlays.append({
+    "id": 4,
+    "items": [{"value": v, "label": f"STEP {v:02d}"} for v in range(24)],
+})
+overlays.append({
+    "id": 5,
+    "items": [
+        {"value": 0, "label": "SHORT"},
+        {"value": 1, "label": "A RATHER LONGER LABEL"},
+        {"value": 2, "label": "WWWWWWWWWWWWWWWW"},
+    ],
+})
+overlays.append({
+    "id": 6,
+    "items": [
+        {"value": 0, "label": "GREEN", "color": "03A598"},
+        {"value": 1, "label": "AMBER", "color": "F49500"},
+        {"value": 2, "label": "RED", "color": "F45C51"},
+    ],
+})
+
+LIST_PAGES = [
+    (6, "list", [
+        ("DOTS", 3, 2, {}),
+        ("DOTS FULL", 3, 4, {}),
+        ("BAR", 4, 11, {}),
+        ("BAR END", 4, 23, {}),
+        ("LONG LABEL", 5, 1, {}),
+        ("TOO LONG", 5, 2, {}),
+        ("TINTED", 6, 1, {}),
+        ("TINTED RED", 6, 2, {}),
+        ("HUGE FACE", 3, 2, {"font": {"size": "large"}}),
+        ("BOLD", 3, 3, {"font": {"weight": "bold"}}),
+        ("SMALL", 3, 1, {"font": {"size": "small"}}),
+        ("MONO", 4, 7, {"font": {"spacing": "monospaced"}}),
+    ]),
+    (7, "list-button", [
+        ("VALUE ONLY", 3, 2, {"variant": "valueOnly"}),
+        ("V FULL", 3, 4, {"variant": "valueOnly"}),
+        ("V BAR", 4, 11, {"variant": "valueOnly"}),
+        ("V LONG", 5, 1, {"variant": "valueOnly"}),
+        ("V TINTED", 6, 0, {"variant": "valueOnly"}),
+        ("V SMALL", 3, 1, {"variant": "valueOnly", "font": {"size": "small"}}),
+    ]),
+]
+
+page(7, "VALUE ONLY")
+
+for pageId, kind, entries in LIST_PAGES:
+    for slot, (name, overlayId, value, extra) in enumerate(entries):
+        control(pageId, slot, name, value, min=0,
+                max=max(v["value"] for o in overlays if o["id"] == overlayId
+                        for v in o["items"]),
+                **extra)
+        controls[-1]["type"] = "list"
+        controls[-1]["values"][0]["overlayId"] = overlayId
+
 preset = {
     "version": 2,
-    "name": "FADERS",
+    "name": "CONTROLS",
     "projectId": "faders",
     "pages": pages,
     "devices": [

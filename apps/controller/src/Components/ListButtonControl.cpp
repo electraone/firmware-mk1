@@ -20,6 +20,7 @@
 */
 
 #include "ListButtonControl.h"
+#include "ControlMetrics.h"
 
 Overlay ListButtonControl::empty;
 
@@ -113,11 +114,22 @@ void ListButtonControl::paint(Graphics &g)
     bounds.setX(0);
     bounds.setY(3);
     bounds.setWidth(getWidth());
-    bounds.setHeight(getHeight() - 6);
+    bounds.setHeight((getHeight() > 6) ? (getHeight() - 6) : getHeight());
+
+    /* Level with the bottom of the names of the faders beside it, since this
+     * control prints none of its own. */
+    if (controlMetrics.boxesEndOnNameBaseline) {
+        bounds.setHeight(std::min(nameBaseline(g), getHeight()));
+    }
+
     g.fillAll(getUseAltBackground() ? LookAndFeel::altBackgroundColour
                                     : LookAndFeel::backgroundColour);
-    paintButtonList(
-        g, bounds, control.getColour565(), getList(), index, getActive());
+    paintButtonList(g,
+                    bounds,
+                    colourOfIndex(getList(), index),
+                    getList(),
+                    index,
+                    getActive());
     ControlComponent::paint(g);
 }
 
@@ -142,40 +154,62 @@ void ListButtonControl::paintButtonList(Graphics &g,
                                         uint16_t activeIndex,
                                         bool active)
 {
-    if (active) {
-        g.setColour(Colours565::darker(colour, 0.2f));
-        g.fillRoundRect(0, 0, bounds.getWidth(), bounds.getHeight(), 5);
+    if (!items) {
+        return;
     }
 
-    g.setColour(colour);
-    g.drawRoundRect(0, 0, bounds.getWidth(), bounds.getHeight(), 5);
+    const uint16_t inset = controlMetrics.listButtonBoxInset;
+    const uint16_t boxHeight = (bounds.getHeight() > inset)
+                                   ? (uint16_t)(bounds.getHeight() - inset)
+                                   : bounds.getHeight();
+
+    LookAndFeel::paintValueBox(g, bounds, colour, boxHeight, active);
 
     ListDataItem item = items->getByIndex(activeIndex);
 
     if (item.isBitmapEmpty()) {
         char stringValue[ControlValue::MaxLabelLength + 1];
+
         if (control.getValue(0).isLabelSet()) {
             copyString(stringValue,
                        control.getValue(0).getLabel(),
                        ControlValue::MaxLabelLength);
         } else {
-            snprintf(stringValue,
-                     ControlValue::MaxLabelLength,
-                     "%s",
-                     item.getLabel());
+            snprintf(stringValue, sizeof(stringValue), "%s", item.getLabel());
         }
-        // Print the label
-        g.user().printText(0,
-                           bounds.getHeight() * 0.3f,
-                           stringValue,
-                           bounds.getWidth(),
-                           TextAlign::center,
-                           Colours565::white,
-                           TextSize::medium);
+
+        /* In the face the preset chose, and cut to the box with a marker when
+         * that face is too wide for it. */
+        char fitted[ControlValue::MaxLabelLength + 2];
+
+        fitValueText(g, fitted, sizeof(fitted), stringValue, bounds.getWidth());
+        printValue(g,
+                   0,
+                   bounds.getHeight() * 0.25f,
+                   fitted,
+                   bounds.getWidth(),
+                   TextAlign::center,
+                   Colours565::white);
     } else {
-        // display bitmap image
         uint16_t paddingBitmap = ((bounds.getWidth() - BITMAP_WIDTH)) / 2 - 1;
+
         item.paintBitmap(
-            paddingBitmap, bounds.getHeight() * 0.3f, Colours565::white);
+            paddingBitmap, bounds.getHeight() * 0.25f, Colours565::white);
+    }
+
+    /* The dots under the box. Without them a value-only list says what it is
+     * on, and nothing at all about where that is in the list. */
+    Rectangle dotBounds = bounds;
+
+    dotBounds.setHeight(6);
+    dotBounds.setY(
+        (boxHeight > controlMetrics.listButtonDotsInset)
+            ? (uint16_t)(boxHeight - controlMetrics.listButtonDotsInset)
+            : 0);
+
+    if (items->getNumItems() < 16) {
+        LookAndFeel::paintDots(g, dotBounds, colour, items, activeIndex);
+    } else {
+        LookAndFeel::paintBar(g, dotBounds, colour, items, activeIndex);
     }
 }
