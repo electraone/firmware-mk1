@@ -33,6 +33,11 @@
 #include "System.h"
 #include "VramStore.h"
 #include "ListData.h"
+#include "Control.h"
+#include "Group.h"
+#include "Device.h"
+#include "Page.h"
+#include "LookupEntry.h"
 #include <string.h>
 
 namespace DisplayBenchmark {
@@ -488,6 +493,27 @@ static void testListItems(void)
                          (unsigned long)Hardware::memory.stringPool.getUsed());
 }
 
+/**
+ * @brief Reports what the model types cost in RAM.
+ *
+ * The counts that matter are in Preset.h; multiplying them by these sizes is
+ * what decides whether moving a member to the display's memory is worth the
+ * read it costs. Printed rather than assumed, because padding and the
+ * embedded containers make the arithmetic on paper wrong.
+ */
+static void reportModelSizes(void)
+{
+    System::logger.write(LOG_ERROR,
+                         "bench sizeof control=%u value=%u group=%u "
+                         "device=%u page=%u lookupEntry=%u",
+                         (unsigned)sizeof(Control),
+                         (unsigned)sizeof(ControlValue),
+                         (unsigned)sizeof(Group),
+                         (unsigned)sizeof(Device),
+                         (unsigned)sizeof(Page),
+                         (unsigned)sizeof(LookupEntry));
+}
+
 void run(void)
 {
     System::logger.write(LOG_ERROR,
@@ -496,6 +522,7 @@ void run(void)
                          (unsigned long)F_BUS,
                          (unsigned long)F_CPU);
 
+    reportModelSizes();
     testVramStore();
     testListItems();
 

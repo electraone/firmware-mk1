@@ -96,4 +96,17 @@ build-bench/src/Hardware/DisplayBenchmark.o: \
  src/System/RuntimeInfo.h bsp/eeprom.h src/System/Logger.h \
  lib/lua/lauxlib.h lib/lua/luaconf.h lib/lua/lua.h lib/lua/lua.h \
  lib/lua/lualib.h src/Data/ListData.h src/Data/ListDataItem.h \
- lib/base64/Base64.h
+ lib/base64/Base64.h apps/controller/src/Model/Control.h \
+ apps/controller/src/Model/ControlValue.h \
+ apps/controller/src/Model/Message.h apps/controller/src/Midi/SignMode.h \
+ apps/controller/src/Model/RelativeMode.h src/Utils/Macros.h \
+ apps/controller/src/Model/Overlay.h apps/controller/src/Lua/luaHooks.h \
+ apps/controller/src/Lua/luaIntegration.h src/Lua/luaIntegrationBase.h \
+ apps/controller/src/Model/Device.h apps/controller/src/Model/Response.h \
+ apps/controller/src/Model/Rule.h src/Midi/MidiOutput.h \
+ src/Midi/MidiMessageTransport.h apps/controller/src/Model/Data.h \
+ lib/ArduinoJson/ArduinoJson.h lib/ArduinoJson/src/ArduinoJson.h \
+ lib/ArduinoJson/src/ArduinoJson.hpp \
+ lib/ArduinoJson/src/ArduinoJson/Configuration.hpp \
+ apps/controller/src/Model/Input.h apps/controller/src/Model/Group.h \
+ apps/controller/src/Model/Page.h apps/controller/src/Model/LookupEntry.h
