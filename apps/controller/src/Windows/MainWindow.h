@@ -78,6 +78,7 @@ public:
      * @param newColour colour in RGB format
      */
     void setControlColour(uint16_t controlId, uint32_t newColour) override;
+    void setControlVariant(uint16_t controlId, uint8_t newVariant) override;
 
     /**
      * assign a pot to the control's default value
@@ -250,6 +251,7 @@ public:
 
     void setPageName(uint8_t pageId, const char *newName) override;
     void setInfoText(const char *newText) override;
+    const char *getInfoText(void) const override;
     void setRamPercentage(uint8_t newPercentage) override;
 
     void sendSnapshotList(uint8_t port, const char *projectId) override;

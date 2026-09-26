@@ -71,6 +71,18 @@ private:
      */
     int readByte(uint32_t address);
 
+    /**
+     * @brief Replaces one byte of the pool, in place.
+     *
+     * write() only ever appends, at the pool's own cursor, which is what a
+     * message being received needs. Patching a byte of a message already
+     * stored - the one thing sysexBlock:poke() does - needs an address
+     * instead.
+     *
+     * @return false when the address lies outside the pool.
+     */
+    bool writeByte(uint32_t address, uint8_t byte);
+
     void invalidateCache(void);
 
     /** Enough to cover a typical device response in one go, small enough

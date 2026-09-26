@@ -20,26 +20,48 @@ void runFormatter(const char *formatter,
         lua_pushnumber(L, value);
 
         if (lua_pcall(L, 2, LUA_MULTRET, 0) != 0) {
+            /* A failed call leaves its error message where a returned value
+             * would be. Counting it as one used to put the error text on the
+             * control, in place of the value, and then hand it to a checked
+             * conversion that raises from outside any protected call. */
             TRACE_LUA_ERROR("formatter", formatter, lua_tostring(L, -1));
             System::logger.write(LOG_LUA,
-                                 "error running function 'runFormatter': %s",
+                                 "error running function '%s': %s",
+                                 formatter,
                                  lua_tostring(L, -1));
+            lua_pop(L, 1);
+            luaLE_postFunctionCleanUp(L);
+            return;
         }
 
         // Check if the lua function returned at least one value
         int numReturnedValues = lua_gettop(L) - stackSize;
 
         if (numReturnedValues > 0) {
-            const char *formattedValue = luaL_checkstring(L, -1);
-            if (strlen(formattedValue) > 0) {
-                copyString(buffer, luaL_checkstring(L, -1), maxLength - 1);
+            /* lua_tostring(), not luaL_checkstring(): a formatter returning a
+             * table or a boolean is a mistake in the preset, not a reason to
+             * raise where there is nothing to catch it. Numbers and strings are
+             * both accepted, which is what a formatter tends to return. */
+            const char *formattedValue = lua_tostring(L, -1);
+
+            if (formattedValue == nullptr) {
+                System::logger.write(
+                    LOG_LUA,
+                    "function '%s' returned a %s, which is not a value",
+                    formatter,
+                    luaL_typename(L, -1));
+            } else if (strlen(formattedValue) > 0) {
+                copyString(buffer, formattedValue, maxLength - 1);
             }
-            TRACE_LUA_RETURN_STR("formatter", formatter, formattedValue);
-            lua_pop(L, 1);
+
+            TRACE_LUA_RETURN_STR("formatter",
+                                 formatter,
+                                 (formattedValue != nullptr) ? formattedValue
+                                                             : "<invalid>");
         } else {
             TRACE_LUA_RETURN_STR("formatter", formatter, "<none>");
             System::logger.write(
-                LOG_LUA, "function 'runFormatter' does not return value");
+                LOG_LUA, "function '%s' does not return a value", formatter);
         }
     } else {
         TRACE_LUA_MISSING("formatter", formatter);
@@ -90,22 +112,38 @@ uint8_t
 
         if (lua_pcall(L, 2, LUA_MULTRET, 0) != 0) {
             TRACE_LUA_ERROR("template", function, lua_tostring(L, -1));
-            System::logger.write(
-                LOG_LUA,
-                "error running function 'runTemplateFunction': %s",
-                lua_tostring(L, -1));
+            System::logger.write(LOG_LUA,
+                                 "error running function '%s': %s",
+                                 function,
+                                 lua_tostring(L, -1));
+            lua_pop(L, 1);
+            luaLE_postFunctionCleanUp(L);
+            return (0);
         }
 
         // Check if the lua function returned at least one value
         int numReturnedValues = lua_gettop(L) - stackSize;
 
         if (numReturnedValues > 0) {
-            dataOut = luaL_checkinteger(L, -1);
-            lua_pop(L, 1);
+            /* Converted rather than checked, for the same reason as the
+             * formatter above: a template function returning something that is
+             * not a number must not raise from here, where there is no
+             * protected call to catch it. */
+            int isNumber = 0;
+            const lua_Integer returned = lua_tointegerx(L, -1, &isNumber);
+
+            if (isNumber != 0) {
+                dataOut = (uint8_t)returned;
+            } else {
+                System::logger.write(
+                    LOG_LUA,
+                    "function '%s' returned a %s, which is not a byte",
+                    function,
+                    luaL_typename(L, -1));
+            }
         } else {
             System::logger.write(
-                LOG_ERROR,
-                "function 'runTemplateFunction' does not return value");
+                LOG_LUA, "function '%s' does not return a value", function);
         }
         TRACE_LUA_RETURN_NUM("template", function, dataOut);
     } else {

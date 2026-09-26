@@ -309,6 +309,35 @@ void MainWindow::setControlColour(uint16_t controlId, uint32_t newColour)
     }
 }
 
+/**
+ * @brief Gives a control a different shape.
+ *
+ * Unlike a colour or a name, the variant decides which component is built for
+ * the control - a fader, a dial, a checkbox - so the one on screen has to go
+ * and a new one be built in its place. That is the same pair of calls a control
+ * moved to another page already makes.
+ *
+ * A control on another page has no component to replace; the variant is stored
+ * and the right component is built when that page is next displayed.
+ */
+void MainWindow::setControlVariant(uint16_t controlId, uint8_t newVariant)
+{
+    Control &control = preset.getControl(controlId);
+
+    if (!control.isValid()
+        || (control.getVariant() == (Control::Variant)newVariant)) {
+        return;
+    }
+
+    control.setVariant((Control::Variant)newVariant);
+
+    if ((control.getPageId() == currentPageId) && pageView) {
+        pageView->removeControl(control);
+        pageView->addControl(control);
+        pageView->repaint();
+    }
+}
+
 void MainWindow::setControlPot(uint16_t controlId,
                                uint8_t newControlSetId,
                                uint8_t newPotId)
@@ -663,6 +692,11 @@ void MainWindow::setInfoText(const char *newText)
     if (pageView) {
         pageView->setInfoText(newText);
     }
+}
+
+const char *MainWindow::getInfoText(void) const
+{
+    return (model.info.getText());
 }
 
 void MainWindow::setRamPercentage(uint8_t newPercentage)

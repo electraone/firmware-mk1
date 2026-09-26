@@ -39,6 +39,7 @@ public:
                                    bool shouldBeVisible) = 0;
     virtual void setControlName(uint16_t controlId, const char *newName) = 0;
     virtual void setControlColour(uint16_t controlId, uint32_t newColour) = 0;
+    virtual void setControlVariant(uint16_t controlId, uint8_t newVariant) = 0;
     virtual void setControlPot(uint16_t controlId,
                                uint8_t newControlSetId,
                                uint8_t newPotId) = 0;
@@ -75,6 +76,7 @@ public:
     // BottomBar
     virtual void setPageName(uint8_t pageId, const char *newName) = 0;
     virtual void setInfoText(const char *newText) = 0;
+    virtual const char *getInfoText(void) const = 0;
     virtual void setRamPercentage(uint8_t newPercentage) = 0;
 
     // Groups

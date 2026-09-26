@@ -52,6 +52,36 @@ int pages_get(lua_State *L)
     return (luaL_error(L, "failed: page %d does not exist", pageId));
 }
 
+/**
+ * @brief pages.getAll()
+ *
+ * Every page of the preset, in order, as an array a script can walk. The page
+ * ids are fixed and known, so this saves nothing but the loop - which is the
+ * point: a script that wants to rename or hide a run of pages should not have
+ * to know how many there are.
+ */
+int pages_getAll(lua_State *L)
+{
+    lua_settop(L, 0);
+    lua_newtable(L);
+
+    int index = 1;
+
+    /* Walked over the preset's own map rather than over page ids 1 to twelve:
+     * getPage() logs a missing page as an error, and a preset with four pages
+     * would have filled the log with eight of them every time a script asked. */
+    for (const auto &[pageId, page] : luaPreset->pages) {
+        (void)pageId;
+
+        if (page.isValid()) {
+            luaLE_pushArrayObject(L, index, "Page", &page);
+            index++;
+        }
+    }
+
+    return (1);
+}
+
 int pages_getActive(lua_State *L)
 {
     lua_settop(L, 0);
@@ -146,6 +176,39 @@ int page_getName(lua_State *L)
     return (luaL_error(L, "failed: not a valid page"));
 }
 
+/**
+ * @brief page:setHidden(shouldBeHidden)
+ *
+ * A hidden page is left out of the page selection screen. Nothing on the
+ * current page changes, and the selection screen reads the flag when it is
+ * opened, so there is nothing to repaint here.
+ */
+int page_setHidden(lua_State *L)
+{
+    lua_settop(L, 2);
+
+    Page *page = getPage(L, 1);
+    bool shouldBeHidden = luaLE_checkBoolean(L, 2);
+
+    if (page) {
+        page->setHidden(shouldBeHidden);
+    } else {
+        return (luaL_error(L, "failed: not a valid page"));
+    }
+    return (0);
+}
+
+int page_isHidden(lua_State *L)
+{
+    lua_settop(L, 1);
+
+    if (Page *page = getPage(L, 1)) {
+        lua_pushboolean(L, page->isHidden());
+        return (1);
+    }
+    return (luaL_error(L, "failed: not a valid page"));
+}
+
 int page_print(lua_State *L)
 {
     lua_settop(L, 1);
@@ -175,6 +238,8 @@ void page_register(lua_State *L)
 
 void pages_onChange(uint8_t newPageId, uint8_t oldPageId)
 {
+    LuaStackGuard guard(L);
+
     const char *function = "onChange";
     luaLE_getModuleFunction("pages", function);
 

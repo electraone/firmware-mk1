@@ -42,10 +42,21 @@ int sysexBlock_write(lua_State *L);
 int sysexBlock_read(lua_State *L);
 int sysexBlock_seek(lua_State *L);
 int sysexBlock_peek(lua_State *L);
+int sysexBlock_poke(lua_State *L);
 int sysexBlock_getLength(lua_State *L);
 int sysexBlock_getManufacturerSysexId(lua_State *L);
+int sysexBlock_print(lua_State *L);
 
 void sysexBlock_register(lua_State *L);
+
+/**
+ * @brief Frees every block a script made, whether Lua collected it or not.
+ *
+ * lua_close() does run __gc on what is still alive, so this is a belt on top of
+ * that brace: closeLua() is also reached with no state at all, and a block the
+ * script dropped a moment before the preset was replaced must not outlive it.
+ */
+void sysexBlock_releaseAll(void);
 
 static const luaL_Reg sysexBlock_functions[] = {
     { "close", sysexBlock_close },
@@ -53,7 +64,9 @@ static const luaL_Reg sysexBlock_functions[] = {
     { "read", sysexBlock_read },
     { "seek", sysexBlock_seek },
     { "peek", sysexBlock_peek },
+    { "poke", sysexBlock_poke },
     { "getLength", sysexBlock_getLength },
     { "getManufacturerSysexId", sysexBlock_getManufacturerSysexId },
+    { "print", sysexBlock_print },
     { NULL, NULL }
 };

@@ -147,7 +147,7 @@ int midi_sendMessage(lua_State *L)
     } else if (type == (uint8_t)MidiMessage::Type::TuneRequest) {
         MidiOutput::sendTuneRequest(interface, port);
     } else {
-        return (luaL_error(L, "type %c is not supported", type));
+        return (luaL_error(L, "type %d is not supported", type));
     }
 
     return (0);
@@ -164,7 +164,7 @@ int midi_sendMessage(lua_State *L)
 int midi_sendControlChange(lua_State *L)
 {
     int nextIndex = 0;
-    int interface = getInterface(L, &nextIndex);
+    int interface = getInterface(L, &nextIndex, 4);
     int port = luaL_checkinteger(L, nextIndex++);
     int channel = luaL_checkinteger(L, nextIndex++);
     int controllerNumber = luaL_checkinteger(L, nextIndex++);
@@ -196,7 +196,7 @@ int midi_sendControlChange(lua_State *L)
 int midi_sendNoteOn(lua_State *L)
 {
     int nextIndex = 0;
-    int interface = getInterface(L, &nextIndex);
+    int interface = getInterface(L, &nextIndex, 4);
     int port = luaL_checkinteger(L, nextIndex++);
     int channel = luaL_checkinteger(L, nextIndex++);
     int noteNumber = luaL_checkinteger(L, nextIndex++);
@@ -228,7 +228,7 @@ int midi_sendNoteOn(lua_State *L)
 int midi_sendNoteOff(lua_State *L)
 {
     int nextIndex = 0;
-    int interface = getInterface(L, &nextIndex);
+    int interface = getInterface(L, &nextIndex, 4);
     int port = luaL_checkinteger(L, nextIndex++);
     int channel = luaL_checkinteger(L, nextIndex++);
     int noteNumber = luaL_checkinteger(L, nextIndex++);
@@ -259,7 +259,7 @@ int midi_sendNoteOff(lua_State *L)
 int midi_sendPitchBend(lua_State *L)
 {
     int nextIndex = 0;
-    int interface = getInterface(L, &nextIndex);
+    int interface = getInterface(L, &nextIndex, 3);
     int port = luaL_checkinteger(L, nextIndex++);
     int channel = luaL_checkinteger(L, nextIndex++);
     int value = luaL_checkinteger(L, nextIndex);
@@ -288,7 +288,7 @@ int midi_sendPitchBend(lua_State *L)
 int midi_sendAfterTouchPoly(lua_State *L)
 {
     int nextIndex = 0;
-    int interface = getInterface(L, &nextIndex);
+    int interface = getInterface(L, &nextIndex, 4);
     int port = luaL_checkinteger(L, nextIndex++);
     int channel = luaL_checkinteger(L, nextIndex++);
     int noteNumber = luaL_checkinteger(L, nextIndex++);
@@ -319,7 +319,7 @@ int midi_sendAfterTouchPoly(lua_State *L)
 int midi_sendAfterTouchChannel(lua_State *L)
 {
     int nextIndex = 0;
-    int interface = getInterface(L, &nextIndex);
+    int interface = getInterface(L, &nextIndex, 3);
     int port = luaL_checkinteger(L, nextIndex++);
     int channel = luaL_checkinteger(L, nextIndex++);
     int pressure = luaL_checkinteger(L, nextIndex);
@@ -343,7 +343,7 @@ int midi_sendAfterTouchChannel(lua_State *L)
 int midi_sendClock(lua_State *L)
 {
     int nextIndex = 0;
-    int interface = getInterface(L, &nextIndex);
+    int interface = getInterface(L, &nextIndex, 1);
     int port = luaL_checkinteger(L, nextIndex);
 
     checkInterface(interface);
@@ -362,7 +362,7 @@ int midi_sendClock(lua_State *L)
 int midi_sendStart(lua_State *L)
 {
     int nextIndex = 0;
-    int interface = getInterface(L, &nextIndex);
+    int interface = getInterface(L, &nextIndex, 1);
     int port = luaL_checkinteger(L, nextIndex);
 
     checkInterface(interface);
@@ -381,7 +381,7 @@ int midi_sendStart(lua_State *L)
 int midi_sendStop(lua_State *L)
 {
     int nextIndex = 0;
-    int interface = getInterface(L, &nextIndex);
+    int interface = getInterface(L, &nextIndex, 1);
     int port = luaL_checkinteger(L, nextIndex);
 
     checkInterface(interface);
@@ -400,7 +400,7 @@ int midi_sendStop(lua_State *L)
 int midi_sendContinue(lua_State *L)
 {
     int nextIndex = 0;
-    int interface = getInterface(L, &nextIndex);
+    int interface = getInterface(L, &nextIndex, 1);
     int port = luaL_checkinteger(L, nextIndex);
 
     checkInterface(interface);
@@ -419,7 +419,7 @@ int midi_sendContinue(lua_State *L)
 int midi_sendActiveSensing(lua_State *L)
 {
     int nextIndex = 0;
-    int interface = getInterface(L, &nextIndex);
+    int interface = getInterface(L, &nextIndex, 1);
     int port = luaL_checkinteger(L, nextIndex);
 
     checkInterface(interface);
@@ -439,7 +439,7 @@ int midi_sendActiveSensing(lua_State *L)
 int midi_sendSystemReset(lua_State *L)
 {
     int nextIndex = 0;
-    int interface = getInterface(L, &nextIndex);
+    int interface = getInterface(L, &nextIndex, 1);
     int port = luaL_checkinteger(L, nextIndex);
 
     checkInterface(interface);
@@ -460,7 +460,7 @@ int midi_sendSystemReset(lua_State *L)
 int midi_sendSongSelect(lua_State *L)
 {
     int nextIndex = 0;
-    int interface = getInterface(L, &nextIndex);
+    int interface = getInterface(L, &nextIndex, 2);
     int port = luaL_checkinteger(L, nextIndex++);
     int song = luaL_checkinteger(L, nextIndex);
 
@@ -483,7 +483,7 @@ int midi_sendSongSelect(lua_State *L)
 int midi_sendSongPosition(lua_State *L)
 {
     int nextIndex = 0;
-    int interface = getInterface(L, &nextIndex);
+    int interface = getInterface(L, &nextIndex, 2);
     int port = luaL_checkinteger(L, nextIndex++);
     int position = luaL_checkinteger(L, nextIndex);
 
@@ -505,7 +505,7 @@ int midi_sendSongPosition(lua_State *L)
 int midi_sendTuneRequest(lua_State *L)
 {
     int nextIndex = 0;
-    int interface = getInterface(L, &nextIndex);
+    int interface = getInterface(L, &nextIndex, 1);
     int port = luaL_checkinteger(L, nextIndex);
 
     checkInterface(interface);
@@ -527,7 +527,7 @@ int midi_sendTuneRequest(lua_State *L)
 int midi_sendProgramChange(lua_State *L)
 {
     int nextIndex = 0;
-    int interface = getInterface(L, &nextIndex);
+    int interface = getInterface(L, &nextIndex, 3);
     int port = luaL_checkinteger(L, nextIndex++);
     int channel = luaL_checkinteger(L, nextIndex++);
     int programNumber = luaL_checkinteger(L, nextIndex);
@@ -546,21 +546,24 @@ int midi_sendProgramChange(lua_State *L)
 }
 
 /**
- * sends out a MIDI SysEx message
- * @param port an identifier of the port number
- * @param array of SysEx bytes. F0 and F7 shall not be included
- * @returns status and error code if present
+ * @brief midi.sendSysex([interface,] port, data)
+ *
+ * The data is either an array of bytes, without the leading 0xF0 and the
+ * trailing 0xF7, or a SysexBlock - the object a script is handed by
+ * midi.onSysex() and patch.onResponse(), which is what makes answering a
+ * device's response with a message derived from it possible without copying
+ * the whole thing through a Lua table.
  */
 int midi_sendSysEx(lua_State *L)
 {
     int interface = LUA_MIDI_INTERFACE_MIDI_ALL;
     int portIndex = 1;
-    int tableIndex = 2;
+    int dataIndex = 2;
 
     if (lua_gettop(L) == 3) { // if number of parameters is 3
         interface = luaL_checkinteger(L, 1);
         portIndex = 2;
-        tableIndex = 3;
+        dataIndex = 3;
     }
 
     int port = luaL_checkinteger(L, portIndex);
@@ -568,46 +571,95 @@ int midi_sendSysEx(lua_State *L)
     checkInterface(interface);
     checkPort(port);
 
-    luaL_checktype(L, tableIndex, LUA_TTABLE);
+    if (void *block = luaL_testudata(L, dataIndex, "SysexBlock")) {
+        SysexBlock *sysexBlock = *reinterpret_cast<SysexBlock **>(block);
 
-    /* expects true table of integers with no keys and gaps */
-    int length = lua_rawlen(L, tableIndex);
+        if (sysexBlock == nullptr) {
+            return (luaL_error(L, "sendSysex: invalid SysexBlock"));
+        }
 
-    /* table is in the stack at index 1 */
-    lua_pushnil(L);
+        MidiOutput::sendSysEx(
+            static_cast<MidiInterface::Type>(interface), port, *sysexBlock);
+        return (0);
+    }
 
-    uint8_t buffer[LUA_MAX_SYSEX_SIZE + 2];
+    luaL_checktype(L, dataIndex, LUA_TTABLE);
 
-    /* add the SysEx start byte */
+    /* expects a true array of integers, with no keys and no gaps */
+    const int length = (int)lua_rawlen(L, dataIndex);
+
+    /* One byte more than a chunk: a message whose last data byte exactly
+     * fills a chunk still has the end byte appended to it rather than sent in
+     * a packet of its own. */
+    uint8_t buffer[LUA_MAX_SYSEX_SIZE + 1];
+
+    /* The SysEx start byte, then as much of the message as fits, then the end
+     * byte: the chunks in between carry data only. */
     buffer[0] = 0xf0;
 
     int bufferIndex = 1;
-    int messageIndex = 0;
 
-    while (lua_next(L, tableIndex) != 0) {
-        buffer[bufferIndex] = luaL_checkinteger(L, -1);
+    for (int item = 1; item <= length; item++) {
+        lua_rawgeti(L, dataIndex, item);
+
+        /* Converted rather than just tested for being a number: a fraction is
+         * a number and is not a byte, and lua_tointeger() would have turned it
+         * into a silent zero in the middle of the message. */
+        int isByte = 0;
+        const lua_Integer byte = lua_tointegerx(L, -1, &isByte);
+
         lua_pop(L, 1);
-        bufferIndex++;
-        messageIndex++;
 
-        if (bufferIndex == LUA_MAX_SYSEX_SIZE) {
-            if (messageIndex < length) {
-                MidiOutput::sendSysExPartial(
-                    static_cast<MidiInterface::Type>(interface),
-                    port,
-                    buffer,
-                    LUA_MAX_SYSEX_SIZE,
-                    false);
-            } else {
-                break;
-            }
+        if (isByte == 0) {
+            /* The message is already on its way out, so it has to be closed
+             * before the error is raised. Leaving it open locks up whatever is
+             * listening until it gives up on the message. */
+            buffer[bufferIndex++] = 0xf7;
+            MidiOutput::sendSysExPartial(
+                static_cast<MidiInterface::Type>(interface),
+                port,
+                buffer,
+                bufferIndex,
+                true);
+            return (luaL_error(
+                L, "sendSysex: data[%d] is not a whole number", item));
+        }
+
+        if ((byte < 0) || (byte > 127)) {
+            buffer[bufferIndex++] = 0xf7;
+            MidiOutput::sendSysExPartial(
+                static_cast<MidiInterface::Type>(interface),
+                port,
+                buffer,
+                bufferIndex,
+                true);
+            return (
+                luaL_error(L,
+                           "sendSysex: data[%d] is out of 7bit range: value=%d",
+                           item,
+                           (int)byte));
+        }
+
+        buffer[bufferIndex++] = (uint8_t)byte;
+
+        /* Full, and there is more to come. A chunk that turns out to be the
+         * last is held back so that the end byte goes out with it rather than
+         * in a packet of its own. */
+        if ((bufferIndex == LUA_MAX_SYSEX_SIZE) && (item < length)) {
+            MidiOutput::sendSysExPartial(
+                static_cast<MidiInterface::Type>(interface),
+                port,
+                buffer,
+                LUA_MAX_SYSEX_SIZE,
+                false);
             bufferIndex = 0;
         }
     }
 
-    /* add the SysEx End byte */
-    buffer[bufferIndex] = 0xf7;
-    bufferIndex++;
+    /* Room for the end byte is what the odd size of the buffer buys: a full
+     * chunk is LUA_MAX_SYSEX_SIZE, and the byte that closes the message goes
+     * after it. */
+    buffer[bufferIndex++] = 0xf7;
 
     MidiOutput::sendSysExPartial(static_cast<MidiInterface::Type>(interface),
                                  port,
@@ -630,21 +682,19 @@ int midi_sendSysEx(lua_State *L)
 int midi_sendNrpn(lua_State *L)
 {
     int nextIndex = 0;
-    int interface = getInterface(L, &nextIndex);
+    int interface = getInterface(L, &nextIndex, 4);
     int port = luaL_checkinteger(L, nextIndex++);
     int channel = luaL_checkinteger(L, nextIndex++);
     int parameterNumber = luaL_checkinteger(L, nextIndex++);
     int value = luaL_checkinteger(L, nextIndex++);
-    int lsbFirst = luaL_optinteger(L, nextIndex++, 0);
-    int resetRpn = luaL_optinteger(L, nextIndex, 1);
+    bool lsbFirst = luaLE_optBoolean(L, nextIndex++, false);
+    bool resetRpn = luaLE_optBoolean(L, nextIndex, true);
 
     checkInterface(interface);
     checkPort(port);
     checkChannel(channel);
     check14bit(parameterNumber, "parameterNumber");
     check14bit(value, "value");
-    checkBoolean(lsbFirst, "lsbFirst");
-    checkBoolean(resetRpn, "resetRpn");
 
     MidiOutput::sendNrpn(static_cast<MidiInterface::Type>(interface),
                          port,
@@ -668,7 +718,7 @@ int midi_sendNrpn(lua_State *L)
 int midi_sendRpn(lua_State *L)
 {
     int nextIndex = 0;
-    int interface = getInterface(L, &nextIndex);
+    int interface = getInterface(L, &nextIndex, 4);
     int port = luaL_checkinteger(L, nextIndex++);
     int channel = luaL_checkinteger(L, nextIndex++);
     int parameterNumber = luaL_checkinteger(L, nextIndex++);
@@ -701,19 +751,18 @@ int midi_sendRpn(lua_State *L)
 int midi_sendControlChange14Bit(lua_State *L)
 {
     int nextIndex = 0;
-    int interface = getInterface(L, &nextIndex);
+    int interface = getInterface(L, &nextIndex, 4);
     int port = luaL_checkinteger(L, nextIndex++);
     int channel = luaL_checkinteger(L, nextIndex++);
     int controllerNumber = luaL_checkinteger(L, nextIndex++);
     int value = luaL_checkinteger(L, nextIndex++);
-    int lsbFirst = luaL_optinteger(L, nextIndex, 0);
+    bool lsbFirst = luaLE_optBoolean(L, nextIndex, false);
 
     checkInterface(interface);
     checkPort(port);
     checkChannel(channel);
     check14bit(controllerNumber, "controllerNumber");
     check14bit(value, "value");
-    checkBoolean(lsbFirst, "lsbFirst");
 
     MidiOutput::sendControlChange14Bit(
         static_cast<MidiInterface::Type>(interface),
@@ -739,6 +788,8 @@ void midi_onSingleByte(lua_State *L,
                        const char *function,
                        MidiInput midiInput)
 {
+    LuaStackGuard guard(L);
+
     luaLE_getModuleFunction(L, module, function);
 
     if (lua_isfunction(L, -1)) {
@@ -762,6 +813,8 @@ void midi_onTwoBytes(lua_State *L,
                      MidiInput midiInput,
                      int data1)
 {
+    LuaStackGuard guard(L);
+
     luaLE_getModuleFunction(L, module, function);
 
     if (lua_isfunction(L, -1)) {
@@ -787,6 +840,8 @@ void midi_onTwoBytesWithChannel(lua_State *L,
                                 uint8_t channel,
                                 int data1)
 {
+    LuaStackGuard guard(L);
+
     luaLE_getModuleFunction(L, module, function);
 
     if (lua_isfunction(L, -1)) {
@@ -814,6 +869,8 @@ void midi_onThreeBytesWithChannel(lua_State *L,
                                   uint8_t data1,
                                   uint8_t data2)
 {
+    LuaStackGuard guard(L);
+
     luaLE_getModuleFunction(L, module, function);
 
     if (lua_isfunction(L, -1)) {
@@ -841,6 +898,8 @@ void midi_onPitchBend(lua_State *L,
                       uint8_t channel,
                       int data1)
 {
+    LuaStackGuard guard(L);
+
     luaLE_getModuleFunction(L, module, function);
 
     if (lua_isfunction(L, -1)) {
@@ -864,6 +923,8 @@ void midi_onMidiSysex(lua_State *L,
                       MidiInput &midiInput,
                       SysexBlock &sysexBlock)
 {
+    LuaStackGuard guard(L);
+
     luaLE_getModuleFunction(L, "midi", "onSysex");
 
     if (lua_isfunction(L, -1)) {
@@ -881,16 +942,26 @@ void midi_onMidiSysex(lua_State *L,
     }
 }
 
-int getInterface(lua_State *L, int *nextIndex)
+int getInterface(lua_State *L, int *nextIndex, int numMandatory)
 {
-    int numParameters = lua_gettop(L);
+    const int numParameters = lua_gettop(L);
     int interface = LUA_MIDI_INTERFACE_MIDI_ALL;
 
-    if (numParameters == 5) {
-        interface = luaL_checkinteger(L, -numParameters);
-        numParameters--;
+    *nextIndex = 1;
+
+    if (numParameters <= numMandatory) {
+        return (interface);
     }
 
-    *nextIndex = -numParameters;
+    /* The one ambiguous shape: as many arguments as the interface form needs,
+     * but the extra one is a flag rather than a port. Only sendNrpn() and
+     * sendControlChange14Bit() have flags to be confused with. */
+    if (lua_isboolean(L, numMandatory + 1)) {
+        return (interface);
+    }
+
+    interface = luaL_checkinteger(L, 1);
+    *nextIndex = 2;
+
     return (interface);
 }

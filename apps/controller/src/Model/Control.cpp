@@ -172,6 +172,11 @@ Control::Variant Control::getVariant(void) const
     return ((Control::Variant)variant);
 }
 
+void Control::setVariant(Control::Variant newVariant)
+{
+    variant = (uint8_t)newVariant;
+}
+
 void Control::setVisible(bool shouldBeVisible)
 {
     visible = shouldBeVisible;

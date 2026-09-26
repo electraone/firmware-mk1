@@ -31,18 +31,21 @@ int helpers_slotToBounds(lua_State *L)
 {
     lua_settop(L, 1);
 
-    int slot = luaL_checkinteger(L, -1);
+    int slot = luaL_checkinteger(L, 1);
 
     luaL_argcheck(
-        L, 1 <= slot && slot <= 36, 2, "failed: slot must be between 1 and 36");
+        L, 1 <= slot && slot <= 36, 1, "failed: slot must be between 1 and 36");
 
     Rectangle bounds = controlSlotToBounds(slot);
 
+    /* The size comes from the rectangle rather than being written out again
+     * here, so that a change to the slot geometry cannot leave the two
+     * disagreeing. */
     lua_newtable(L);
     luaLE_pushArrayInteger(L, 1, bounds.getX());
     luaLE_pushArrayInteger(L, 2, bounds.getY());
-    luaLE_pushArrayInteger(L, 3, 158);
-    luaLE_pushArrayInteger(L, 4, 56);
+    luaLE_pushArrayInteger(L, 3, bounds.getWidth());
+    luaLE_pushArrayInteger(L, 4, bounds.getHeight());
 
     return (1);
 }
@@ -72,11 +75,11 @@ int helpers_delay(lua_State *L)
 {
     lua_settop(L, 1);
 
-    int msecs = luaL_checkinteger(L, -1);
+    int msecs = luaL_checkinteger(L, 1);
 
     luaL_argcheck(L,
                   1 <= msecs && msecs <= 5000,
-                  2,
+                  1,
                   "failed: time interval must be between 1 and 5000");
 
     delay(msecs);

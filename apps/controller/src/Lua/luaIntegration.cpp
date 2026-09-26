@@ -93,7 +93,9 @@ int luaLE_checkMidiValue(lua_State *L, int idx)
 {
     int midiValue = luaL_checkinteger(L, idx);
 
-    if ((midiValue < 0) || (midiValue > 16538)) {
+    /* 14 bits. It read 16538 - a transposition of 16383 - which let a value
+     * past the end of the range through to a message that cannot carry it. */
+    if ((midiValue < 0) || (midiValue > 16383)) {
         return (luaL_error(L, "invalid midiValue: %d", midiValue));
     }
     return (midiValue);

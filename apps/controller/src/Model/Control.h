@@ -140,6 +140,7 @@ public:
     void setControlSetId(uint8_t newControlSetId);
     uint8_t getControlSetId(void) const;
     Variant getVariant(void) const;
+    void setVariant(Variant newVariant);
     void setVisible(bool shouldBeVisible);
     bool isVisible(void) const;
 

@@ -111,6 +111,23 @@ uint32_t MemoryPool::getOverflowCount(void) const
     return (overflowed);
 }
 
+bool MemoryPool::writeByte(uint32_t address, uint8_t byte)
+{
+    if ((fb == nullptr) || (address >= capacity)) {
+        return (false);
+    }
+
+    fb->writeRamData(baseAddress + address, &byte, 1);
+
+    /* The byte just replaced may be sitting in the read window. */
+    if ((cacheLength > 0) && (address >= cacheStart)
+        && (address < (cacheStart + cacheLength))) {
+        invalidateCache();
+    }
+
+    return (true);
+}
+
 void MemoryPool::invalidateCache(void)
 {
     cacheLength = 0;

@@ -28,6 +28,7 @@
 #pragma once
 
 #include "Graphics.h"
+#include "Logger.h"
 #include "helpers.h"
 
 class MemoryPool;
@@ -56,6 +57,26 @@ public:
     size_t getLength(void) const;
     MemoryBlock getRange(uint32_t rangeStart, uint32_t rangeLength) const;
     int peek(size_t position) const;
+
+    /**
+     * @brief Replaces one byte of the block, in place.
+     *
+     * The counterpart of peek(). writeBytes() appends, so a script that wants
+     * to change the device number inside a response before sending it back on
+     * had no way to do it short of copying the whole message out through a Lua
+     * table and back.
+     *
+     * The first bytes of a block live in RAM as well as in the pool, so a byte
+     * inside that part has to be replaced in both.
+     *
+     * @return false when the position is past the end of the block.
+     */
+    bool poke(size_t position, uint8_t byte);
+
+    /** @brief Writes the block's bytes to the logger. */
+    void print(uint8_t logLevel = LOG_TRACE,
+               MemoryBlockOutputType outputType =
+                   MemoryBlockOutputType::Decimals) const;
 
     // The size of the header must be divisible by 4
     static const size_t headerMaxSize = 56;

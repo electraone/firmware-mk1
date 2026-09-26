@@ -27,6 +27,8 @@
 
 #include "MemoryBlock.h"
 #include "MemoryPool.h"
+#include "System.h"
+#include <cstdio>
 #include <cstring>
 
 MemoryBlock::MemoryBlock()
@@ -275,6 +277,72 @@ int MemoryBlock::peek(size_t position) const
     }
 
     return (memoryPool->readByte(startAddress + position));
+}
+
+bool MemoryBlock::poke(size_t position, uint8_t byte)
+{
+    if ((memoryPool == nullptr) || (position >= length)) {
+        return (false);
+    }
+
+    /* The header is a copy, not a window: a byte inside it has to be replaced
+     * here as well, or a read of the same position answers the old value. */
+    if (position < headerLength) {
+        header[position] = byte;
+    }
+
+    if (headerFlushed || (position >= headerLength)) {
+        return (memoryPool->writeByte(startAddress + position, byte));
+    }
+
+    /* Still short enough to live only in the header, so there is nothing in
+     * the pool to patch yet. */
+    return (true);
+}
+
+void MemoryBlock::print(uint8_t logLevel,
+                        MemoryBlockOutputType outputType) const
+{
+    static constexpr size_t bytesPerLine = 16;
+    char line[(bytesPerLine * 4) + 1];
+
+    System::logger.write(logLevel, "memoryBlock: length=%d", (int)length);
+
+    for (size_t position = 0; position < length; position += bytesPerLine) {
+        size_t used = 0;
+
+        for (size_t offset = 0;
+             (offset < bytesPerLine) && ((position + offset) < length);
+             offset++) {
+            const int byte = peek(position + offset);
+
+            if (outputType == MemoryBlockOutputType::Chars) {
+                line[used++] =
+                    ((byte >= 0x20) && (byte < 0x7f)) ? (char)byte : '.';
+            } else {
+                const int written = snprintf(line + used,
+                                             sizeof(line) - used,
+                                             "%s%d",
+                                             (offset == 0) ? "" : " ",
+                                             byte);
+
+                /* snprintf answers what it would have written, not what it
+                 * did. Sixteen bytes of three digits and a space fill the line
+                 * exactly, so this never truncates - but the index must not be
+                 * allowed to walk past the buffer if that ever changes. */
+                if ((written < 0)
+                    || ((used + (size_t)written) >= sizeof(line))) {
+                    used = sizeof(line) - 1;
+                    break;
+                }
+
+                used += (size_t)written;
+            }
+        }
+
+        line[used] = '\0';
+        System::logger.write(logLevel, "%s", line);
+    }
 }
 
 size_t MemoryBlock::readBytesInternal(uint8_t *buffer, size_t length)

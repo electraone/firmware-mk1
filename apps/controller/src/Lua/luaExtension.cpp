@@ -20,6 +20,7 @@
 */
 
 #include "luaExtension.h"
+#include "TextBase.h"
 
 void loadLuaLibs(void)
 {
@@ -124,6 +125,37 @@ void loadGlobalVariables(lua_State *L)
     lua_setglobal(L, "VT_DEFAULT");
     lua_pushnumber(L, 1);
     lua_setglobal(L, "VT_HIGHLIGHTED");
+
+    /* Text alignment, which graphics.print() takes as its fifth argument.
+     * Without names for them a script had to write the raw 0, 1 or 2. */
+    lua_pushnumber(L, (int)TextAlign::left);
+    lua_setglobal(L, "ALIGN_LEFT");
+    lua_pushnumber(L, (int)TextAlign::center);
+    lua_setglobal(L, "ALIGN_CENTER");
+    lua_pushnumber(L, (int)TextAlign::right);
+    lua_setglobal(L, "ALIGN_RIGHT");
+
+    /* The face graphics.print() may be given, and that the two measuring
+     * functions take. These three axes are this model's own - the mk2's print()
+     * has one face - so the names are too. */
+    lua_pushnumber(L, (int)TextFace::regular);
+    lua_setglobal(L, "FONT_REGULAR");
+    lua_pushnumber(L, (int)TextFace::bold);
+    lua_setglobal(L, "FONT_BOLD");
+
+    lua_pushnumber(L, (int)TextSize::small);
+    lua_setglobal(L, "SIZE_SMALL");
+    lua_pushnumber(L, (int)TextSize::medium);
+    lua_setglobal(L, "SIZE_MEDIUM");
+    lua_pushnumber(L, (int)TextSize::large);
+    lua_setglobal(L, "SIZE_LARGE");
+    lua_pushnumber(L, (int)TextSize::huge);
+    lua_setglobal(L, "SIZE_HUGE");
+
+    lua_pushnumber(L, (int)TextSpacing::proportional);
+    lua_setglobal(L, "SPACING_PROPORTIONAL");
+    lua_pushnumber(L, (int)TextSpacing::monospaced);
+    lua_setglobal(L, "SPACING_MONOSPACED");
 }
 
 /** @todo Get rid of this global variables */

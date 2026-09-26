@@ -20,6 +20,7 @@
  */
 
 #include "luaValue.h"
+#include "luaControl.h"
 #include "Presets.h"
 #include "MainDelegate.h"
 #include "luaExtension.h"
@@ -234,7 +235,11 @@ int value_getControl(lua_State *L)
         Control *control = value->getControl();
 
         if (control) {
-            luaLE_pushObject(L, "Control", control);
+            /* The cached instance, not a bare object. Control's __index reads
+             * the uservalue table first, and a userdata pushed without one took
+             * the script down at its first method call - so
+             * value:getControl():getName() could not be written at all. */
+            luaLE_pushControlInstance(L, *control);
             return (1);
         }
     }

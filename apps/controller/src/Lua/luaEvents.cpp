@@ -48,6 +48,8 @@ int events_setPort(lua_State *L)
 
 void events_onPageChange(uint8_t newPageId, uint8_t oldPageId)
 {
+    LuaStackGuard guard(L);
+
     const char *function = "onPageChange";
     luaLE_getModuleFunction("events", function);
 
@@ -66,8 +68,20 @@ void events_onPageChange(uint8_t newPageId, uint8_t oldPageId)
 
 void events_onPotTouch(uint8_t potId, uint16_t controlId, bool touched)
 {
-    const char *function = "onPotTouch";
+    LuaStackGuard guard(L);
+
+    /* The released documentation names this one onPotTouchChange. Both are
+     * looked for, newest name first, so a preset written against either one
+     * gets its handler called. */
+    const char *function = "onPotTouchChange";
     luaLE_getModuleFunction("events", function);
+
+    if (!lua_isfunction(L, -1)) {
+        /* The field and the module table the lookup pushed under it. */
+        lua_pop(L, 2);
+        function = "onPotTouch";
+        luaLE_getModuleFunction("events", function);
+    }
 
     if (lua_isfunction(L, -1)) {
         lua_pushnumber(L, potId);
@@ -85,6 +99,8 @@ void events_onPotTouch(uint8_t potId, uint16_t controlId, bool touched)
 
 void events_onUsbHostChange(uint8_t port, uint8_t eventType)
 {
+    LuaStackGuard guard(L);
+
     const char *function = "onUsbHostChange";
     luaLE_getModuleFunction("events", function);
 

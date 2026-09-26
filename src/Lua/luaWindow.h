@@ -27,13 +27,12 @@
 
 #pragma once
 
-extern "C" {
-#include "lauxlib.h"
-#include "lua.h"
-#include "lualib.h"
-}
+#include "luaIntegrationBase.h"
 
 int luaopen_window(lua_State *L);
+
+/** Creates the metatable a Component userdata is given. */
+void window_registerComponent(lua_State *L);
 
 int window_addAndMakeVisible(lua_State *L);
 int window_clear(lua_State *L);

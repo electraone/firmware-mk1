@@ -36,6 +36,8 @@ void runOnResponse(const Device &device,
                    uint8_t responseId,
                    SysexBlock &sysexBlock)
 {
+    LuaStackGuard guard(L);
+
     luaLE_getModuleFunction(L, "patch", "onResponse");
 
     if (lua_isfunction(L, -1)) {
@@ -54,6 +56,8 @@ void runOnResponse(const Device &device,
 
 void runOnRequest(const Device &device)
 {
+    LuaStackGuard guard(L);
+
     luaLE_getModuleFunction(L, "patch", "onRequest");
 
     if (lua_isfunction(L, -1)) {

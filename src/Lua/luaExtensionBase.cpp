@@ -60,6 +60,7 @@ lua_State *initLua(void)
 
     // register userdate objects
     sysexBlock_register(lua);
+    window_registerComponent(lua);
 
     // register global variables
     loadBaseGlobalVariables(lua);
@@ -73,6 +74,8 @@ void closeLua(void)
         lua_close(L);
         L = nullptr;
     }
+
+    sysexBlock_releaseAll();
 }
 
 void loadLuaModule(const char *filename)
@@ -266,6 +269,14 @@ void loadBaseGlobalVariables(lua_State *L)
     lua_setglobal(L, "WIDTH");
     lua_pushnumber(L, 4);
     lua_setglobal(L, "HEIGHT");
+
+    // Controller models
+    lua_pushnumber(L, (int)ControllerModel::mk1);
+    lua_setglobal(L, "MODEL_MK1");
+    lua_pushnumber(L, (int)ControllerModel::mk2);
+    lua_setglobal(L, "MODEL_MK2");
+    lua_pushnumber(L, (int)ControllerModel::mini);
+    lua_setglobal(L, "MODEL_MINI");
 
     // Events
     lua_pushnumber(L, 0);

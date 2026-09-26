@@ -248,6 +248,15 @@ public:
     void resetDeviceValues(uint8_t deviceId);
 
     /**
+     * @brief Reset every LookupEntry value in the map
+     *
+     * Resetting means setting the MIDI value to 0. The entries themselves, and
+     * the controls linked to them, are left alone - which is what separates
+     * this from clear().
+     */
+    void resetAllValues(void);
+
+    /**
      * @brief Clear whole ParameterMap
      * 
      * Clear all contents and reset the project Id associated with the map.

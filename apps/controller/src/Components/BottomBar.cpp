@@ -74,7 +74,7 @@ void BottomBar::setPageName(const char *newName)
 
 void BottomBar::setInfoText(const char *newText)
 {
-    copyString(infoText, newText, maxPageNameLength);
+    copyString(infoText, newText, maxInfoTextLength);
 }
 
 void BottomBar::setRamPercentage(uint8_t newPercentage)

@@ -589,12 +589,27 @@ int graphics_drawArc(lua_State *L)
     const lua_Number direction = (toDegrees >= fromDegrees) ? 1.0 : -1.0;
     const lua_Number stepDegrees = (sweep / (lua_Number)steps) * direction;
 
-    /* Clockwise from twelve o'clock, on a screen whose y grows downwards. */
+    /* Clockwise from twelve o'clock, on a screen whose y grows downwards.
+     *
+     * The driver takes unsigned coordinates, so a point off the top or left of
+     * the screen has to be clamped rather than cast: -1 became 65535, and a
+     * dial whose centre sits near the edge drew a triangle across the whole
+     * panel. */
+    auto clamp = [](lua_Number value) -> uint16_t {
+        if (value < 0.0) {
+            return (0);
+        }
+        if (value > 65535.0) {
+            return (65535);
+        }
+        return ((uint16_t)(value + 0.5));
+    };
+
     auto pointAt =
         [&](lua_Number degrees, lua_Number r, uint16_t &x, uint16_t &y) {
             const lua_Number radians = (degrees - 90.0) * (M_PI / 180.0);
-            x = (uint16_t)(centreX + (std::cos(radians) * r) + 0.5);
-            y = (uint16_t)(centreY + (std::sin(radians) * r) + 0.5);
+            x = clamp(centreX + (std::cos(radians) * r));
+            y = clamp(centreY + (std::sin(radians) * r));
         };
 
     for (int step = 0; step < steps; step++) {

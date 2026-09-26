@@ -40,6 +40,8 @@ int control_setName(lua_State *L);
 int control_getName(lua_State *L);
 int control_setColour(lua_State *L);
 int control_getColour(lua_State *L);
+int control_getVariant(lua_State *L);
+int control_setVariant(lua_State *L);
 int control_setPot(lua_State *L);
 int control_setBounds(lua_State *L);
 int control_getBounds(lua_State *L);
@@ -64,7 +66,10 @@ void control_register(lua_State *L);
 
 int luaopen_controls(lua_State *L);
 
+int controls_print(lua_State *L);
+
 static const luaL_Reg controls_functions[] = { { "get", control_create },
+                                               { "print", controls_print },
                                                { NULL, NULL } };
 
 static const luaL_Reg control_functions[] = {
@@ -75,6 +80,8 @@ static const luaL_Reg control_functions[] = {
     { "getName", control_getName },
     { "setColor", control_setColour },
     { "getColor", control_getColour },
+    { "getVariant", control_getVariant },
+    { "setVariant", control_setVariant },
     { "setPot", control_setPot },
     { "setBounds", control_setBounds },
     { "getBounds", control_getBounds },

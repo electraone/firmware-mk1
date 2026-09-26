@@ -34,10 +34,33 @@ extern "C" {
 #include "lualib.h"
 }
 
+/**
+ * @brief Which controller a script is running on.
+ *
+ * A preset written for the mk2 may draw into space this panel does not have, or
+ * use a call that only the newer firmware carries. Asking rather than guessing
+ * is what controller.require() is for, and the answer has to be a number a
+ * script can compare as well as a name it can print.
+ */
+enum class ControllerModel { mk1 = 1, mk2 = 2, mini = 3 };
+
 int luaopen_controller(lua_State *L);
 
 int controller_uptime(lua_State *L);
+int controller_getModel(lua_State *L);
+int controller_getNumModel(lua_State *L);
+int controller_getFirmwareVersion(lua_State *L);
+int controller_getFirmwareNumVersion(lua_State *L);
+int controller_require(lua_State *L);
+int controller_isRequired(lua_State *L);
 
-static const luaL_Reg controller_functions[] = { { "uptime",
-                                                   controller_uptime },
-                                                 { NULL, NULL } };
+static const luaL_Reg controller_functions[] = {
+    { "uptime", controller_uptime },
+    { "getModel", controller_getModel },
+    { "getNumModel", controller_getNumModel },
+    { "getFirmwareVersion", controller_getFirmwareVersion },
+    { "getFirmwareNumVersion", controller_getFirmwareNumVersion },
+    { "require", controller_require },
+    { "isRequired", controller_isRequired },
+    { NULL, NULL }
+};

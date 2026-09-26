@@ -39,3 +39,11 @@ int info_setText(lua_State *L)
 
     return (0);
 }
+
+int info_getText(lua_State *L)
+{
+    lua_settop(L, 0);
+    lua_pushstring(L, luaDelegate->getInfoText());
+
+    return (1);
+}

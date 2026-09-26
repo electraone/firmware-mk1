@@ -26,10 +26,25 @@
  */
 
 #include "luaWindow.h"
-#include "Button.h"
+#include "Component.h"
 #include "System.h"
 
 bool lua_windowRepaintEnabled;
+
+/**
+ * @brief The metatable a Component userdata carries.
+ *
+ * It was never created, so luaL_checkudata(L, 1, "Component") could not match
+ * anything and window.addAndMakeVisible() always raised - while
+ * window.findChildById() set a metatable it looked up and found nil, which
+ * clears the metatable rather than setting one. Between them the two calls
+ * could not be used together at all.
+ */
+void window_registerComponent(lua_State *L)
+{
+    luaL_newmetatable(L, "Component");
+    lua_pop(L, 1);
+}
 
 int luaopen_window(lua_State *L)
 {
@@ -41,8 +56,12 @@ int window_addAndMakeVisible(lua_State *L)
 {
     lua_settop(L, 1);
 
-    Button *component =
-        *reinterpret_cast<Button **>(luaL_checkudata(L, 1, "Component"));
+    /* Component, not Button. Every component inherits Component virtually, so
+     * converting a Button pointer to a Component one reads an offset out of the
+     * object - and a Component pointer reinterpreted as a Button never had one
+     * to read. */
+    Component *component =
+        *reinterpret_cast<Component **>(luaL_checkudata(L, 1, "Component"));
 
     if (component) {
         System::windowManager.getActiveWindow()->addAndMakeVisible(component);
@@ -78,18 +97,13 @@ int window_resume([[maybe_unused]] lua_State *L)
 int window_findChildById(lua_State *L)
 {
     lua_settop(L, 1);
-    int id = luaL_checkinteger(L, -1);
+    int id = luaL_checkinteger(L, 1);
 
-    Button *component = reinterpret_cast<Button *>(
-        System::windowManager.getActiveWindow()->findChildById(id));
+    Component *component =
+        System::windowManager.getActiveWindow()->findChildById(id);
 
     if (component) {
-        *reinterpret_cast<Button **>(lua_newuserdata(L, sizeof(Button *))) =
-            component;
-
-        luaL_getmetatable(L, "Component");
-        lua_setmetatable(L, -2);
-
+        luaLE_pushObject(L, "Component", component);
         return (1);
     }
 

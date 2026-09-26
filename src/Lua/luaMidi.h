@@ -140,13 +140,16 @@ static const luaL_Reg midi_functions[] = {
     { "sendNrpn", midi_sendNrpn },
     { "sendRpn", midi_sendRpn },
     { "sendControlChange14Bit", midi_sendControlChange14Bit },
+    /* The name the released documentation gives it. Both are kept: presets
+     * written against either one have to load. */
+    { "sendControlChange14", midi_sendControlChange14Bit },
     { "flush", midi_flush },
     { NULL, NULL }
 };
 
 #define checkInterface(interface)                                              \
     if ((interface < 0) || (interface > (LUA_NR_OF_MIDI_INTERFACES - 1))) {    \
-        return (luaL_error(L, "port %d is out of range", port));               \
+        return (luaL_error(L, "interface %d is out of range", interface));     \
     }
 
 #define checkPort(port)                                                        \
@@ -177,9 +180,30 @@ static const luaL_Reg midi_functions[] = {
             L, "%s is out of pitchBend range: value=%d", var, number));        \
     }
 
-#define checkBoolean(number, var)                                              \
-    if ((number < 0) || (number > 1)) {                                        \
-        return (luaL_error(L, "%s is not a boolean: value=%d", var, number));  \
-    }
-
-int getInterface(lua_State *L, int *nextIndex);
+/**
+ * @brief Reads the optional leading interface argument.
+ *
+ * Every send function takes either (port, ...) or (interface, port, ...), and
+ * which one it was given is decided by how many arguments arrived:
+ * @p numMandatory is how many always follow the interface, so one more than
+ * that means an interface came first.
+ *
+ * The count has to come from the caller because it differs per function -
+ * midi.sendClock() has one, midi.sendControlChange() has four. It used to be
+ * hardwired to five here, which is right for the four-argument messages and
+ * wrong for every other one: midi.sendClock(PORT_1) read the port as an
+ * interface, and midi.sendNrpn(PORT_1, 1, 100, 200) read its own port argument
+ * back as resetRpn.
+ *
+ * @p nextIndex is left holding an absolute stack index - 1 or 2 - so that a
+ * function reading an argument that was not given asks for an index past the
+ * top, which luaL_optinteger() answers with the default. Walking backwards
+ * from the top, as this used to, made that index 0 or 1 instead: never absent,
+ * and sometimes an earlier argument read a second time.
+ *
+ * A trailing flag is what tells the one ambiguous case apart. Only the two
+ * functions with optional flags can meet it, and only when the flag is given
+ * as a boolean - which is what the argument's name asks for, and what
+ * luaLE_optBoolean() now accepts.
+ */
+int getInterface(lua_State *L, int *nextIndex, int numMandatory);

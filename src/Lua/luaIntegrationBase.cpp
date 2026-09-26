@@ -32,9 +32,8 @@
  * them. Whether the call will actually be made is already known here, which
  * is why a missing handler is recorded separately from a call.
  */
-static void traceModuleLookup(lua_State *L,
-                              const char *module,
-                              const char *function)
+static void
+    traceModuleLookup(lua_State *L, const char *module, const char *function)
 {
 #if defined(ELECTRA_TRACE) && ELECTRA_TRACE
     if (lua_isfunction(L, -1)) {
@@ -111,6 +110,26 @@ bool luaLE_checkBoolean(lua_State *L, int idx)
     return (lua_toboolean(L, idx));
 }
 
+bool luaLE_optBoolean(lua_State *L, int idx, bool defaultValue)
+{
+    if (lua_isnoneornil(L, idx)) {
+        return (defaultValue);
+    }
+
+    if (lua_isboolean(L, idx)) {
+        return (lua_toboolean(L, idx));
+    }
+
+    const lua_Integer value = luaL_checkinteger(L, idx);
+
+    if ((value < 0) || (value > 1)) {
+        luaL_error(
+            L, "flag is neither a boolean nor 0 or 1: value=%d", (int)value);
+    }
+
+    return (value != 0);
+}
+
 void luaLE_getModuleFunction(lua_State *L,
                              const char *module,
                              const char *function)
@@ -177,14 +196,21 @@ bool luaLE_functionExists(const char *module, const char *function)
      * luaLE_getModuleFunction() on purpose. This is a probe, not a call, and
      * it must not show up in the behavioural trace as one.
      */
+    const int top = lua_gettop(L);
+
     lua_getglobal(L, module);
     lua_getfield(L, -1, function);
 
-    if (lua_isfunction(L, -1)) {
-        return (true);
-    }
+    const bool exists = lua_isfunction(L, -1);
 
-    return (false);
+    /* A probe leaves nothing behind. Every one of the eighteen MIDI handlers
+     * is looked for this way when a preset loads, and the module table and
+     * the field each used to stay on the stack - thirty-six values pushed
+     * onto a stack that is only guaranteed twenty deep, with nothing at the
+     * call site popping them. */
+    lua_settop(L, top);
+
+    return (exists);
 }
 
 void luaLE_getModuleFunction(const char *module, const char *function)

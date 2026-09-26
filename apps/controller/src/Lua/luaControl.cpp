@@ -56,6 +56,25 @@ void luaLE_pushControlInstance(lua_State *L, const Control &control)
     lua_rawgeti(L, LUA_REGISTRYINDEX, entry.userdata);
 }
 
+/**
+ * @brief controls.print()
+ *
+ * Every control of the preset, to the log. What it is for is finding out what a
+ * preset actually contains - the ids a script has to name, and the values each
+ * control carries - without reading the preset file.
+ */
+int controls_print(lua_State *L)
+{
+    lua_settop(L, 0);
+
+    for (const auto &[controlId, control] : luaPreset->controls) {
+        (void)controlId;
+        control.print(LOG_LUA);
+    }
+
+    return (0);
+}
+
 int control_create(lua_State *L)
 {
     lua_settop(L, 1);
@@ -268,6 +287,59 @@ int control_getColour(lua_State *L)
         return (1);
     }
     return (luaL_error(L, "failed: not a valid control"));
+}
+
+/**
+ * @brief control:getVariant()
+ *
+ * The shape the control was given - a thin fader, a dial, a checkbox. The
+ * numbers are the mk2's, so a script can compare against the same ones on
+ * either panel.
+ */
+int control_getVariant(lua_State *L)
+{
+    lua_settop(L, 1);
+
+    if (Control *control = getControl(L, 1)) {
+        lua_pushinteger(L, (int)control->getVariant());
+        return (1);
+    }
+    return (luaL_error(L, "failed: not a valid control"));
+}
+
+/**
+ * @brief control:setVariant(variant)
+ *
+ * The numbers are the mk2's, gaps and all, which is why they are checked
+ * against the list rather than against a range: a preset naming a variant this
+ * model has not been given is told so, rather than drawing whatever the four
+ * bits happened to mean.
+ */
+int control_setVariant(lua_State *L)
+{
+    lua_settop(L, 2);
+
+    Control *control = getControl(L, 1);
+    int variant = luaL_checkinteger(L, 2);
+
+    switch ((Control::Variant)variant) {
+        case Control::Variant::Default:
+        case Control::Variant::Thin:
+        case Control::Variant::ValueOnly:
+        case Control::Variant::Dial:
+        case Control::Variant::Checkbox:
+        case Control::Variant::Baseline:
+            break;
+        default:
+            return (luaL_error(L, "failed: unknown variant: %d", variant));
+    }
+
+    if (control) {
+        luaDelegate->setControlVariant(control->getId(), variant);
+    } else {
+        return (luaL_error(L, "failed: not a valid control"));
+    }
+    return (0);
 }
 
 int control_setPot(lua_State *L)

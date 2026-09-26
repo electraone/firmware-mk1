@@ -311,6 +311,16 @@ void ParameterMap::resetDeviceValues(uint8_t deviceId)
     postRepaint();
 }
 
+void ParameterMap::resetAllValues(void)
+{
+    for (auto &[hash, lookupEntry] : entries) {
+        if (getType(hash) != Message::Type::none) {
+            lookupEntry.resetMidiValue();
+        }
+    }
+    postRepaint();
+}
+
 void ParameterMap::clear(void)
 {
     setProjectId("undefined");

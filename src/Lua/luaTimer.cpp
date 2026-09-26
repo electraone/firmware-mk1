@@ -54,10 +54,16 @@ int timer_setPeriod(lua_State *L)
 {
     lua_settop(L, 1);
 
-    int period = luaL_checkinteger(L, -1);
+    int period = luaL_checkinteger(L, 1);
 
     if (period < 10) {
         return (luaL_error(L, "Minimum timer period is 10 mSec"));
+    }
+
+    /* A minute. The interval is held in microseconds, so anything much longer
+     * than this overflows the unsigned long it is kept in. */
+    if (period > 60000) {
+        return (luaL_error(L, "Maximum timer period is 60000 mSec"));
     }
 
     System::tasks.timerSetInterval(period * 1000);
@@ -77,13 +83,19 @@ int timer_setBpm(lua_State *L)
 {
     lua_settop(L, 1);
 
-    int bmp = luaL_checkinteger(L, -1);
+    int bpm = luaL_checkinteger(L, 1);
 
-    if (bmp > 6000) {
-        return (luaL_error(L, "Maximum timer BMP is 6000"));
+    /* The lower bound is what was missing: zero divided the tick length by it,
+     * and a negative one set an interval of some hundreds of seconds. */
+    if (bpm < 1) {
+        return (luaL_error(L, "Minimum timer BPM is 1"));
     }
 
-    System::tasks.timerSetInterval(60000000 / bmp);
+    if (bpm > 6000) {
+        return (luaL_error(L, "Maximum timer BPM is 6000"));
+    }
+
+    System::tasks.timerSetInterval(60000000 / bpm);
 
     return (0);
 }
@@ -92,7 +104,7 @@ int timer_getBpm(lua_State *L)
 {
     unsigned long interval = System::tasks.timerGetInterval();
 
-    lua_pushinteger(L, 60000000 / interval);
+    lua_pushinteger(L, (interval > 0) ? (60000000 / interval) : 0);
     return (1);
 }
 

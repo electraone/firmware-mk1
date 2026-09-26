@@ -5,6 +5,9 @@ class Info
 public:
     Info()
     {
+        /* Empty until a script sets it. Left uninitialised, getText() answered
+         * whatever was in that memory. */
+        text[0] = '\0';
     }
 
     virtual ~Info() = default;
