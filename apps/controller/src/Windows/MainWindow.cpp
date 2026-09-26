@@ -1,4 +1,5 @@
 #include "MainWindow.h"
+#include "Profile.h"
 #include "CommandManager.h"
 #include "ListDetailLayout.h"
 #include "ControlComponent.h"
@@ -823,6 +824,11 @@ void MainWindow::switchPreset(uint8_t bankNumber, uint8_t slot)
                          slot,
                          bankNumber * Preset::MaxNumPots + slot);
 
+        /* Everything on screen holds references into the preset - a detail
+     * window keeps the Control it shows - so it all goes before the preset
+     * does, not after. */
+    closeAllWindows();
+
     // Free the memory used by the active page
     if (pageView) {
         delete pageView;
@@ -841,10 +847,9 @@ void MainWindow::switchPreset(uint8_t bankNumber, uint8_t slot)
         if (!snapshots.initialise(preset.getProjectId())) {
             System::logger.write(
                 LOG_ERROR,
-                "MainWindow::switchPreset: cannot initialize snapshot storage");
+                                "MainWindow::switchPreset: cannot initialize snapshot storage");
         }
     }
-    closeAllWindows();
     switchPage(1, preset.getPage(1).getDefaultControlSetId());
 }
 
@@ -1182,6 +1187,7 @@ bool MainWindow::isDetailOnTheLeft(void) const
 
 void MainWindow::displayPage(void)
 {
+    PROFILE_BEGIN(PageSwitch);
     if (pageView) {
         delete pageView;
     }
@@ -1192,9 +1198,10 @@ void MainWindow::displayPage(void)
                             setup.uiFeatures,
                             currentPageId,
                             currentControlSetId);
-    replaceOwnedContent(pageView);
+        replaceOwnedContent(pageView);
     setRamPercentage(getUsedMemory());
     setInfoText(model.info.getText());
+    PROFILE_END(PageSwitch);
 }
 
 void MainWindow::showDetailOfActivePotTouch(void)

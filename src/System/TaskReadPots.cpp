@@ -27,9 +27,30 @@
 /*
  * read HW control
  */
+#include "Profile.h"
+
+#if defined(PROFILE) && PROFILE
+/* A knob turned from the debugger: while this is non-zero, every scan
+ * reports one step of the pot named below instead of reading the ADC, and
+ * counts down. Written over J-Link, so a knob path can be measured without
+ * a hand on the instrument. */
+volatile uint32_t profileSyntheticPotSteps = 0;
+volatile uint8_t profileSyntheticPotId = 1;
+#endif
+
 void readPots(void)
 {
     Pot *pot = NULL;
+
+#if defined(PROFILE) && PROFILE
+    if (profileSyntheticPotSteps > 0) {
+        profileSyntheticPotSteps--;
+        PROFILE_BEGIN(PotStep);
+        PotListener::potBroadcaster.potChange(profileSyntheticPotId, 4);
+        PROFILE_END(PotStep);
+        return;
+    }
+#endif
 
     if (System::context.getTouchEnabled() == false) {
         pot = Hardware::pots.getNextPot();
@@ -50,6 +71,9 @@ void readPots(void)
                              pot->id,
                              pot->step);
 #endif /* DEBUG */
+                PROFILE_BEGIN(PotStep);
         PotListener::potBroadcaster.potChange(pot->id, pot->step);
+        PROFILE_END(PotStep);
+
     }
 }

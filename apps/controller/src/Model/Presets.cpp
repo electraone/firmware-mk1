@@ -1,4 +1,5 @@
 #include "Presets.h"
+#include "Profile.h"
 #include "luaCallbacks.h"
 #include "MidiOutput.h"
 #include "MidiCallbacks.h"
@@ -95,6 +96,7 @@ void Presets::sendList(uint8_t port)
  */
 bool Presets::loadPreset(LocalFile file)
 {
+    PROFILE_BEGIN(PresetLoad);
     const char *presetFile = file.getFilepath();
 
     // Free current preset
@@ -130,8 +132,9 @@ bool Presets::loadPreset(LocalFile file)
                     parameterMap.recall();
                 }
 
-                // mark reset as loaded in this session
+                                // mark reset as loaded in this session
                 presetSlot[presetId].setAlreadyLoaded(true);
+                PROFILE_END(PresetLoad);
             } else {
                 System::logger.write(
                     LOG_ERROR,

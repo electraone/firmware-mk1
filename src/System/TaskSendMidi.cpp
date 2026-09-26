@@ -27,28 +27,20 @@
  */
 void sendMidi(void)
 {
-    MidiMessageTransport message;
-    uint32_t idFirst = 0;
+        MidiMessageTransport message;
     uint8_t i = 0;
 
-    // Process max 10 entries in the queue
+    /* Up to ten a tick, which is five thousand a second. The loop used to
+     * also stop at a message carrying the same timestamp as the first one
+     * sent this tick, a guard for a requeue that no longer exists - and two
+     * messages queued in the same microsecond, the two halves of a 14-bit
+     * CC, had the second one wait for the next tick. */
     while (!MidiOutput::outgoingQueue.isEmpty() && i < 10) {
-        message = MidiOutput::outgoingQueue.first();
+        message = MidiOutput::outgoingQueue.shift();
 
         if (message.invalid) {
-            MidiOutput::outgoingQueue.shift();
             continue;
         }
-
-        if (idFirst == message.id) {
-            break;
-        }
-
-        if (i == 0) {
-            idFirst = message.id;
-        }
-
-        message = MidiOutput::outgoingQueue.shift();
 
         if (message.getType() == MidiMessage::Type::SystemExclusive) {
             MidiOutput::send(

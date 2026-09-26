@@ -24,9 +24,11 @@
 #include "System.h"
 #include "compat.h"
 #include "Trace.h"
+#include "Profile.h"
 
 void monitorFreeMemory(void)
 {
+    PROFILE_DUMP();
     Hardware::ram.run();
     System::logger.write(
         LOG_TRACE,

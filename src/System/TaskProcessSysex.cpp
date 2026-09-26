@@ -36,8 +36,12 @@ CircularBuffer<SysexTransport, SYSEX_QUEUE_SIZE> sysexQueue;
 
 void processSysex(void)
 {
-    while (sysexQueue.isEmpty() != true) {
+        while (sysexQueue.isEmpty() != true) {
+        /* Pushed from the USB SysEx callback on the timer interrupt; see
+         * processMidi() for why the shift is masked. */
+        __disable_irq();
         SysexTransport st = sysexQueue.shift();
+        __enable_irq();
 
         /* Published just before the message is answered, not when it arrived:
          * everything that replies from here reads it. */

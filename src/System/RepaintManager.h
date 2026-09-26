@@ -83,7 +83,12 @@ public:
     /**
      * Clears the repaint queue.
      */
-    void clearRepaintQueue(void);
+        void clearRepaintQueue(void);
+
+    bool isQueueEmpty(void) const
+    {
+        return (repaintQueue.empty());
+    }
 
     /**
      * @brief Forgets whatever is queued for one component.

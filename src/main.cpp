@@ -31,6 +31,7 @@
 #include "SplashScreen.h"
 #include "MidiOutput.h"
 #include "Trace.h"
+#include "Profile.h"
 #include "DisplayBenchmark.h"
 
 /*
@@ -41,8 +42,9 @@ extern App *createApplication(void);
 
 void initialise(void)
 {
-    // Bring the behavioural trace up before anything else can be traced.
+        // Bring the behavioural trace up before anything else can be traced.
     TRACE_INIT();
+    PROFILE_INIT();
 
     createApplication();
 

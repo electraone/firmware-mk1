@@ -38,41 +38,41 @@ public:
     void sendMessage(const Message &message);
     void sendTemplatedSysex(const Device &device,
                             uint16_t parameterNumber,
-                            std::vector<uint8_t> data);
+                            const DataBytes &data);
     void process(const MidiInput &midiInput, const MidiMessage &midiMessage);
     void requestAllPatches(void);
 
 private:
     uint8_t transformMessage(uint16_t parameterNumber,
-                             const Device &deviceId,
-                             std::vector<uint8_t> data,
+                             const Device &device,
+                             const DataBytes &data,
                              uint8_t *dataOut);
     void runVariable(uint16_t parameterNumber,
                      uint16_t &i,
                      uint16_t &j,
-                     std::vector<uint8_t> data,
+                     const DataBytes &data,
                      uint8_t *dataOut,
                      const Device &device);
     void runParameter(uint16_t parameterNumber,
                       uint16_t &i,
                       uint16_t &j,
-                      std::vector<uint8_t> data,
+                      const DataBytes &data,
                       uint8_t *dataOut,
                       const Device &device);
     void runChecksum(uint16_t &i,
                      uint16_t &j,
-                     std::vector<uint8_t> data,
+                     const DataBytes &data,
                      uint8_t *dataOut,
                      const Device &device);
     void runLuaFunction(uint16_t parameterNumber,
                         uint16_t &i,
                         uint16_t &j,
-                        std::vector<uint8_t> data,
+                        const DataBytes &data,
                         uint8_t *dataOut,
                         const Device &device);
     void runConstant(uint16_t &i,
                      uint16_t &j,
-                     std::vector<uint8_t> data,
+                     const DataBytes &data,
                      uint8_t *dataOut,
                      const Device &device);
     void processStart(void);

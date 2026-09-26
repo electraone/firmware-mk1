@@ -1,5 +1,6 @@
 #include "Preset.h"
 #include <algorithm>
+#include <cstring>
 #include <exception>
 
 #include "Hardware.h"
@@ -16,6 +17,7 @@ Group Preset::groupNotFound;
 
 Preset::Preset() : valid(false)
 {
+    memset(devicesByPortChannel, 0, sizeof(devicesByPortChannel));
     reset();
 }
 
@@ -77,6 +79,7 @@ void Preset::reset(void)
 
     groups.clear();
     devices.clear();
+    memset(devicesByPortChannel, 0, sizeof(devicesByPortChannel));
     luaFunctions = std::vector<std::string>({ "" });
     overlays.clear();
     pages.clear();
@@ -189,13 +192,30 @@ const Device &Preset::getDevice(uint8_t deviceId) const
  */
 const Device &Preset::getDevice(uint8_t port, uint8_t channel) const
 {
-    for (auto &[id, device] : devices) {
-        if ((device.getPort() == port) && (device.getChannel() == channel)) {
-            return (device);
+    if ((port < 2) && (channel < 17)) {
+        if (const Device *device = devicesByPortChannel[port][channel]) {
+            return (*device);
         }
     }
 
     return (Preset::deviceNotFound);
+}
+
+void Preset::indexDevices(void)
+{
+    memset(devicesByPortChannel, 0, sizeof(devicesByPortChannel));
+
+    /* The first device declared on a port and channel wins, as it did when
+     * this was a walk through the map in id order. */
+    for (const auto &[id, device] : devices) {
+        const uint8_t port = device.getPort();
+        const uint8_t channel = device.getChannel();
+
+        if ((port < 2) && (channel < 17)
+            && (devicesByPortChannel[port][channel] == nullptr)) {
+            devicesByPortChannel[port][channel] = &device;
+        }
+    }
 }
 
 /** Get overlay pointer by the id
@@ -297,6 +317,7 @@ Device &Preset::addDevice(uint8_t deviceId,
                           uint8_t channel)
 {
     devices[deviceId] = Device(deviceId, name, port, channel, 0);
+    indexDevices();
     return (devices[deviceId]);
 }
 
@@ -380,6 +401,7 @@ bool Preset::parse(File &file)
         reset();
         return (false);
     }
+    indexDevices();
     if (!parseOverlays(file)) {
         System::logger.write(LOG_ERROR, "Preset::parse: parseOverlays failed");
         reset();

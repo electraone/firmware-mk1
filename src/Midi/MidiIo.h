@@ -64,6 +64,12 @@ public:
             static_cast<midi::MidiType>(type), data1, data2, channel);
     }
 
+        bool canSend(uint8_t port, size_t bytes) const override
+    {
+        const Uart &uart = (port == 0) ? Serial1 : Serial2;
+        return (const_cast<Uart &>(uart).availableForWrite() >= (int)bytes);
+    }
+
     void send(uint8_t port, MidiMessage &message) override
     {
         midiDINInterfaces[port]->send(

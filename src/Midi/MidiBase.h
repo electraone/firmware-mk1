@@ -39,7 +39,17 @@ public:
                       uint8_t channel,
                       uint8_t data1,
                       uint8_t data2) const = 0;
-    virtual void send(uint8_t port, MidiMessage &message) = 0;
+        virtual void send(uint8_t port, MidiMessage &message) = 0;
+
+    /** Whether a message of that many bytes can be sent now without
+     *  waiting. Only a serial port ever says no: its line is slow and its
+     *  buffer finite, and a caller on an interrupt must not wait for it. */
+    virtual bool canSend(uint8_t port, size_t bytes) const
+    {
+        (void)port;
+        (void)bytes;
+        return (true);
+    }
     virtual void send(uint8_t port, SysexBlock &sysexBlock) = 0;
     virtual void sendControlChange(uint8_t port,
                                    uint8_t parameterNumber,

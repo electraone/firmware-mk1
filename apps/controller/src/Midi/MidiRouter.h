@@ -52,6 +52,32 @@ public:
 
     virtual ~MidiRouter() = default;
 
+    /** Messages the router could not forward to a DIN port because the
+     *  port's buffer was full. See forwardToMidiIo(). */
+    static uint32_t droppedToMidiIo;
+
+    /* This runs on the timer interrupt, and a DIN port is a 31250 baud line
+     * behind a small buffer. Writing to it when the buffer is full waits a
+     * millisecond a message, inside the interrupt, which starves the main
+     * loop and overflows the queue the application reads - a burst of six
+     * hundred messages from the host arrived at the application as two
+     * hundred. A router cannot make a slow line faster; what it can do is
+     * not take the rest of the instrument down with it. A message the line
+     * has no room for is dropped and counted. */
+    void forwardToMidiIo(uint8_t port, MidiMessage &midiMessage)
+    {
+        if (MidiOutput::canSend(MidiInterface::Type::MidiIo, port, 3)) {
+            MidiOutput::send(MidiInterface::Type::MidiIo,
+                             port,
+                             midiMessage.getType(),
+                             midiMessage.getChannel(),
+                             midiMessage.getData1(),
+                             midiMessage.getData2());
+        } else {
+            droppedToMidiIo++;
+        }
+    }
+
     bool routeMessage(MidiInput &midiInput, MidiMessage &midiMessage)
     {
         // Do not forward/process the CTRL messages. It is done on purpose for now.
@@ -63,12 +89,7 @@ public:
 
         if (midiInput.getInterfaceType() == MidiInterface::Type::MidiUsbDev) {
             if (routerConfig.usbDevToMidiIo) {
-                MidiOutput::send(MidiInterface::Type::MidiIo,
-                                 midiInput.getPort(),
-                                 midiMessage.getType(),
-                                 midiMessage.getChannel(),
-                                 midiMessage.getData1(),
-                                 midiMessage.getData2());
+                forwardToMidiIo(midiInput.getPort(), midiMessage);
             }
             if (routerConfig.usbDevToUsbHost) {
                 MidiOutput::send(MidiInterface::Type::MidiUsbHost,
@@ -101,12 +122,7 @@ public:
 
         if (midiInput.getInterfaceType() == MidiInterface::Type::MidiUsbHost) {
             if (routerConfig.usbHostToMidiIo) {
-                MidiOutput::send(MidiInterface::Type::MidiIo,
-                                 midiInput.getPort(),
-                                 midiMessage.getType(),
-                                 midiMessage.getChannel(),
-                                 midiMessage.getData1(),
-                                 midiMessage.getData2());
+                forwardToMidiIo(midiInput.getPort(), midiMessage);
             }
             if (routerConfig.usbHostToUsbDev) {
                 MidiOutput::send(MidiInterface::Type::MidiUsbDev,

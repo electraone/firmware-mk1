@@ -20,13 +20,13 @@
 */
 
 #include "TaskReadMidi.h"
+#include "Profile.h"
 #include "MidiInputCallback.h"
 #include "App.h" // \todo To be removed.
 #include "Trace.h"
 
 #define USB_MIDI_PORT_CTRL 2
 
-CircularBuffer<MidiMessageTransport, 5> incomingQueueL1;
 CircularBuffer<MidiMessageTransport, 100> incomingQueueL2;
 
 /** This is used when reading of SysEx on CTRL port gets priority.
@@ -45,6 +45,8 @@ void readCtrlMidi(void)
  */
 void readMidi(void)
 {
+    PROFILE_BEGIN(MidiInIsr);
+
     // Skip when Electra is busy with a component repaints
     if (System::repaintActive) {
         return;
@@ -56,37 +58,69 @@ void readMidi(void)
     }
 
     // Skip if the interface unifying queue is not empty
-    if (incomingQueueL1.isEmpty() != true) {
-        return;
-    }
 
     // Process inbound MIDI messages on USB MIDI IN port (virtual cables).
+    /* Route a message to the other ports as configured and queue it for the
+     * application. This is the whole of what the interrupt does with a
+     * message; the rest happens in processMidi() on the main loop. SysEx is
+     * handled by the callbacks in SysexCallbacks.cpp and never gets here as
+     * a message. The clock used to be dispatched to the application and the
+     * Lua script from this context, for latency, which put a lua_pcall and
+     * heap allocations inside an interrupt while the main loop was in the
+     * same interpreter and the same allocator. It goes through the queue
+     * with everything else now, two milliseconds later at most. */
+    auto forward = [](MidiMessageTransport &message) {
+        if (message.getType() == MidiMessage::Type::SystemExclusive) {
+            return;
+        }
+
+        MidiInput midiInput(message.getInterfaceType(), message.getPort());
+
+        if (!runRouteMessageCallback(midiInput, message)) {
+            System::logger.write(LOG_ERROR, "skipping the message");
+            return;
+        }
+        incomingQueueL2.push(message);
+    };
+
+    /* Up to a few messages per interface per tick. One per tick, which is
+     * what this was, capped USB input at two thousand messages a second,
+     * and a host sending a bank of values arrives faster than that. Four
+     * from each of five inputs is twenty a tick, eighty between two runs of
+     * processMidi(), within what the queue holds. */
+    constexpr uint8_t MaxReadsPerInterface = 4;
+
     MidiBase *midiInterface =
         MidiInterface::get(MidiInterface::Type::MidiUsbDev);
-    if (midiInterface->read(0)) {
+    for (uint8_t i = 0; (i < MaxReadsPerInterface) && midiInterface->read(0);
+         i++) {
         uint8_t port = midiInterface->getActivePort();
-        incomingQueueL1.push(MidiMessageTransport(
+        MidiMessageTransport message(
             MidiInterface::Type::MidiUsbDev,
             port,
             midiInterface->getChannel(port),
             static_cast<MidiMessage::Type>(midiInterface->getType(port)),
             midiInterface->getData1(port),
-            midiInterface->getData2(port)));
+            midiInterface->getData2(port));
+        forward(message);
     }
 
     // Process inbound MIDI messages on USB host ports.
     for (uint8_t port = 0; port < 2; port++) {
         MidiBase *midiInterface =
             MidiInterface::get(MidiInterface::Type::MidiUsbHost);
-        if (midiInterface->read(port)) {
-            incomingQueueL1.push(MidiMessageTransport(
+        for (uint8_t i = 0;
+             (i < MaxReadsPerInterface) && midiInterface->read(port);
+             i++) {
+            MidiMessageTransport message(
                 MidiInterface::Type::MidiUsbHost,
                 USBDevices[port].midiBus,
                 USBDevices[port].midiDevice->getChannel(),
                 static_cast<MidiMessage::Type>(
                     USBDevices[port].midiDevice->getType()),
                 USBDevices[port].midiDevice->getData1(),
-                USBDevices[port].midiDevice->getData2()));
+                USBDevices[port].midiDevice->getData2());
+            forward(message);
         }
     }
 
@@ -94,61 +128,21 @@ void readMidi(void)
     for (uint8_t port = 0; port < 2; port++) {
         MidiBase *midiInterface =
             MidiInterface::get(MidiInterface::Type::MidiIo);
-        if (midiInterface->read(port)) {
-            incomingQueueL1.push(MidiMessageTransport(
+        for (uint8_t i = 0;
+             (i < MaxReadsPerInterface) && midiInterface->read(port);
+             i++) {
+            MidiMessageTransport message(
                 MidiInterface::Type::MidiIo,
                 port,
                 midiInterface->getChannel(port),
                 static_cast<MidiMessage::Type>(midiInterface->getType(port)),
                 midiInterface->getData1(port),
-                midiInterface->getData2(port)));
+                midiInterface->getData2(port));
+            forward(message);
         }
     }
 
-    // Process all collected messages
-    while (incomingQueueL1.isEmpty() != true) {
-        MidiMessageTransport message = incomingQueueL1.shift();
-
-#ifdef DEBUG
-        System::logger.write(
-            ERROR,
-            "queueL1: received: interface=%d, port=%d, channel=%d, "
-            " type=%d, data1=%d, data2=%d",
-            message.getInterfaceType(),
-            message.getPort(),
-            message.getChannel(),
-            message.getType(),
-            message.getData1(),
-            message.getData2());
-#endif
-        MidiInput midiInput(message.getInterfaceType(), message.getPort());
-
-        // Forward the message to other interfaces according to the config
-        // SysEx messages are handled in the SysexCallbacks.cpp
-        if (message.getType() != MidiMessage::Type::SystemExclusive) {
-            if (!runRouteMessageCallback(midiInput, message)) {
-                System::logger.write(LOG_ERROR, "skipping the message");
-                continue;
-            }
-        }
-
-        // Pass the message for further processing
-        if (message.getType() == MidiMessage::Type::SystemExclusive) {
-            // Ignore sysex for now. It is handled with callbacks (SysexCallbacks.cpp)
-        } else if ((message.getType() == MidiMessage::Type::Clock)) {
-            // process system real-time
-
-            MidiInputCallback::deviceManager.handleIncomingMidiMessage(
-                midiInput, message);
-            runOptionalCallbacks(midiInput,
-                                 message.getChannel(),
-                                 message.getType(),
-                                 message.getData1(),
-                                 message.getData2());
-        } else {
-            incomingQueueL2.push(message);
-        }
-    }
+    PROFILE_END(MidiInIsr);
 }
 
 /** Process MIDI messages form the L2 queue.
@@ -156,7 +150,14 @@ void readMidi(void)
 void processMidi(void)
 {
     while (incomingQueueL2.isEmpty() != true) {
+        /* The interrupt pushes and this side shifts, and the buffer keeps one
+         * count both sides update. Taking a message with interrupts masked
+         * is what keeps the two updates from interleaving and the count
+         * from drifting off by one for good. */
+        __disable_irq();
         MidiMessageTransport message = incomingQueueL2.shift();
+        __enable_irq();
+        PROFILE_BEGIN(MidiIn);
 
         // Indicate incoming data on the display
         App::get()->statusBar.indicate(message.getInterfaceType(),
@@ -195,6 +196,7 @@ void processMidi(void)
                                  message.getData1(),
                                  message.getData2());
         }
+        PROFILE_END(MidiIn);
     }
 }
 

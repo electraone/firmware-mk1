@@ -65,7 +65,12 @@ SystemTasks::SystemTasks()
 
 void SystemTasks::enableAll()
 {
+#if defined(PROFILE) && PROFILE
+    /* The ten-second monitor is what writes the profile to the log. */
+    taskMonitorFreeMemory.enable();
+#else
     taskMonitorFreeMemory.disable();
+#endif
     taskCollectGarbage.enable();
     taskReadPots.enable();
     taskReadButtons.enable();

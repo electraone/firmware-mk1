@@ -20,6 +20,7 @@
 */
 
 #include "TaskRepaintGraphics.h"
+#include "Profile.h"
 #include "Component.h"
 #include "Hardware.h"
 #include "System.h"
@@ -29,7 +30,12 @@
  */
 void repaintGraphics(void)
 {
+        if (System::repaintManager.isQueueEmpty()) {
+        return;
+    }
+    PROFILE_BEGIN(Repaint);
     System::repaintActive = true;
     System::repaintManager.processRepaintQueue();
     System::repaintActive = false;
+    PROFILE_END(Repaint);
 }

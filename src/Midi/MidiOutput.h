@@ -229,10 +229,11 @@ public:
     uint8_t getChannel(void) const;
     void setRate(uint16_t newRate);
     uint16_t getRate(void) const;
-    void setTsLastMessage(void);
+        void setTsLastMessage(void) const;
     bool isReady(void);
 
     // General MIDI messaging (outgoing)
+        static bool canSend(MidiInterface::Type interface, uint8_t port, size_t bytes);
     static void sendMessage(MidiInterface::Type interface,
                             uint8_t port,
                             MidiMessage &message);
@@ -347,6 +348,9 @@ private:
                          Direction direction,
                          MidiMessage::Type msgType);
     uint8_t channel;
-    uint16_t rate;
-    uint32_t tsLastMessage;
+        uint16_t rate;
+    /* Stamped by sending, which must not need a writable device: the model
+     * hands out const references, and the copy this used to be stamped on
+     * was thrown away, so isReady() never saw a message go out. */
+    mutable uint32_t tsLastMessage;
 };

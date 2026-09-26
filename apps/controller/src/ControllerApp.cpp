@@ -2,6 +2,8 @@
 #include "luaExtension.h"
 #include "Trace.h"
 
+uint32_t MidiRouter::droppedToMidiIo = 0;
+
 void Controller::initialise(void)
 {
     // Set application context
@@ -221,8 +223,9 @@ void Controller::runUserTask(void)
     PatchRequest request;
 
     if (patchRequests.isEmpty() != true) {
-        request = patchRequests.shift();
-        Device device = model.currentPreset.getDevice(request.deviceId);
+                request = patchRequests.shift();
+        const Device &device =
+            model.currentPreset.getDevice(request.deviceId);
 
         if (device.isValid()) {
             midi.sendTemplatedSysex(device, 0, request.data);

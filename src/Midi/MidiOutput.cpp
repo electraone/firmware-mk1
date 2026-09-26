@@ -24,6 +24,7 @@
 #include "ArduinoJson.h"
 #include "App.h"
 #include "Trace.h"
+#include "Profile.h"
 #include "MidiUsbHost.h"
 
 /** Constructor
@@ -759,7 +760,7 @@ uint16_t MidiOutput::getRate(void) const
     return (rate);
 }
 
-void MidiOutput::setTsLastMessage(void)
+void MidiOutput::setTsLastMessage(void) const
 {
     tsLastMessage = millis();
 }
@@ -772,6 +773,13 @@ bool MidiOutput::isReady(void)
 /** Send Electra message to Midi outputs.
  *
  */
+bool MidiOutput::canSend(MidiInterface::Type interface,
+                         uint8_t port,
+                         size_t bytes)
+{
+    return (MidiInterface::get(interface)->canSend(port, bytes));
+}
+
 void MidiOutput::sendMessage(MidiInterface::Type interface,
                              uint8_t port,
                              MidiMessage &message)
@@ -825,7 +833,16 @@ void MidiOutput::addToQueue(MidiInterface::Type interface,
                    message.getChannel(),
                    message.getData1(),
                    message.getData2());
-    MidiMessageTransport mmt(interface, port, message);
+        MidiMessageTransport mmt(interface, port, message);
+
+    /* A full queue used to overwrite its oldest entry, so a script sending
+     * a patch of more than sixty-four values in one go silently lost the
+     * first of them. Draining a tick's worth here instead costs the caller
+     * the time of ten sends, which is the price of asking. */
+    if (outgoingQueue.isFull()) {
+        System::tasks.flushMidi();
+    }
+
     /*
     for (int i = 0; i < outgoingQueue.size(); i++) {
         if (MidiOutput::isIdenticalChange(outgoingQueue[i], mmt)) {
@@ -848,7 +865,9 @@ void MidiOutput::send(MidiInterface::Type interface,
 {
     TRACE_MIDI_OUT(
         MidiInterface::getName(interface), port, "send", channel, data1, data2);
+    PROFILE_BEGIN(UsbSend);
     MidiInterface::get(interface)->send(port, type, channel, data1, data2);
+    PROFILE_END(UsbSend);
     indicate(interface, port, Direction::out, type);
 }
 
@@ -864,7 +883,9 @@ void MidiOutput::send(MidiInterface::Type interface,
                    message.getData2());
 
     if (message.getType() == MidiMessage::Type::SystemExclusive) {
+        PROFILE_BEGIN(SysexSend);
         MidiInterface::get(interface)->send(port, message.getSysExBlock());
+        PROFILE_END(SysexSend);
     } else {
         MidiInterface::get(interface)->send(port,
                                             message.getType(),

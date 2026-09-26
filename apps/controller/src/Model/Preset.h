@@ -224,7 +224,12 @@ private:
     char projectId[MaxProjectIdLength + 1];
     bool valid;
 
-        /* Every value and every input of every control. A control holds a Span
+            /* Every incoming channel message asks which device listens on its port
+     * and channel. This answers in one lookup instead of a walk through the
+     * devices; rebuilt whenever a device is added. */
+    const Device *devicesByPortChannel[2][17];
+
+    /* Every value and every input of every control. A control holds a Span
      * into these - see Span.h and Pool.h. */
     Pool<ControlValue, 2048> controlValues;
     Pool<Input, 512> controlInputs;
@@ -232,7 +237,11 @@ private:
 
 public: // Public on the purpose
     Pages pages;
-    Devices devices;
+        Devices devices;
+
+    /** Rebuild the port/channel index after devices were added. */
+    void indexDevices(void);
+
     Groups groups;
     Controls controls;
     Overlays overlays;
