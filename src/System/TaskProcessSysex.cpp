@@ -30,13 +30,18 @@
 #include "MidiOutput.h"
 #include "luaExtensionBase.h"
 #include "StagedUpload.h"
+#include "SysexCallbacks.h"
 #include "App.h"
 
 CircularBuffer<SysexTransport, SYSEX_QUEUE_SIZE> sysexQueue;
 
 void processSysex(void)
 {
-        while (sysexQueue.isEmpty() != true) {
+    /* A request that landed during a repaint is handed over here, on the
+     * main loop, and joins the queue like any other. */
+    flushDeferredCtrlSysex();
+
+    while (sysexQueue.isEmpty() != true) {
         /* Pushed from the USB SysEx callback on the timer interrupt; see
          * processMidi() for why the shift is masked. */
         __disable_irq();

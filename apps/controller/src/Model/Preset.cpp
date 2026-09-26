@@ -327,6 +327,37 @@ Overlay &Preset::addOverlay(uint8_t id)
     return (overlays[id]);
 }
 
+Control &Preset::addControl(const Control &control,
+                            std::vector<ControlValue> &values,
+                            const std::vector<Input> &inputs)
+{
+    Control &stored = controls.add(control);
+
+    if (!stored.isValid() && (control.getId() != 0)) {
+        return (controlNotFound);
+    }
+
+    ControlValue *valueRun = controlValues.allocate(values.size());
+
+    if (valueRun) {
+        for (size_t i = 0; i < values.size(); i++) {
+            valueRun[i] = values[i];
+            valueRun[i].setControl(&stored);
+            valueRun[i].message.setControlValue(&valueRun[i]);
+        }
+        stored.values = Span<ControlValue>(valueRun, values.size());
+    }
+
+    Input *inputRun = controlInputs.allocate(inputs.size());
+
+    if (inputRun) {
+        std::copy(inputs.begin(), inputs.end(), inputRun);
+        stored.inputs = Span<Input>(inputRun, inputs.size());
+    }
+
+    return (stored);
+}
+
 void Preset::resetComponents(void)
 {
     for (auto &control : controls) {

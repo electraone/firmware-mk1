@@ -578,6 +578,7 @@ bool MidiOutput::sendSysExFile(uint8_t port,
 
         if ((i % 20) == 0) {
             delayMicroseconds(50);
+            App::get()->yield();
         }
     }
 
@@ -647,6 +648,7 @@ bool MidiOutput::sendSysExFileBase64(uint8_t port,
 
         if ((sent % (chunkBytes * 20)) == 0) {
             delayMicroseconds(50);
+            App::get()->yield();
         }
     }
 

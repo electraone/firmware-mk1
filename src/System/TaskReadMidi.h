@@ -34,6 +34,9 @@
 
 void readCtrlMidi(void);
 void readMidi(void);
+
+/** Messages one tick may take from the USB device port; see the definition. */
+extern uint8_t readMidiUsbDevBudget;
 void processMidi(void);
 bool runRouteMessageCallback(MidiInput &midiInput, MidiMessage &midiMessage);
 void runOptionalCallbacks(MidiInput midiInput,

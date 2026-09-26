@@ -95,6 +95,10 @@ void App::runUserTask(void)
 {
 }
 
+void App::yield(void)
+{
+}
+
 void App::indicateMidiActivity(uint8_t port,
                                Direction direction,
                                MidiMessage::Type msgType)

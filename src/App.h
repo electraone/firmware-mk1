@@ -86,6 +86,17 @@ public:
                                           bool currentSlotWritten);
     virtual void runUserTask(void);
 
+    /**
+     * @brief A long operation on the main loop is giving the app a moment.
+     *
+     * A file streamed out over SysEx holds the main loop for seconds, and
+     * an application that has to answer something in that time - a link
+     * program answering its primary's keepalive - has nowhere else to run.
+     * Called every so often from inside such loops; the base does nothing.
+     * Whatever runs here must not draw and must be quick.
+     */
+    virtual void yield(void);
+
     void clearScreen(void);
     void paintScreen(void);
     void indicateMidiActivity(uint8_t port,

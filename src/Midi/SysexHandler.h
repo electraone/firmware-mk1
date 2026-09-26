@@ -32,13 +32,17 @@
 #include "MidiInterface.h"
 #include "MidiMessage.h"
 #include "MidiInputCallback.h"
+#include "LinkInbox.h"
 #include "helpers.h"
 
 class SysexHandler
 {
 public:
     SysexHandler(MidiInterface::Type newMidiInterface, uint8_t newPort)
-        : midiInterface(newMidiInterface), port(newPort), packetNr(0)
+        : midiInterface(newMidiInterface),
+          port(newPort),
+          packetNr(0),
+          refusing(false)
     {
     }
 
@@ -50,6 +54,25 @@ public:
                          int8_t portOverride = -1)
     {
         App *app = App::get();
+
+        /* The pool is on the far side of the display's bus, and the main
+         * loop may be holding that bus: the interrupt only runs in here
+         * during a repaint when the link inbox is up, and then a message
+         * that would go to the pool is refused whole. See SysexHandlerCtrl. */
+        if (packetNr == 0) {
+            refusing = LinkInbox::isEnabled() && System::repaintActive;
+        }
+
+        if (refusing) {
+            packetNr++;
+
+            if (complete) {
+                packetNr = 0;
+                refusing = false;
+                LinkInbox::countRefused();
+            }
+            return;
+        }
 
         if (packetNr == 0) {
             sysexBlock = SysexBlock(app->sysexPool.openMemoryBlock());
@@ -96,4 +119,7 @@ protected:
     uint8_t port;
     uint32_t packetNr;
     SysexBlock sysexBlock;
+
+    /** Whether the message being received is being thrown away. */
+    bool refusing;
 };

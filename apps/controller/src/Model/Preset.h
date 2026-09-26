@@ -59,6 +59,21 @@ public:
 
     Overlay &addOverlay(uint8_t id);
 
+    /**
+     * @brief Put a control together from parts, the way the parser does.
+     *
+     * For a program that is handed its controls rather than reading them
+     * from a file - the Electra Link satellite builds a page from what the
+     * primary sent. The values and inputs go into the preset's pools and the
+     * control is given spans over them, with every back-pointer set, so the
+     * result is indistinguishable from a parsed control.
+     *
+     * @return the stored control, or controlNotFound when there was no room
+     */
+    Control &addControl(const Control &control,
+                        std::vector<ControlValue> &values,
+                        const std::vector<Input> &inputs);
+
     void resetComponents(void);
 
         /** Give back what the indexes grew into, once the preset is read. */

@@ -24,7 +24,10 @@ CPUDEVICE = MK66FX1M0XXX18
 # The name of your project
 TARGET = firmware
 
-# Path location of Electra app
+# Path location of Electra app. Three live in apps/: the demo, the
+# controller, and the Electra Link satellite program (see apps/link/README.md).
+# An app may carry an app.mk that adds sources and include paths of its own -
+# the link program borrows the controller's components that way.
 APPPATH = apps/demo
 
 # Location of the low-level firmware functionality
@@ -80,7 +83,7 @@ endif
 # CPPFLAGS = compiler options for C and C++
 CPPFLAGS = -Wall -Os -ggdb -mthumb -ffunction-sections -fdata-sections \
       -fshort-enums $(OPTIONS) -nostdlib -MMD -DF_CPU=$(CPU_SPEED) \
-			-Isrc -I$(BASEPATH)
+			-I. -Isrc -I$(BASEPATH)
 
 # compiler options for C++ only
 CXXFLAGS = -std=gnu++17 -felide-constructors -fexceptions \
@@ -172,6 +175,9 @@ INC := $(foreach x,$(filter %/, $(wildcard src/Hardware/**/)), -I$(x)) \
 L_APP_INC := $(foreach x,$(filter %/, $(wildcard $(APPPATH)/**/*/)), -I$(x)) \
 		 $(foreach x,$(filter %/, $(wildcard $(APPPATH)/**/)), -I$(x)) \
 		 -I$(APPPATH)
+
+# An application's own additions to the source and include lists.
+-include $(APPPATH)/app.mk
 
 
 SOURCES := $(C_FILES:.c=.o) $(CPP_FILES:.cpp=.o) \

@@ -22,12 +22,21 @@
 #include "TaskReadMidi.h"
 #include "Profile.h"
 #include "MidiInputCallback.h"
+#include "LinkInbox.h"
 #include "App.h" // \todo To be removed.
 #include "Trace.h"
 
 #define USB_MIDI_PORT_CTRL 2
 
 CircularBuffer<MidiMessageTransport, 100> incomingQueueL2;
+
+/* How many messages each tick may take from the USB device port. Four is
+ * the controller's figure, chosen against what the queue holds between two
+ * runs of processMidi(). The link program raises it: a satellite's whole
+ * conversation arrives on this one port, a view is a burst of forty SysEx
+ * messages, and SysEx never reaches the queue at all - the reads go to the
+ * inbox and cost the interrupt a copy each. */
+uint8_t readMidiUsbDevBudget = 4;
 
 /** This is used when reading of SysEx on CTRL port gets priority.
  */
@@ -47,13 +56,31 @@ void readMidi(void)
 {
     PROFILE_BEGIN(MidiInIsr);
 
-    // Skip when Electra is busy with a component repaints
-    if (System::repaintActive) {
+    /*
+     * Not while a big SysEx is being streamed out, either - the main loop is
+     * in that for as long as the file takes, and the controller has nothing
+     * to gain from reading meanwhile. A satellite has: the primary keeps
+     * talking to it the whole time, and a port that is not read is a port
+     * the primary cannot write to. Reading costs the transfer nothing.
+     */
+    if (System::sysExBusy && !LinkInbox::isEnabled()) {
         return;
     }
 
-    // Skip when major outgoing SysEx is being sent out
-    if (System::sysExBusy) {
+    /*
+     * A repaint holds the display's SPI bus from the main loop, and a SysEx
+     * assembled here goes into the pool on the far side of that bus - so
+     * nothing used to be read while one was on. That was the whole input
+     * stalling for as long as a page took to draw, which a computer forgives
+     * and a primary driving a satellite does not: its host port fills, and
+     * what it could not send is gone. With the link inbox up, the USB device
+     * port is read through a repaint - a link message lands in main memory
+     * and never near the bus, and the SysEx handlers refuse anything else
+     * that starts while the bus is busy. See LinkInbox.h.
+     */
+    const bool repainting = System::repaintActive;
+
+    if (repainting && !LinkInbox::isEnabled()) {
         return;
     }
 
@@ -92,7 +119,7 @@ void readMidi(void)
 
     MidiBase *midiInterface =
         MidiInterface::get(MidiInterface::Type::MidiUsbDev);
-    for (uint8_t i = 0; (i < MaxReadsPerInterface) && midiInterface->read(0);
+    for (uint8_t i = 0; (i < readMidiUsbDevBudget) && midiInterface->read(0);
          i++) {
         uint8_t port = midiInterface->getActivePort();
         MidiMessageTransport message(
@@ -103,6 +130,11 @@ void readMidi(void)
             midiInterface->getData1(port),
             midiInterface->getData2(port));
         forward(message);
+    }
+
+    if (repainting) {
+        PROFILE_END(MidiInIsr);
+        return;
     }
 
     // Process inbound MIDI messages on USB host ports.

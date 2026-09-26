@@ -19,5 +19,7 @@ docs
 
 apps/*
 !apps/demo
-!apps/controllerbuild-prof
+!apps/controller
+!apps/link
 build-prof
+build-link

@@ -47,3 +47,6 @@ void handleMidiUsbHostSysExPort1(uint8_t cable,
                                  const uint8_t *sysExData,
                                  uint16_t sysExSize,
                                  bool complete);
+
+/** Handle what the CTRL handlers kept back during a repaint. */
+void flushDeferredCtrlSysex(void);

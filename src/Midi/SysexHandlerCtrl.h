@@ -32,6 +32,7 @@
 #include "System.h"
 #include "Base64.h"
 #include "MidiOutput.h"
+#include "LinkInbox.h"
 
 enum class FileType { preset, config, luaScript, uiToolkit, unknown };
 
@@ -44,8 +45,48 @@ public:
           writeToFile(false),
           filename(nullptr),
           hasTransactionId(false),
-          transactionId(0)
+          transactionId(0),
+          linkMessage(false),
+          refusing(false),
+          deferring(false),
+          deferredReady(false),
+          deferredFromMainLoop(false),
+          deferredLength(0),
+          deferredPort(-1)
     {
+    }
+
+    /**
+     * @brief Handle a message kept back during a repaint.
+     *
+     * Called from the main loop, where the pool may be written: the message
+     * goes through process() as one complete packet, so everything the
+     * interrupt would have done with it is done now instead.
+     */
+    void flushDeferred(void)
+    {
+        if (!deferredReady) {
+            return;
+        }
+
+        /* Not while the interrupt is part way through another message on
+         * this handler: the packet counter and the block are one set of
+         * state, and this would be a second message interleaved with the
+         * first. The next pass will find the counter back at zero. */
+        if (packetNr != 0) {
+            return;
+        }
+
+        /* Masked for the hand-over: the interrupt must not start a message
+         * of its own between the check above and the end of this one. The
+         * pool write inside takes a fraction of a millisecond. */
+        __disable_irq();
+        deferredReady = false;
+        deferredFromMainLoop = true;
+        process(deferred, deferredLength, true, deferredPort);
+        deferredFromMainLoop = false;
+        deferredLength = 0;
+        __enable_irq();
     }
 
     virtual ~SysexHandlerCtrl() = default;
@@ -56,6 +97,78 @@ public:
                  int8_t portOverride = -1) override
     {
         uint16_t decodedDataSize = 0;
+
+        /* An Electra Link message, for an application that takes them. It
+         * goes into the link's own ring in main memory and never near the
+         * pool: see LinkInbox.h. Decided on the first packet, which always
+         * holds the whole header, and remembered for the rest. Nothing else
+         * in here is touched for one - not the MIDI gate, not the pool, not
+         * the file machinery. */
+        if (packetNr == 0) {
+            linkMessage = LinkInbox::isEnabled() && (sysExSize >= 6)
+                          && (sysExData[1] == 0x00) && (sysExData[2] == 0x21)
+                          && (sysExData[3] == 0x45)
+                          && (sysExData[4] == LinkCommandByte);
+        }
+
+        if (linkMessage) {
+            processLinkPacket(
+                sysExData, sysExSize, complete, portOverride);
+            return;
+        }
+
+        /* Anything else arriving while the main loop holds the display's
+         * bus would be written into the pool across that same bus, from
+         * here, in the middle of whatever is being drawn. Only possible with
+         * the inbox up, which is the only time this runs during a repaint.
+         * A message that fits the deferral buffer is kept in main memory and
+         * handled from the main loop, exactly as if it had arrived then; one
+         * that does not - or that arrives while another is still waiting -
+         * is refused whole rather than corrupting a picture, and counted. */
+        if (packetNr == 0) {
+            deferring = false;
+            refusing = false;
+
+            if (LinkInbox::isEnabled() && System::repaintActive
+                && !deferredFromMainLoop) {
+                if (deferredLength == 0) {
+                    deferring = true;
+                } else {
+                    refusing = true;
+                }
+            }
+        }
+
+        if (deferring) {
+            if ((deferredLength + sysExSize) > sizeof(deferred)) {
+                deferring = false;
+                refusing = true;
+                deferredLength = 0;
+            } else {
+                memcpy(deferred + deferredLength, sysExData, sysExSize);
+                deferredLength += sysExSize;
+                deferredPort = portOverride;
+                packetNr++;
+
+                if (complete) {
+                    packetNr = 0;
+                    deferring = false;
+                    deferredReady = true;
+                }
+                return;
+            }
+        }
+
+        if (refusing) {
+            packetNr++;
+
+            if (complete) {
+                packetNr = 0;
+                refusing = false;
+                LinkInbox::countRefused();
+            }
+            return;
+        }
 
         if (packetNr == 0) {
             App::get()->enableMidi = false;
@@ -245,6 +358,43 @@ public:
     }
 
 private:
+    /** Link::commandByte, spelled here so the interrupt side needs no
+     *  protocol headers. */
+    static constexpr uint8_t LinkCommandByte = 0x0A;
+
+    /**
+     * @brief One packet of a link message, into the inbox.
+     *
+     * The header is stripped from the first packet and the end byte from the
+     * last, so what is queued is the opcode and the encoded payload and
+     * nothing else - which is what the client wants.
+     */
+    void processLinkPacket(const uint8_t *sysExData,
+                           uint16_t sysExSize,
+                           bool complete,
+                           int8_t portOverride)
+    {
+        if (packetNr == 0) {
+            LinkInbox::begin((portOverride != -1) ? (uint8_t)portOverride
+                                                  : port);
+            sysExData += 5;
+            sysExSize -= 5;
+        }
+
+        if (complete && (sysExSize > 0) && (sysExData[sysExSize - 1] == 0xF7)) {
+            sysExSize--;
+        }
+
+        LinkInbox::append(sysExData, sysExSize);
+        packetNr++;
+
+        if (complete) {
+            LinkInbox::commit();
+            packetNr = 0;
+            linkMessage = false;
+        }
+    }
+
     /** The command byte, or the object byte after it, wherever they are. */
     uint8_t commandByte(const uint8_t *sysExData, uint8_t index) const
     {
@@ -264,4 +414,28 @@ private:
     const char *filename;
     bool hasTransactionId;
     uint16_t transactionId;
+
+    /** Whether the message being received is going to the link inbox. */
+    bool linkMessage;
+
+    /** Whether the message being received is being thrown away. */
+    bool refusing;
+
+    /** Whether it is being kept in main memory for the main loop instead. */
+    bool deferring;
+
+    /** A kept message is whole and waiting for flushDeferred(). */
+    volatile bool deferredReady;
+
+    /** flushDeferred() is running: do not defer the message it is handing
+     *  over, whatever the display is doing. */
+    bool deferredFromMainLoop;
+
+    /** Room for a request. Anything bigger is refused; a file upload was
+     *  never going to be handled here. */
+    static constexpr uint16_t DeferredCapacity = 512;
+
+    uint8_t deferred[DeferredCapacity];
+    uint16_t deferredLength;
+    int8_t deferredPort;
 };
