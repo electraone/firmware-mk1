@@ -107,7 +107,7 @@ bool PersistentStorage::deleteFile(const char *path)
     return (SdFs::remove(path));
 }
 
-bool PersistentStorage::deleteRecursively(const char *path)
+bool PersistentStorage::removeEmptyDirectory(const char *path)
 {
     return (SdFs::rmdir(path));
 }

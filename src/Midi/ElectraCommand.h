@@ -68,9 +68,14 @@ public:
         FileLua = 0x0C,
         Function = 0x0D,
         Value = 0x0E,
+        UsbHostList = 0x10,
         Location = 0x34, /* a directory, by descriptor */
         File = 0x35, /* one file, by descriptor */
+        Directory = 0x36, /* a directory to make or remove, by descriptor */
+        AppState = 0x75, /* settings and configuration, as one thing */
         Screenshot = 0x76,
+        StatusBar = 0x77,
+        Reboot = 0x78,
         EventSubscription = 0x79,
         FileUi = 0x70,
         Window = 0x7A,
@@ -139,14 +144,24 @@ public:
             return (Object::Function);
         } else if (objectByte == 0x0E) {
             return (Object::Value);
+        } else if (objectByte == 0x10) {
+            return (Object::UsbHostList);
         } else if (objectByte == 0x70) {
             return (Object::FileUi);
         } else if (objectByte == 0x34) {
             return (Object::Location);
         } else if (objectByte == 0x35) {
             return (Object::File);
+        } else if (objectByte == 0x36) {
+            return (Object::Directory);
+        } else if (objectByte == 0x75) {
+            return (Object::AppState);
         } else if (objectByte == 0x76) {
             return (Object::Screenshot);
+        } else if (objectByte == 0x77) {
+            return (Object::StatusBar);
+        } else if (objectByte == 0x78) {
+            return (Object::Reboot);
         } else if (objectByte == 0x79) {
             return (Object::EventSubscription);
         } else if (objectByte == 0x7A) {

@@ -69,9 +69,9 @@ bool LocalFile::deleteFile(void)
     return (Hardware::sdcard.deleteFile(filepath));
 }
 
-bool LocalFile::deleteRecursively(void)
+bool LocalFile::removeEmptyDirectory(void)
 {
-    return (Hardware::sdcard.deleteRecursively(filepath));
+    return (Hardware::sdcard.removeEmptyDirectory(filepath));
 }
 
 bool LocalFile::writeAll(MemoryBlock &memoryBlock)

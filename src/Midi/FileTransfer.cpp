@@ -189,6 +189,104 @@ void FileTransfer::sendListing(uint8_t port, const char *directory)
     MidiOutput::sendFileListing(MidiInterface::Type::MidiUsbDev, port, doc);
 }
 
+bool FileTransfer::removeLocation(const char *directory)
+{
+    FsFile dir;
+
+    if (!dir.open(directory, O_RDONLY)) {
+        System::logger.write(LOG_ERROR,
+                             "FileTransfer::removeLocation: no such location: "
+                             "%s",
+                             directory);
+        return (false);
+    }
+
+    bool removedAll = true;
+    FsFile entry;
+    char name[FileTransfer::maxPathLength];
+    char path[FileTransfer::maxPathLength];
+
+    while (entry.openNext(&dir, O_RDONLY)) {
+        const bool isFile = !entry.isDirectory();
+        const bool named = (entry.getName(name, sizeof(name)) > 0);
+
+        /* Closed before the file is removed, not after: a name is read off an
+         * open entry and the entry has to be let go of before the card is told
+         * to delete what it points at. */
+        entry.close();
+
+        if (isFile && named) {
+            snprintf(path, sizeof(path), "%s/%s", directory, name);
+
+            if (!Hardware::sdcard.deleteFile(path)) {
+                System::logger.write(
+                    LOG_ERROR,
+                    "FileTransfer::removeLocation: could not remove: %s",
+                    path);
+                removedAll = false;
+            }
+        }
+    }
+
+    dir.close();
+
+    return (removedAll);
+}
+
+bool FileTransfer::createDirectory(const char *directory)
+{
+    if (Hardware::sdcard.exists(directory)) {
+        /* Already there is success, which is what the API says of it: a host
+         * making sure a location exists should not have to ask first. */
+        return (true);
+    }
+
+    if (!Hardware::sdcard.createDirectory(directory)) {
+        System::logger.write(
+            LOG_ERROR, "FileTransfer::createDirectory: failed: %s", directory);
+        return (false);
+    }
+
+    return (true);
+}
+
+bool FileTransfer::removeDirectory(const char *directory)
+{
+    FsFile dir;
+
+    if (!dir.open(directory, O_RDONLY)) {
+        System::logger.write(LOG_ERROR,
+                             "FileTransfer::removeDirectory: no such "
+                             "directory: %s",
+                             directory);
+        return (false);
+    }
+
+    FsFile entry;
+    const bool empty = !entry.openNext(&dir, O_RDONLY);
+
+    entry.close();
+    dir.close();
+
+    if (!empty) {
+        /* Refused rather than emptied. The API says a directory has to be
+         * empty before it goes, and a recursive delete asked for by one byte on
+         * the wire is not worth having. */
+        System::logger.write(LOG_ERROR,
+                             "FileTransfer::removeDirectory: not empty: %s",
+                             directory);
+        return (false);
+    }
+
+    if (!Hardware::sdcard.removeEmptyDirectory(directory)) {
+        System::logger.write(
+            LOG_ERROR, "FileTransfer::removeDirectory: failed: %s", directory);
+        return (false);
+    }
+
+    return (true);
+}
+
 bool FileTransfer::sendFile(uint8_t port, const char *path)
 {
     if (!Hardware::sdcard.exists(path)) {

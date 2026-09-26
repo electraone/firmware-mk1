@@ -730,6 +730,18 @@ void MainWindow::sendPresetList(uint8_t port)
     presets.sendList(port);
 }
 
+void MainWindow::sendPresetSlotInfo(uint8_t port,
+                                    uint8_t bankNumber,
+                                    uint8_t slot)
+{
+    presets.sendSlotInfo(port, bankNumber, slot);
+}
+
+void MainWindow::reloadPreset(void)
+{
+    switchPreset(presets.getCurrentBankNumber(), presets.getCurrentSlot());
+}
+
 void MainWindow::enableMidiLearn(void)
 {
     System::logger.write(LOG_ERROR, "enableMidiLearn");

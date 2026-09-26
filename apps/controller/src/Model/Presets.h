@@ -16,10 +16,19 @@ public:
     void assignPresetNames(void);
     void sendList(uint8_t port);
 
+    /**
+     * @brief One slot's record: what is in it, and whether it has a script.
+     *
+     * The file digests the newer firmware puts in this reply are left out.
+     * Nothing on this model computes an MD5, and digests that were made up
+     * would be worse than none: a host comparing them would upload for ever.
+     */
+    void sendSlotInfo(uint8_t port, uint8_t bankNumber, uint8_t slot);
+
     bool loadPresetById(uint8_t presetId);
     void runUploadedLuaScript(void);
     bool loadPreset(LocalFile file);
-    void removePreset(uint8_t presetId);
+    void removePreset(uint16_t slotId);
     void reset(void);
     void runPresetLuaScript(void);
 

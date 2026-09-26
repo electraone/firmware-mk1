@@ -156,8 +156,70 @@ bool Presets::loadPreset(LocalFile file)
 /** Mark preset slot
  *  Mark given preset slot as unused.
  */
-void Presets::removePreset(uint8_t slotId)
+void Presets::sendSlotInfo(uint8_t port, uint8_t bankNumber, uint8_t slot)
 {
+    char buf[256];
+
+    const uint16_t slotId = (bankNumber * NumPresetsInBank) + slot;
+
+    if (slotId >= NumSlots) {
+        System::logger.write(
+            LOG_ERROR,
+            "sendSlotInfo: slot out of range: bank=%d, slot=%d",
+            bankNumber,
+            slot);
+        MidiOutput::sendNack(MidiInterface::Type::MidiUsbDev, port);
+        return;
+    }
+
+    char luaFilename[MAX_FILENAME_LENGTH];
+    System::context.formatLuaFilename(luaFilename, MAX_FILENAME_LENGTH, slotId);
+
+    buf[0] = 0xf0;
+    buf[1] = 0x00;
+    buf[2] = 0x21;
+    buf[3] = 0x45;
+    buf[4] = 0x01;
+    /* The slot's own object byte, not the list's. A host matches a reply to the
+     * request it answers by that byte, so a reply carrying PresetList was
+     * thrown away as somebody else's and the request timed out. */
+    buf[5] = (char)ElectraCommand::Object::PresetSlot;
+
+    snprintf(buf + 6,
+             sizeof(buf) - 6,
+             "{\"version\":1,\"bankNumber\":%d,\"slot\":%d,"
+             "\"name\":\"%s\",\"projectId\":\"%s\",\"hasLua\":%s,"
+             "\"isPinned\":false}",
+             bankNumber,
+             slot,
+             presetSlot[slotId].getPresetName(),
+             presetSlot[slotId].getProjectId(),
+             Hardware::sdcard.exists(luaFilename) ? "true" : "false");
+
+    MidiOutput::sendSysExPartial(MidiInterface::Type::MidiUsbDev,
+                                 port,
+                                 (uint8_t *)buf,
+                                 strlen(buf + 6) + 6,
+                                 false);
+
+    const uint8_t stop = 0xf7;
+
+    MidiOutput::sendSysExPartial(
+        MidiInterface::Type::MidiUsbDev, port, &stop, 1, false);
+
+    System::sysExBusy = false;
+}
+
+void Presets::removePreset(uint16_t slotId)
+{
+    /* Bounded. The slot number comes off the wire, and an out of range one
+     * cleared whatever followed the array. */
+    if (slotId >= NumSlots) {
+        System::logger.write(
+            LOG_ERROR, "removePreset: slot out of range: slotId=%d", slotId);
+        return;
+    }
+
     presetSlot[slotId].clear();
 }
 

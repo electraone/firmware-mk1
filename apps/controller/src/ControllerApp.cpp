@@ -142,18 +142,29 @@ bool Controller::handleCtrlFileRemoved(uint8_t bankNumber,
                                        uint8_t slot,
                                        ElectraCommand::Object fileType)
 {
-    uint8_t currentPreset = model.presets.getCurrentSlot();
-    uint8_t currentPresetBank = model.presets.getCurrentBankNumber();
-    uint8_t slotId =
-        currentPresetBank * Presets::NumPresetsInBank + currentPreset;
+    /* The config has no slot, and removing it must not touch the preset list.
+     * It used to reach here and clear whatever slot the bank and slot bytes of
+     * a message that does not carry them happened to name. */
+    if ((fileType != ElectraCommand::Object::FilePreset)
+        && (fileType != ElectraCommand::Object::PresetSlot)
+        && (fileType != ElectraCommand::Object::FileLua)) {
+        return (true);
+    }
 
-    model.presets.removePreset(slotId);
+    const uint8_t currentPreset = model.presets.getCurrentSlot();
+    const uint8_t currentPresetBank = model.presets.getCurrentBankNumber();
 
-    if (fileType == ElectraCommand::Object::FilePreset) {
-        // If it is a current preset, reload it
-        if ((currentPresetBank == bankNumber) && (currentPreset == slot)) {
-            delegate.switchPreset(currentPresetBank, currentPreset);
-        }
+    /* The slot that was removed, not the one that is loaded. Computed from the
+     * current slot, removing preset forty while preset one was loaded took
+     * preset one's name out of the list and left forty's in it. */
+    if (fileType != ElectraCommand::Object::FileLua) {
+        model.presets.removePreset((bankNumber * Presets::NumPresetsInBank)
+                                   + slot);
+    }
+
+    // If it is a current preset, reload it
+    if ((currentPresetBank == bankNumber) && (currentPreset == slot)) {
+        delegate.switchPreset(currentPresetBank, currentPreset);
     }
 
     return (true);

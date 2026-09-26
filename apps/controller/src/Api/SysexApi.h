@@ -45,10 +45,18 @@ private:
     void subscribeEvents(uint8_t port, uint8_t newEvents);
     uint8_t getControlPort(void);
 
+    void sendPresetSlotInfo(uint8_t port, uint8_t bankNumber, uint8_t slot);
+    void sendUsbHostDevices(uint8_t port);
+    void setBottomBarText(uint8_t port, MemoryBlock &sysexPayload);
+    void reloadPresetSlot(uint8_t port, MemoryBlock &sysexPayload);
+
     /* The reading half of the file transfer API - see FileTransfer.h. */
     void sendFileListing(uint8_t port, MemoryBlock &sysexPayload);
     void sendFile(uint8_t port, MemoryBlock &sysexPayload);
     void removeFile(uint8_t port, MemoryBlock &sysexPayload);
+    void removeFileLocation(uint8_t port, MemoryBlock &sysexPayload);
+    void createDirectory(uint8_t port, MemoryBlock &sysexPayload);
+    void removeDirectory(uint8_t port, MemoryBlock &sysexPayload);
     void takeScreenshot(uint8_t port);
 
     MainDelegate &delegate;

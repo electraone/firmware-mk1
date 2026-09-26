@@ -83,6 +83,7 @@
 #define CONTROL 0x07
 #define FILE_LUA_SCRIPT 0x0C
 #define FUNCTION 0x0D
+#define USB_HOST_DEVICES 0x10
 #define FILE_UITOOLKIT 0x70
 #define LOCATION 0x34
 #define FILE_DESCRIPTOR 0x35
@@ -135,6 +136,16 @@ public:
                                   uint16_t controlId,
                                   bool touched);
     static void sendUsbHostChanged(MidiInterface::Type interface, uint8_t port);
+
+    /**
+     * @brief What is plugged into the USB host sockets, as the API spells it.
+     *
+     * One device per socket, each with the one port it carries. The shape is
+     * the published one - a device list, and a port list inside each device -
+     * even though this model only ever has one port per device, so that a host
+     * reads it with the same code on either.
+     */
+    static void sendUsbHostDevices(MidiInterface::Type interface, uint8_t port);
     static void sendAck(MidiInterface::Type interface, uint8_t port);
     static void sendNack(MidiInterface::Type interface, uint8_t port);
     static void sendAvailable(MidiInterface::Type interface, uint8_t port);

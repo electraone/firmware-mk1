@@ -81,4 +81,22 @@ namespace FileTransfer
  */
     bool sendFile(uint8_t port, const char *path);
 
+    /**
+ * @brief Empties a directory, leaving the directory itself.
+ *
+ * What the API calls removing the files of a location. Only the files: a
+ * location this serves has nothing below it, and a recursive delete driven
+ * from the wire is not something to have unless something needs it.
+ *
+ * @return false when the directory is not there at all, or a file in it could
+ *         not be removed.
+ */
+    bool removeLocation(const char *directory);
+
+    /** Makes the directory. Answers true when it is already there. */
+    bool createDirectory(const char *directory);
+
+    /** Removes the directory. Refuses a directory with anything in it. */
+    bool removeDirectory(const char *directory);
+
 } // namespace FileTransfer

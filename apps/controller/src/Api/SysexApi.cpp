@@ -41,6 +41,10 @@ bool SysexApi::process(uint8_t port, const SysexBlock &sysexBlock)
             sendFileListing(port, sysexPayload);
         } else if (object == ElectraCommand::Object::File) {
             sendFile(port, sysexPayload);
+        } else if (object == ElectraCommand::Object::PresetSlot) {
+            sendPresetSlotInfo(port, cmd.getByte1(), cmd.getByte2());
+        } else if (object == ElectraCommand::Object::UsbHostList) {
+            sendUsbHostDevices(port);
         } else {
             handled = false;
         }
@@ -76,6 +80,8 @@ bool SysexApi::process(uint8_t port, const SysexBlock &sysexBlock)
             uint16_t controlId = cmd.getByte1() | cmd.getByte2() << 7;
             uint8_t handleId = cmd.getByte3();
             updateControlValueLabel(port, controlId, handleId, sysexPayload);
+        } else if (object == ElectraCommand::Object::StatusBar) {
+            setBottomBarText(port, sysexPayload);
         } else {
             handled = false;
         }
@@ -92,6 +98,22 @@ bool SysexApi::process(uint8_t port, const SysexBlock &sysexBlock)
             removeSnapshot(port, sysexPayload);
         } else if (object == ElectraCommand::Object::File) {
             removeFile(port, sysexPayload);
+        } else if (object == ElectraCommand::Object::Location) {
+            removeFileLocation(port, sysexPayload);
+        } else if (object == ElectraCommand::Object::Directory) {
+            removeDirectory(port, sysexPayload);
+        } else {
+            handled = false;
+        }
+    } else if (cmd.isCreate()) {
+        if (object == ElectraCommand::Object::Directory) {
+            createDirectory(port, sysexPayload);
+        } else {
+            handled = false;
+        }
+    } else if (cmd.isExecute()) {
+        if (object == ElectraCommand::Object::PresetSlot) {
+            reloadPresetSlot(port, sysexPayload);
         } else {
             handled = false;
         }
@@ -524,6 +546,77 @@ void SysexApi::subscribeEvents(uint8_t port, uint8_t newEvents)
     MidiOutput::sendAck(MidiInterface::Type::MidiUsbDev, port);
 }
 
+/** What one preset slot holds. See Presets::sendSlotInfo(). */
+void SysexApi::sendPresetSlotInfo(uint8_t port,
+                                  uint8_t bankNumber,
+                                  uint8_t slot)
+{
+    System::logger.write(LOG_ERROR,
+                         "SysexApi::sendPresetSlotInfo: bank=%d, slot=%d",
+                         bankNumber,
+                         slot);
+    delegate.sendPresetSlotInfo(port, bankNumber, slot);
+}
+
+void SysexApi::sendUsbHostDevices(uint8_t port)
+{
+    System::logger.write(LOG_ERROR, "SysexApi::sendUsbHostDevices");
+    MidiOutput::sendUsbHostDevices(MidiInterface::Type::MidiUsbDev, port);
+}
+
+/**
+ * @brief The text in the bottom bar, set by the host rather than by a script.
+ *
+ * The same place info.setText() writes to, so the two cannot disagree about
+ * what is showing.
+ */
+void SysexApi::setBottomBarText(uint8_t port, MemoryBlock &sysexPayload)
+{
+    /* Forty is what the API documents, and one more for the terminator. Longer
+     * text is cut rather than refused: the host asked for something to be
+     * shown, and showing the front of it is closer to that than showing
+     * nothing. */
+    char text[41];
+    size_t length = sysexPayload.getLength();
+
+    if (length > (sizeof(text) - 1)) {
+        length = sizeof(text) - 1;
+    }
+
+    sysexPayload.seek(0);
+    length = sysexPayload.readBytes((uint8_t *)text, length);
+    text[length] = '\0';
+
+    delegate.setInfoText(text);
+    MidiOutput::sendAck(MidiInterface::Type::MidiUsbDev, port);
+}
+
+/**
+ * @brief Loads a slot again, whatever is in it now.
+ *
+ * What a host does after writing a preset into a slot: the file on the card has
+ * changed and the panel has not. A request with no bank and slot reloads the one
+ * that is showing, which is how the host tools ask for it most of the time.
+ */
+void SysexApi::reloadPresetSlot(uint8_t port, MemoryBlock &sysexPayload)
+{
+    if (sysexPayload.getLength() >= 2) {
+        const uint8_t bankNumber = (uint8_t)sysexPayload.peek(0);
+        const uint8_t slot = (uint8_t)sysexPayload.peek(1);
+
+        System::logger.write(LOG_ERROR,
+                             "SysexApi::reloadPresetSlot: bank=%d, slot=%d",
+                             bankNumber,
+                             slot);
+        delegate.switchPreset(bankNumber, slot);
+    } else {
+        System::logger.write(LOG_ERROR, "SysexApi::reloadPresetSlot: current");
+        delegate.reloadPreset();
+    }
+
+    MidiOutput::sendAck(MidiInterface::Type::MidiUsbDev, port);
+}
+
 void SysexApi::sendFileListing(uint8_t port, MemoryBlock &sysexPayload)
 {
     char directory[FileTransfer::maxPathLength];
@@ -559,6 +652,48 @@ void SysexApi::removeFile(uint8_t port, MemoryBlock &sysexPayload)
 
     if (!FileTransfer::resolve(path, sizeof(path), sysexPayload)
         || !Hardware::sdcard.deleteFile(path)) {
+        MidiOutput::sendNack(MidiInterface::Type::MidiUsbDev, port);
+        return;
+    }
+
+    MidiOutput::sendAck(MidiInterface::Type::MidiUsbDev, port);
+}
+
+void SysexApi::removeFileLocation(uint8_t port, MemoryBlock &sysexPayload)
+{
+    char directory[FileTransfer::maxPathLength];
+
+    if (!FileTransfer::resolveLocation(
+            directory, sizeof(directory), sysexPayload)
+        || !FileTransfer::removeLocation(directory)) {
+        MidiOutput::sendNack(MidiInterface::Type::MidiUsbDev, port);
+        return;
+    }
+
+    MidiOutput::sendAck(MidiInterface::Type::MidiUsbDev, port);
+}
+
+void SysexApi::createDirectory(uint8_t port, MemoryBlock &sysexPayload)
+{
+    char directory[FileTransfer::maxPathLength];
+
+    if (!FileTransfer::resolveLocation(
+            directory, sizeof(directory), sysexPayload)
+        || !FileTransfer::createDirectory(directory)) {
+        MidiOutput::sendNack(MidiInterface::Type::MidiUsbDev, port);
+        return;
+    }
+
+    MidiOutput::sendAck(MidiInterface::Type::MidiUsbDev, port);
+}
+
+void SysexApi::removeDirectory(uint8_t port, MemoryBlock &sysexPayload)
+{
+    char directory[FileTransfer::maxPathLength];
+
+    if (!FileTransfer::resolveLocation(
+            directory, sizeof(directory), sysexPayload)
+        || !FileTransfer::removeDirectory(directory)) {
         MidiOutput::sendNack(MidiInterface::Type::MidiUsbDev, port);
         return;
     }

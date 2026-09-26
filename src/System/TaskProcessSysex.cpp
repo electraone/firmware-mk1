@@ -72,6 +72,78 @@ void processSysexFile(uint8_t port,
     }
 }
 
+/**
+ * @brief Whether a request named a slot at all.
+ *
+ * A request for the loaded slot is six bytes and carries no bank or slot; one
+ * for a particular slot carries both. A command built from a message that stops
+ * early has zeros in those bytes, which is bank 0 slot 0 - a real slot - so the
+ * two cannot be told apart by value. The length is what tells them apart.
+ */
+static bool namesASlot(const SysexBlock &sysexBlock)
+{
+    /* 0xF0, three manufacturer bytes, command, object, bank, slot. */
+    return (sysexBlock.getLength() >= 8);
+}
+
+/** The preset file the request names, or the loaded one. */
+static const char *requestedPresetFile(const SysexBlock &sysexBlock,
+                                       ElectraCommand &cmd,
+                                       char *buffer,
+                                       size_t size)
+{
+    if (!namesASlot(sysexBlock)) {
+        return (System::context.getCurrentPresetFile());
+    }
+
+    System::context.formatPresetFilename(
+        buffer, size, (cmd.getByte1() * 12) + cmd.getByte2());
+
+    return (buffer);
+}
+
+/** The Lua file the request names, or the loaded one. */
+static const char *requestedLuaFile(const SysexBlock &sysexBlock,
+                                    ElectraCommand &cmd,
+                                    char *buffer,
+                                    size_t size)
+{
+    if (!namesASlot(sysexBlock)) {
+        return (System::context.getCurrentLuaFile());
+    }
+
+    System::context.formatLuaFilename(
+        buffer, size, (cmd.getByte1() * 12) + cmd.getByte2());
+
+    return (buffer);
+}
+
+/**
+ * @brief Sends the file, or says it is not there.
+ *
+ * A request for an empty slot used to be answered with nothing at all: the send
+ * failed, the failure was not reported, and the host sat waiting for a file that
+ * was never coming with everything behind it in its queue. An editor asking
+ * what is in each of seventy-two slots meets this on every empty one.
+ */
+static void answerFileRequest(uint8_t port,
+                              const char *filename,
+                              ElectraCommand::Object object,
+                              const char *what)
+{
+    if (MidiOutput::sendSysExFile(port, filename, object)) {
+        System::logger.write(LOG_INFO,
+                             "answerFileRequest: %s sent to the host: %s",
+                             what,
+                             filename);
+        return;
+    }
+
+    System::logger.write(
+        LOG_ERROR, "answerFileRequest: no %s to send: %s", what, filename);
+    MidiOutput::sendNack(MidiInterface::Type::MidiUsbDev, port);
+}
+
 void processSysexMemory(uint8_t port, const SysexBlock &sysexBlock)
 {
     if (sysexBlock.isElectraSysex()) {
@@ -114,29 +186,33 @@ void processSysexMemory(uint8_t port, const SysexBlock &sysexBlock)
             }
         } else if (cmd.isFileRequest()) {
             if (object == ElectraCommand::Object::FilePreset) {
-                if (MidiOutput::sendSysExFile(
-                        port, System::context.getCurrentPresetFile(), object)) {
-                    System::logger.write(
-                        LOG_ERROR,
-                        "processElectraSysex::handleElectraSysex: "
-                        "preset sysex sent to the host");
-                }
+                /* The slot the host asked for, which used to be ignored: the
+                 * current preset file went out whatever bank and slot the
+                 * request named, so an editor reading slot five while slot one
+                 * was loaded was handed the wrong preset and had no way to
+                 * tell. */
+                char filename[MAX_FILENAME_LENGTH];
+
+                answerFileRequest(
+                    port,
+                    requestedPresetFile(
+                        sysexBlock, cmd, filename, sizeof(filename)),
+                    object,
+                    "preset");
             } else if (object == ElectraCommand::Object::FileLua) {
-                if (MidiOutput::sendSysExFile(
-                        port, System::context.getCurrentLuaFile(), object)) {
-                    System::logger.write(
-                        LOG_ERROR,
-                        "processElectraSysex::handleElectraSysex: "
-                        "lua sysex sent to the host");
-                }
+                char filename[MAX_FILENAME_LENGTH];
+
+                answerFileRequest(
+                    port,
+                    requestedLuaFile(
+                        sysexBlock, cmd, filename, sizeof(filename)),
+                    object,
+                    "lua");
             } else if (object == ElectraCommand::Object::FileConfig) {
-                if (MidiOutput::sendSysExFile(
-                        port, System::context.getCurrentConfigFile(), object)) {
-                    System::logger.write(
-                        LOG_ERROR,
-                        "processElectraSysex::handleElectraSysex: "
-                        "config sysex sent to the host");
-                }
+                answerFileRequest(port,
+                                  System::context.getCurrentConfigFile(),
+                                  object,
+                                  "config");
             } else if (object == ElectraCommand::Object::RuntimeInfo) {
                 MidiOutput::sendRuntimeInfo(MidiInterface::Type::MidiUsbDev,
                                             port);
@@ -162,7 +238,12 @@ void processSysexMemory(uint8_t port, const SysexBlock &sysexBlock)
                     port,
                     sysexBlock); // this is to call application based requests
             }
-        } else if (cmd.isExecute()) {
+        } else if (cmd.isExecute()
+                   && ((object == ElectraCommand::Object::Function)
+                       || (object == ElectraCommand::Object::FileLua))) {
+            /* Only the two objects that mean "run this Lua". Every execute used
+             * to be treated as one, so a host asking a slot to be reloaded had
+             * its own request's bytes run as a Lua program. */
             if (L) {
                 System::logger.write(LOG_ERROR,
                                      "processElectraSysex::handleElectraSysex: "
@@ -195,7 +276,12 @@ void processSysexMemory(uint8_t port, const SysexBlock &sysexBlock)
             char filename[MAX_FILENAME_LENGTH];
             char *fileToRemove = nullptr;
 
-            if (object == ElectraCommand::Object::FilePreset) {
+            /* Clearing a slot and removing its preset are the same thing on
+             * this model: a slot is its preset file and its script, and there
+             * is nothing else in one to keep. The editor sends whichever of the
+             * two it prefers, so both are answered. */
+            if ((object == ElectraCommand::Object::FilePreset)
+                || (object == ElectraCommand::Object::PresetSlot)) {
                 System::context.formatPresetFilename(
                     filename, MAX_FILENAME_LENGTH, fileNumber);
                 fileToRemove = filename;
@@ -234,6 +320,21 @@ void processSysexMemory(uint8_t port, const SysexBlock &sysexBlock)
                     MidiOutput::sendPresetSlotChanged(
                         MidiInterface::Type::MidiUsbDev, port);
                 }
+            } else if (object == ElectraCommand::Object::FileConfig) {
+                /* The config, which has no slot. Removing it leaves the
+                 * firmware on the defaults it boots with when there is no file
+                 * - which is what the host asking for this wants, and what it
+                 * had no way to ask for before. */
+                fileToRemove = System::context.getCurrentConfigFile();
+
+                if (Hardware::sdcard.exists(fileToRemove)) {
+                    int status = Hardware::sdcard.deleteFile(fileToRemove);
+                    System::logger.write(
+                        LOG_ERROR,
+                        "processElectraSysex: removing file %s: %s",
+                        fileToRemove,
+                        (status == true) ? "OK" : "fail");
+                }
             } else {
                 System::logger.write(
                     LOG_ERROR,
@@ -263,7 +364,18 @@ void processSysexMemory(uint8_t port, const SysexBlock &sysexBlock)
                 App::get()->handleElectraSysex(port, sysexBlock);
             }
         } else if (cmd.isUpdateRuntime()) {
-            if ((uint8_t)object == 0x7D) {
+            if (object == ElectraCommand::Object::RuntimeInfo) {
+                /* Re-marks the unused memory the free-RAM figure is worked out
+                 * from. What free RAM reports is bounded by the deepest the
+                 * stack has ever been and the highest the heap has ever
+                 * reached, and neither comes back down on its own, so a reading
+                 * taken after a big preset has been and gone is about that
+                 * preset rather than about what is loaded now. */
+                Hardware::ram.initialize();
+                System::logger.write(
+                    LOG_ERROR, "processElectraSysex: memory markers reset");
+                MidiOutput::sendAck(MidiInterface::Type::MidiUsbDev, port);
+            } else if ((uint8_t)object == 0x7D) {
                 uint8_t newLoggerPort = cmd.getByte1();
                 System::logger.write(
                     LOG_ERROR,
@@ -275,7 +387,14 @@ void processSysexMemory(uint8_t port, const SysexBlock &sysexBlock)
                 App::get()->handleElectraSysex(port, sysexBlock);
             }
         } else if (cmd.isSystemCall()) {
-            if ((uint8_t)object == 0x7F) {
+            if (object == ElectraCommand::Object::Reboot) {
+                System::logger.write(LOG_ERROR,
+                                     "processElectraSysex: : rebooting");
+                MidiOutput::sendAck(MidiInterface::Type::MidiUsbDev, port);
+                /* Answered before the reboot, not after: there is no after. */
+                delay(200);
+                _reboot_Teensyduino_();
+            } else if ((uint8_t)object == 0x7F) {
                 System::logger.write(
                     LOG_ERROR,
                     "processElectraSysex: : switch to the update mode");
@@ -298,6 +417,17 @@ void processSysexMemory(uint8_t port, const SysexBlock &sysexBlock)
                                          logLevel);
                 }
                 System::runtimeInfo.setLoggerStatus(loggerEnabled);
+                MidiOutput::sendAck(MidiInterface::Type::MidiUsbDev, port);
+            } else if (object == ElectraCommand::Object::AppState) {
+                /* Nothing to flush. Every piece of state this model keeps is
+                 * written when it changes: the configuration when its file is
+                 * uploaded, the brightness and the logger setting straight into
+                 * the EEPROM. The host is told so rather than refused - there is
+                 * nothing wrong with the request, and a refusal would read as a
+                 * failure to save. */
+                System::logger.write(
+                    LOG_ERROR,
+                    "processElectraSysex: application state is already saved");
                 MidiOutput::sendAck(MidiInterface::Type::MidiUsbDev, port);
             } else if (object == ElectraCommand::Object::Window) {
                 if (cmd.getByte1() == 0) {

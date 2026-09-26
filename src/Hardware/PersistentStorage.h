@@ -56,7 +56,14 @@ public:
     FileIoStream createInputStream(const char *path);
     FileIoStream createOutputStream(const char *path, oflag_t oflag = O_RDONLY);
     bool deleteFile(const char *path);
-    bool deleteRecursively(const char *path);
+
+    /**
+     * @brief Removes an empty directory.
+     *
+     * It was called deleteRecursively(), which is what it is not: the call
+     * underneath removes a directory only when there is nothing left in it.
+     */
+    bool removeEmptyDirectory(const char *path);
     bool renameFile(const char *src, const char *dest);
     bool format(void);
     bool copyFile(const char *src, const char *dest);

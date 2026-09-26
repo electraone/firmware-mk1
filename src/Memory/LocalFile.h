@@ -46,7 +46,7 @@ public:
     FileIoStream createOutputStream(oflag_t oflag = O_WRITE | O_CREAT
                                                     | O_TRUNC);
     bool deleteFile(void);
-    bool deleteRecursively(void);
+    bool removeEmptyDirectory(void);
     bool writeAll(MemoryBlock &memoryBlock);
 
     bool rename(const char *newFilepath);

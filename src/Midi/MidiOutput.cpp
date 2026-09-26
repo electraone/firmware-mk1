@@ -24,6 +24,7 @@
 #include "ArduinoJson.h"
 #include "App.h"
 #include "Trace.h"
+#include "MidiUsbHost.h"
 
 /** Constructor
  *
@@ -269,6 +270,59 @@ void MidiOutput::sendAvailable(MidiInterface::Type interface, uint8_t port)
 
     SysexBlock sysexBlock = SysexBlock(App::get()->sysexPool.openMemoryBlock());
     sysexBlock.writeBytes(data, sizeof(data));
+    sysexBlock.close();
+
+    MidiMessage message(sysexBlock);
+    sendMessage(interface, port, message);
+}
+
+void MidiOutput::sendUsbHostDevices(MidiInterface::Type interface, uint8_t port)
+{
+    uint8_t data[512];
+    StaticJsonDocument<512> doc;
+
+    data[0] = 0xF0;
+    data[1] = 0x00;
+    data[2] = 0x21;
+    data[3] = 0x45;
+    data[4] = FILE_UPLOAD;
+    data[5] = USB_HOST_DEVICES;
+
+    char *jsonStart = (char *)&data[6];
+
+    doc["version"] = 1;
+    JsonArray devices = doc.createNestedArray("devices");
+
+    for (uint8_t i = 0; i < NR_OF_MIDI_INTERFACES; i++) {
+        const USBDevice &device = USBDevices[i];
+
+        /* An empty slot has no driver name, which is what reset() leaves
+         * behind. A socket with nothing in it is left out of the list rather
+         * than reported as a nameless device. */
+        if (device.driver[0] == '\0') {
+            continue;
+        }
+
+        JsonObject entry = devices.createNestedObject();
+        entry["manufacturer"] = device.manufacturer;
+        entry["product"] = device.product;
+        entry["serialNumber"] = device.serial;
+        entry["vid"] = device.manufacturerId;
+        entry["pid"] = device.productId;
+
+        JsonArray ports = entry.createNestedArray("ports");
+        JsonObject devicePort = ports.createNestedObject();
+        devicePort["devicePort"] = 1;
+        devicePort["name"] = device.driver;
+        devicePort["electraPort"] = (device.midiBus == 0) ? "port1" : "port2";
+    }
+
+    serializeJson(doc, jsonStart, sizeof(data) - 7);
+    size_t jsonSize = strlen(jsonStart);
+    data[jsonSize + 6] = SYSEX_END;
+
+    SysexBlock sysexBlock = SysexBlock(App::get()->sysexPool.openMemoryBlock());
+    sysexBlock.writeBytes(data, jsonSize + 7);
     sysexBlock.close();
 
     MidiMessage message(sysexBlock);
