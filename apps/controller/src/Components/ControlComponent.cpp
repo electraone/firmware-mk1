@@ -26,12 +26,17 @@
 #include "ListButtonControl.h"
 #include "PadControl.h"
 #include "EnvelopeControl.h"
+#include "VerticalFader4Control.h"
+#include "XyPadControl.h"
+#include "TextBoxControl.h"
 #include "ADSR.h"
 #include "ADR.h"
 #include "Env5Seg.h"
 #include "FaderDetailControl.h"
 #include "ListDetailControl.h"
 #include "EnvelopeDetailControl.h"
+#include "VerticalFader4DetailControl.h"
+#include "XyPadDetailControl.h"
 #include "KnobControl.h"
 #include "RelativeControl.h"
 #include "MainWindow.h"
@@ -292,6 +297,12 @@ ControlComponent *
         }
     } else if (control.getType() == Control::Type::Pad) {
         c = new PadControl(control, newDelegate);
+    } else if (control.getType() == Control::Type::Vfader) {
+        c = new VerticalFader4Control(control, newDelegate);
+    } else if (control.getType() == Control::Type::XyPad) {
+        c = new XyPadControl(control, newDelegate);
+    } else if (control.getType() == Control::Type::TextBox) {
+        c = new TextBoxControl(control, newDelegate);
     } else if (control.getType() == Control::Type::Adsr) {
         c = new ShapedEnvelope<ADSR, EnvelopeControl>(control, newDelegate);
     } else if (control.getType() == Control::Type::Adr) {
@@ -321,6 +332,10 @@ ControlComponent *
         c = new FaderDetailControl(control, newDelegate);
     } else if (control.getType() == Control::Type::List) {
         c = new ListDetailControl(control, newDelegate);
+    } else if (control.getType() == Control::Type::Vfader) {
+        c = new VerticalFader4DetailControl(control, newDelegate);
+    } else if (control.getType() == Control::Type::XyPad) {
+        c = new XyPadDetailControl(control, newDelegate);
     } else if (control.getType() == Control::Type::Adsr) {
         c = new ShapedEnvelope<ADSR, EnvelopeDetailControl>(control,
                                                             newDelegate);

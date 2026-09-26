@@ -70,8 +70,14 @@ ControlValue::ControlValue(Control *newControl,
       labelHandle(VramStore::invalidHandle),
       value(defaultValue)
 {
-    // translate the valueId to the numeric handle
-    handle = translateId(newValueId);
+    /* The valueId as a numeric handle. A Custom control's ids are whatever
+     * the preset wrote, so there is no table to look them up in and the
+     * value's position in the list is its handle - which is what the mk2
+     * does, and what a script asking for value N of a custom control
+     * means. */
+    handle = (control && (control->getType() == Control::Type::Custom))
+                 ? newIndex
+                 : translateId(newValueId);
     relative = message.isRelative();
     accelerated = message.isAccelerated();
 }

@@ -206,7 +206,7 @@ void LookAndFeel::paintValueBox(Graphics &g,
 namespace
 {
     /**
-     * @brief One horizontal run inside a fader's track.
+     * @brief One run inside a fader's track, along either axis.
      *
      * Each end is rounded or square on its own, because the end a bar grows
      * from is the track's own end on a unipolar fader and a point inside it on
@@ -215,16 +215,41 @@ namespace
      */
     struct FaderRun {
         Graphics &g;
-        uint16_t top;
+        bool horizontal;
+        uint16_t across;
         uint16_t thickness;
-        uint16_t origin; /**< where the track starts, which is not always 0 */
+        uint16_t origin;
         uint16_t trackLength;
 
         void fill(uint16_t from, uint16_t length) const
         {
-            g.fillRect(from, top, length, thickness);
+            if (horizontal) {
+                g.fillRect(from, across, length, thickness);
+            } else {
+                g.fillRect(across, from, thickness, length);
+            }
         }
 
+        void fillRounded(uint16_t from,
+                         uint16_t length,
+                         uint32_t colour,
+                         uint32_t behind) const
+        {
+            if (horizontal) {
+                LookAndFeel::fillSmoothRoundRect(
+                    g, from, across, length, thickness, colour, behind);
+            } else {
+                LookAndFeel::fillSmoothRoundRect(
+                    g, across, from, thickness, length, colour, behind);
+            }
+        }
+
+        /**
+         * @param colour the run's colour
+         * @param behind what its rounded corners are blended into
+         * @param trackColour what the overhang of a short run is painted
+         *  back in
+         */
         void paint(uint16_t from,
                    uint16_t to,
                    bool roundFrom,
@@ -240,56 +265,39 @@ namespace
             const uint16_t shortest = LookAndFeel::smoothShortestSide;
             const uint16_t corner = LookAndFeel::smoothCornerSize;
             const uint16_t length = to - from;
+            const uint16_t trackEnd = origin + trackLength;
 
-            if ((!roundFrom && !roundTo) || (thickness < shortest)
-                || (trackLength < shortest)) {
+            if ((!roundFrom && !roundTo) || thickness < shortest
+                || trackLength < shortest) {
                 g.setColour(colour);
                 fill(from, length);
                 return;
             }
 
             if (length >= shortest) {
-                LookAndFeel::fillSmoothRoundRect(
-                    g, from, top, length, thickness, colour, behind);
+                fillRounded(from, length, colour, behind);
 
-                /* A rounded shape was drawn for a run with a square end, so
-                 * the square end is filled back in over its corner. */
                 if (!roundFrom) {
-                    g.setColour(colour);
                     fill(from, corner);
                 }
                 if (!roundTo) {
-                    g.setColour(colour);
                     fill(to - corner, corner);
                 }
                 return;
             }
 
-            /* Shorter than the corner treatment needs. A run against a
-             * rounded end of the track is drawn at the shortest length that
-             * rounds and then cut back to length in the track's colour, so
-             * that the corner is still the track's corner. */
-            const uint16_t trackEnd = origin + trackLength;
-
-            if (roundFrom && (from == origin) && (length >= corner)) {
-                LookAndFeel::fillSmoothRoundRect(
-                    g, origin, top, shortest, thickness, colour, behind);
+            if (roundFrom && from == origin && length >= corner) {
+                fillRounded(origin, shortest, colour, behind);
                 g.setColour(trackColour);
                 fill(from + length, shortest - length);
-            } else if (roundTo && (to == trackEnd) && (length >= corner)) {
-                LookAndFeel::fillSmoothRoundRect(g,
-                                                 trackEnd - shortest,
-                                                 top,
-                                                 shortest,
-                                                 thickness,
-                                                 colour,
-                                                 behind);
+            } else if (roundTo && to == trackEnd && length >= corner) {
+                fillRounded(trackEnd - shortest, shortest, colour, behind);
                 g.setColour(trackColour);
                 fill(trackEnd - shortest, shortest - length);
-            } else if ((roundFrom && (from == origin))
-                       || (roundTo && (to == trackEnd))) {
-                /* A single column against a rounded end would stand out past
-                 * the track's corner, and is too thin to read as a value. */
+            } else if ((roundFrom && from == origin)
+                       || (roundTo && to == trackEnd)) {
+                /* A single row against a rounded end would stand out past the
+                 * track's corner, and is too thin to be seen as a value. */
             } else {
                 g.setColour(colour);
                 fill(from, length);
@@ -617,7 +625,7 @@ void LookAndFeel::paintFaderTrack(Graphics &g,
         return;
     }
 
-    const FaderRun run{ g, trackY, trackHeight, 0, (uint16_t)width };
+    const FaderRun run{ g, true, trackY, trackHeight, 0, (uint16_t)width };
 
     // The track the bar stands in
     run.paint(0,
@@ -708,26 +716,139 @@ void LookAndFeel::paintBarVertical(Graphics &g,
                                    uint32_t colour,
                                    int16_t min,
                                    int16_t max,
-                                   int16_t val)
+                                   int16_t val,
+                                   bool isActiveSegment)
 {
     uint32_t colourTrack = Colours565::darker(colour, 0.3f);
 
+    uint16_t x = bounds.getX();
     uint16_t barWidth = bounds.getWidth() * 1.0f;
-    uint16_t padding = (bounds.getWidth() - barWidth) / 2;
+    uint16_t padding = 0; //(bounds.getWidth() - barWidth) / 2;
 
     uint16_t barY = map(0, min, max, 0, bounds.getHeight());
     uint16_t barHeight = map(val, min, max, 0, bounds.getHeight()) - barY;
 
-    // Paint the track background
-    g.setColour(colourTrack);
-    g.fillRect(padding, 0, barWidth, bounds.getHeight());
+    const FaderRun run{ g,        false, (uint16_t)(x + padding),
+                        barWidth, 0,     bounds.getHeight() };
 
-    // Paint the active bar
-    g.setColour(colour);
-    g.fillRect(padding, bounds.getHeight() - barY, barWidth, -barHeight);
+    // Paint the track background
+    run.paint(0,
+              bounds.getHeight(),
+              true,
+              true,
+              colourTrack,
+              backgroundColour,
+              colourTrack);
+
+    /* The active bar, kept inside the track. It used to be filled with a
+     * negative height, which the driver's y1 + height - 1 turns into a bar
+     * that runs one row past each end of what it means: a row under the track
+     * at the bottom, where it showed as a white line below every other
+     * control's graphics. The two rows a bar at zero has always shown are
+     * kept, at the bottom of the track rather than across its edge. */
+    const int16_t trackHeight = bounds.getHeight();
+    const int16_t from = trackHeight - barY;
+    const int16_t to = from - barHeight;
+    int16_t top = std::max(0, std::min(from, to) - 1);
+    const int16_t bottom =
+        std::min((int16_t)(trackHeight - 1), std::max(from, to));
+
+    if (bottom - top < 1) {
+        top = std::max(0, bottom - 1);
+    }
+
+    /* Rounded at the end the value has moved to, and at zero only where zero
+     * is the bottom or the top of the track. */
+    const bool fromZero = (from > to);
+    const bool zeroRounded = (barY == 0 || barY >= trackHeight);
+
+    run.paint(top,
+              bottom + 1,
+              fromZero ? true : zeroRounded,
+              fromZero ? zeroRounded : true,
+              colour,
+              colourTrack,
+              colourTrack);
 
     // Paint the outline
-    g.drawRect(padding, 0, barWidth, bounds.getHeight());
+    if (isActiveSegment) {
+        g.setColour(colour);
+        g.drawRoundRect(
+            x + padding, 0, barWidth, bounds.getHeight(), smoothCornerRadius);
+    }
+}
+
+void LookAndFeel::paintXyPad(Graphics &g,
+                             const Rectangle &bounds,
+                             uint32_t groundColour,
+                             uint32_t xLineColour,
+                             uint32_t yLineColour,
+                             uint32_t handleColour,
+                             uint16_t x,
+                             uint16_t y)
+{
+    constexpr uint16_t radius = 4;
+    const uint16_t width = bounds.getWidth();
+    const uint16_t height = bounds.getHeight();
+
+    fillSmoothRoundRect(
+        g, 0, 0, width, height, groundColour, backgroundColour, radius);
+
+    /* A line at the edge of the pad stays inside the rounded corners: where
+     * it runs within a corner's radius of a side it stops that much short of
+     * the ends. At (0, 0) both lines used to cross the corner into the black
+     * around it. */
+    const uint16_t xInset = (y < radius || y + radius >= height) ? radius : 2;
+    const uint16_t yInset = (x < radius || x + radius >= width) ? radius : 2;
+
+    g.setColour(xLineColour);
+    g.drawLine(xInset, y, width - 1 - xInset, y);
+
+    g.setColour(yLineColour);
+    g.drawLine(x, yInset, x, height - 1 - yInset);
+
+    g.setColour(handleColour);
+    g.fillCircle(x, y, 4);
+}
+
+void LookAndFeel::paintXyPadDetailGround(Graphics &g,
+                                         const Rectangle &bounds,
+                                         uint32_t groundColour)
+{
+    constexpr uint16_t radius = 4;
+
+    fillSmoothRoundRect(g,
+                        0,
+                        0,
+                        bounds.getWidth(),
+                        bounds.getHeight(),
+                        groundColour,
+                        backgroundColour,
+                        radius);
+}
+
+void LookAndFeel::paintXyPadDetailCrosshairs(Graphics &g,
+                                             const Rectangle &bounds,
+                                             uint32_t lineColour,
+                                             uint32_t handleColour,
+                                             uint16_t x,
+                                             uint16_t y)
+{
+    constexpr uint16_t radius = 4;
+    const uint16_t width = bounds.getWidth();
+    const uint16_t height = bounds.getHeight();
+
+    /* See paintXyPad(): the lines keep out of the corners. */
+    const uint16_t xInset = (y < radius || y + radius >= height) ? radius : 4;
+    const uint16_t yInset = (x < radius || x + radius >= width) ? radius : 4;
+
+    g.setColour(lineColour);
+    g.drawLine(xInset, y, width - 1 - xInset, y);
+    g.drawLine(x, yInset, x, height - 1 - yInset);
+
+    g.setColour(handleColour);
+    g.fillCircle(x, y, 5);
+    g.drawCircle(x, y, 18);
 }
 
 uint16_t LookAndFeel::groupLabelBarHeight(Graphics &g, const TextFont &font)

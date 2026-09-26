@@ -62,6 +62,10 @@ public:
     static constexpr uint8_t MaxNameLength = 20;
     static constexpr uint8_t MaxProjectIdLength = 20;
     static constexpr uint8_t MaxNumPages = 12;
+
+    /** How many values a Custom control may declare. It has no fixed count -
+     *  its script names them - so there has to be a ceiling somewhere. */
+    static constexpr uint8_t MaxCustomValues = 16;
     static constexpr uint16_t MaxNumControls = 432;
     static constexpr uint8_t MaxNumDevices = 32;
     static constexpr uint8_t MaxNumControlSets = 3;
@@ -131,8 +135,14 @@ private:
                                           size_t startPosition,
                                           size_t endPosition,
                                           Control *control);
-    ControlValue parseValue(File &file, size_t startPosition, Control *control);
-    ControlValue parseValue(Control *control, JsonObject jValue);
+    /** @param ordinal the value's position in the array, which is a Custom
+     *         control's only way of numbering its values. */
+    ControlValue parseValue(File &file,
+                            size_t startPosition,
+                            Control *control,
+                            uint8_t ordinal);
+    ControlValue
+        parseValue(Control *control, JsonObject jValue, uint8_t ordinal);
 
     // Messages
     std::vector<uint8_t> *registerData(JsonVariant jData);

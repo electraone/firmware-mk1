@@ -1275,11 +1275,30 @@ std::vector<ControlValue> Preset::parseValues(File &file,
             LOG_ERROR, "Preset::parseValues: cannot rewind the start position");
         return (values);
     }
+    uint8_t ordinal = 0;
+
     if (findElement(file, "\"values\"", ARRAY, endPosition)) {
         do {
             size_t valueStartPosition = file.position();
-            ControlValue value = parseValue(file, valueStartPosition, control);
-            ControlValue &currentValue = values[value.getIndex()];
+            ControlValue value =
+                parseValue(file, valueStartPosition, control, ordinal++);
+            const uint8_t index = value.getIndex();
+
+            /* A Custom control declares as many values as its script wants, so
+             * there is no count to size the vector from and it grows here
+             * instead. Every other type is sized by getNumValues(), and an
+             * index past that end is a preset asking for a value the type does
+             * not have - which used to be written there anyway, past the end
+             * of the vector. */
+            if (index >= values.size()) {
+                if ((control->getType() != Control::Type::Custom)
+                    || (index >= MaxCustomValues)) {
+                    continue;
+                }
+                values.resize(index + 1);
+            }
+
+            ControlValue &currentValue = values[index];
             currentValue = value;
             currentValue.message.setControlValue(&currentValue);
         } while (file.findUntil(",", "]"));
@@ -1291,8 +1310,10 @@ std::vector<ControlValue> Preset::parseValues(File &file,
 /* Parse individual Value out of the Value Array
  *
  */
-ControlValue
-    Preset::parseValue(File &file, size_t startPosition, Control *control)
+ControlValue Preset::parseValue(File &file,
+                                size_t startPosition,
+                                Control *control,
+                                uint8_t ordinal)
 {
     if (file.seek(startPosition) == false) {
         System::logger.write(
@@ -1311,7 +1332,7 @@ ControlValue
     }
 
     size_t valueEndPosition = file.position();
-    ControlValue value = parseValue(control, doc.as<JsonObject>());
+    ControlValue value = parseValue(control, doc.as<JsonObject>(), ordinal);
 
     if (file.seek(valueEndPosition) == false) {
         System::logger.write(
@@ -1323,7 +1344,8 @@ ControlValue
 /** Parse Value JSON object
  *
  */
-ControlValue Preset::parseValue(Control *control, JsonObject jValue)
+ControlValue
+    Preset::parseValue(Control *control, JsonObject jValue, uint8_t ordinal)
 {
     int16_t defaultValue = 0;
     int16_t min = 0;
@@ -1348,7 +1370,12 @@ ControlValue Preset::parseValue(Control *control, JsonObject jValue)
     }
 
     Control::Type controlType = control->getType();
-    uint8_t valueIndex = translateValueId(controlType, valueId);
+    /* A Custom control's ids are whatever the preset wrote, so there is no
+     * table to look them up in: the value's position in the array is its
+     * index, which is what the mk2 does too. */
+    uint8_t valueIndex = (controlType == Control::Type::Custom)
+                             ? ordinal
+                             : translateValueId(controlType, valueId);
 
     bool minNotDefined = false;
     bool maxNotDefined = false;
@@ -1840,55 +1867,17 @@ void Preset::getPresetName(File &file,
 /** Translate ValueId to the Enum type
  *
  */
+/*
+ * The valueId as a numeric index.
+ *
+ * There used to be a table here as well as the two in Control, all three of
+ * which had to agree - and they stopped agreeing the moment a control type was
+ * added, because nothing says the third one exists. It is the Control's table
+ * now, which is the one the runtime asks.
+ */
 uint8_t Preset::translateValueId(Control::Type type, const char *valueId)
 {
-    if (!valueId) {
-        return (0);
-    }
-
-    if (type == Control::Type::Adsr) {
-        if (strcmp(valueId, "attack") == 0) {
-            return (0);
-        } else if (strcmp(valueId, "decay") == 0) {
-            return (1);
-        } else if (strcmp(valueId, "sustain") == 0) {
-            return (2);
-        } else if (strcmp(valueId, "release") == 0) {
-            return (3);
-        }
-    }
-
-    if (type == Control::Type::Adr) {
-        if (strcmp(valueId, "attack") == 0) {
-            return (0);
-        } else if (strcmp(valueId, "decay") == 0) {
-            return (1);
-        } else if (strcmp(valueId, "release") == 0) {
-            return (2);
-        }
-    }
-
-    if (type == Control::Type::Dx7envelope) {
-        if (strcmp(valueId, "r1") == 0) {
-            return (1);
-        } else if (strcmp(valueId, "r2") == 0) {
-            return (3);
-        } else if (strcmp(valueId, "r3") == 0) {
-            return (5);
-        } else if (strcmp(valueId, "r4") == 0) {
-            return (7);
-        } else if (strcmp(valueId, "l1") == 0) {
-            return (0);
-        } else if (strcmp(valueId, "l2") == 0) {
-            return (2);
-        } else if (strcmp(valueId, "l3") == 0) {
-            return (4);
-        } else if (strcmp(valueId, "l4") == 0) {
-            return (6);
-        }
-    }
-
-    return (0);
+    return (valueId ? Control::translateValueToId(type, valueId) : 0);
 }
 
 uint8_t Preset::getNumValues(Control::Type type)
@@ -1903,9 +1892,21 @@ uint8_t Preset::getNumValues(Control::Type type)
         case (Control::Type::Dx7envelope):
             return (8);
 
+        case (Control::Type::Vfader):
+            return (4);
+
+        case (Control::Type::XyPad):
+            return (2);
+
+        /* Whatever the preset declares. parseValues() grows the vector as the
+         * values arrive; starting at zero is what tells it to. */
+        case (Control::Type::Custom):
+            return (0);
+
         case (Control::Type::Fader):
         case (Control::Type::List):
         case (Control::Type::Pad):
+        case (Control::Type::TextBox):
         default:
             return (1);
     }

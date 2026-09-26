@@ -54,7 +54,19 @@ public:
         Adr = 6,
         Dx7envelope = 7,
         Knob = 8,
-        Relative = 9
+        Relative = 9,
+        Custom = 10,
+        XyPad = 15,
+
+        /**
+         * A box showing text rather than a number.
+         *
+         * The text is the parameter's override, so a script - or a synth's
+         * patch dump, parsed by one - writes it the same way it would write
+         * one onto a fader. The control carries a value like any other so
+         * that it has a parameter to hang the text on.
+         */
+        TextBox = 17
     };
 
     enum class Mode {
@@ -73,7 +85,10 @@ public:
         Thin = 2,
         ValueOnly = 3,
         Dial = 4,
-        Checkbox = 5
+        Checkbox = 5,
+        /* A text box's third shape: no outline, the name beneath, and the
+         * text standing on the line every other control's value stands on. */
+        Baseline = 7
     };
 
     /**
@@ -164,7 +179,11 @@ private:
     struct {
         uint16_t id : 10;
         uint8_t pageId : 4;
-        uint8_t type : 4;
+        /* Five bits, not four: the type enumerators are the mk2's, and they
+         * run to seventeen. A text box truncated to one, which is a fader -
+         * so a preset carrying one drew a row of faders and nothing said
+         * why. */
+        uint8_t type : 5;
         uint8_t mode : 3;
         uint8_t controlSetId : 3;
         uint8_t variant : 4;

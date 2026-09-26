@@ -26,6 +26,10 @@ const char *valueIdsAdsr[] = { "attack", "decay", "sustain", "release" };
 
 const char *valueIdsAdr[] = { "attack", "decay", "release" };
 
+const char *valueIdsXyPad[] = { "x", "y" };
+
+const char *valueIdsVerticalFader4[] = { "f1", "f2", "f3", "f4" };
+
 const char *valueIdsDx7Env[] = {
     "l1", "r1", "l2", "r2", "l3", "r3", "l4", "r4"
 };
@@ -226,6 +230,12 @@ Control::Type Control::translateType(const char *typeText)
             return (Control::Type::Adr);
         } else if (strcmp(typeText, "dx7envelope") == 0) {
             return (Control::Type::Dx7envelope);
+        } else if (strcmp(typeText, "custom") == 0) {
+            return (Control::Type::Custom);
+        } else if (strcmp(typeText, "xypad") == 0) {
+            return (Control::Type::XyPad);
+        } else if (strcmp(typeText, "textBox") == 0) {
+            return (Control::Type::TextBox);
         } else if (strcmp(typeText, "relative") == 0) {
             return (Control::Type::Relative);
         }
@@ -301,6 +311,8 @@ Control::Variant Control::translateVariant(const char *variantText)
             return (Control::Variant::ValueOnly);
         } else if (strcmp(variantText, "checkbox") == 0) {
             return (Control::Variant::Checkbox);
+        } else if (strcmp(variantText, "baseline") == 0) {
+            return (Control::Variant::Baseline);
         }
     }
     return (Control::Variant::Default);
@@ -312,7 +324,29 @@ const char *Control::translateValueId(uint8_t id) const
         case Control::Type::Fader:
         case Control::Type::List:
         case Control::Type::Pad:
+        case Control::Type::TextBox:
             return ("value");
+            break;
+
+        case Control::Type::XyPad:
+            if (id < 2) {
+                return (valueIdsXyPad[id]);
+            }
+            break;
+
+        case Control::Type::Vfader:
+            if (id < 4) {
+                return (valueIdsVerticalFader4[id]);
+            }
+            break;
+
+        /* A Custom control's ids are whatever the preset wrote, so the value
+         * itself is asked: it carries the string it was declared with, and
+         * its position is its handle. */
+        case Control::Type::Custom:
+            if (id < values.size()) {
+                return (values[id].getId());
+            }
             break;
 
         case Control::Type::Adsr:
@@ -345,7 +379,32 @@ uint8_t Control::translateValueId(const char *handle) const
         case Control::Type::Fader:
         case Control::Type::List:
         case Control::Type::Pad:
+        case Control::Type::TextBox:
             return (0);
+            break;
+
+        case Control::Type::XyPad:
+            for (uint8_t i = 0; i < 2; i++) {
+                if (strcmp(handle, valueIdsXyPad[i]) == 0) {
+                    return (i);
+                }
+            }
+            break;
+
+        case Control::Type::Vfader:
+            for (uint8_t i = 0; i < 4; i++) {
+                if (strcmp(handle, valueIdsVerticalFader4[i]) == 0) {
+                    return (i);
+                }
+            }
+            break;
+
+        case Control::Type::Custom:
+            for (uint8_t i = 0; i < values.size(); i++) {
+                if (strcmp(handle, values[i].getId()) == 0) {
+                    return (i);
+                }
+            }
             break;
 
         case Control::Type::Adsr:
@@ -509,7 +568,24 @@ uint8_t Control::translateValueToId(Control::Type controlType,
         case Control::Type::Fader:
         case Control::Type::List:
         case Control::Type::Pad:
+        case Control::Type::TextBox:
             return (0);
+            break;
+
+        case Control::Type::XyPad:
+            for (uint8_t i = 0; i < 2; i++) {
+                if (strcmp(handle, valueIdsXyPad[i]) == 0) {
+                    return (i);
+                }
+            }
+            break;
+
+        case Control::Type::Vfader:
+            for (uint8_t i = 0; i < 4; i++) {
+                if (strcmp(handle, valueIdsVerticalFader4[i]) == 0) {
+                    return (i);
+                }
+            }
             break;
 
         case Control::Type::Adsr:
@@ -547,7 +623,14 @@ uint8_t Control::constraintValueId(Control::Type controlType, uint8_t handleId)
         case Control::Type::Fader:
         case Control::Type::List:
         case Control::Type::Pad:
+        case Control::Type::TextBox:
             return (0);
+
+        case Control::Type::XyPad:
+            return ((handleId < 2) ? handleId : 0);
+
+        case Control::Type::Vfader:
+            return ((handleId < 4) ? handleId : 0);
 
         case Control::Type::Adsr:
             return ((handleId < 4) ? handleId : 0);

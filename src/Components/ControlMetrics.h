@@ -66,6 +66,10 @@ struct ControlMetrics {
      */
     uint16_t boxBottomInset;
 
+    /** The same for a text box, which draws its box a little higher than the
+     *  pad beside it. */
+    uint16_t textBoxBottomInset;
+
     /**
      * @brief How tall the thin graphics are: a thin fader's track, a list's
      *        dots, the bar that stands in for them.
@@ -112,6 +116,15 @@ struct ControlMetrics {
      * the graphics.
      */
     uint16_t valueGap;
+
+    /*
+     * XY pads
+     */
+
+    /** Taken off the height of an XY pad. Zero here and on the mk2, whose
+     *  pads end on the name baseline and whose cell is 56 rows - there is
+     *  nothing to close up. */
+    uint16_t xyPadHeightInset;
 
     /*
      * Pads
@@ -178,6 +191,7 @@ struct ControlMetrics {
 inline constexpr ControlMetrics controlMetrics = {
     /* graphicsBottomInset */ 27,
     /* boxBottomInset     */ 27,
+    /* textBoxBottomInset */ 24,
     /* stripHeight         */ 7,
     /* faderThinBarHeight  */ 7,
     /* faderThinInset      */ 34,
@@ -187,6 +201,7 @@ inline constexpr ControlMetrics controlMetrics = {
     /* faderValueFloats    */ true,
     /* faderDialHidesName  */ true,
     /* valueGap            */ 6,
+    /* xyPadHeightInset    */ 0,
     /* padHeightInset      */ 6,
     /* padBoxTopInset      */ 3,
     /* padValueCentred     */ true,

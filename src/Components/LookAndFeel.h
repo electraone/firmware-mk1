@@ -49,7 +49,8 @@ public:
                                  uint32_t colour,
                                  int16_t min,
                                  int16_t max,
-                                 int16_t val);
+                                 int16_t val,
+                                 bool isActiveSegment);
 
     /**
      * @brief A fader's track, and the bar standing in it.
@@ -124,6 +125,40 @@ public:
                                      bool filled,
                                      const TextFont &font,
                                      uint32_t ground = backgroundColour);
+
+    /**
+     * @brief The XY pad on a preset page: a ground, two crosshairs, a handle.
+     *
+     * The two crosshairs carry their own colours because either axis is
+     * highlighted while it is the one being moved.
+     */
+    static void paintXyPad(Graphics &g,
+                           const Rectangle &bounds,
+                           uint32_t groundColour,
+                           uint32_t xLineColour,
+                           uint32_t yLineColour,
+                           uint32_t handleColour,
+                           uint16_t x,
+                           uint16_t y);
+
+    /**
+     * @brief The same pad in a detail window, where it is the whole screen.
+     *
+     * Deliberately not the one above with different arguments: the detail pad
+     * insets its crosshairs further, draws a larger handle and puts a ring
+     * around it. The ground and the crosshairs are separate so that a drag can
+     * repaint the lines without laying the ground again.
+     */
+    static void paintXyPadDetailGround(Graphics &g,
+                                       const Rectangle &bounds,
+                                       uint32_t groundColour);
+
+    static void paintXyPadDetailCrosshairs(Graphics &g,
+                                           const Rectangle &bounds,
+                                           uint32_t lineColour,
+                                           uint32_t handleColour,
+                                           uint16_t x,
+                                           uint16_t y);
 
     static void paintPad(Graphics &g,
                          const Rectangle &bounds,

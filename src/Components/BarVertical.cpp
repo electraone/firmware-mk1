@@ -60,6 +60,11 @@ void BarVertical::onTouchUp([[maybe_unused]] const TouchEvent &touchEvent)
 void BarVertical::paint(Graphics &g)
 {
     g.fillAll(LookAndFeel::backgroundColour);
-    LookAndFeel::paintBarVertical(
-        g, getBounds(), colour, value.getMin(), value.getMax(), value.get());
+    LookAndFeel::paintBarVertical(g,
+                                  getBounds(),
+                                  colour,
+                                  value.getMin(),
+                                  value.getMax(),
+                                  value.get(),
+                                  false);
 }
