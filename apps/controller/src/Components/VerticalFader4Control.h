@@ -58,6 +58,15 @@ public:
     uint8_t getNumHandles(void) const override;
     void paint(Graphics &g) override;
 
+    /**
+     * @brief Where the middle of one bar sits, in the control's own
+     *        coordinates.
+     *
+     * So that a detail window can put a dial under each bar rather than at
+     * four numbers that happen to look about right.
+     */
+    uint16_t barCentreX(uint8_t index) const;
+
     static constexpr uint8_t numHandles = 4;
 
 protected:
@@ -73,4 +82,14 @@ protected:
     virtual float getBarGapFraction(void) const;
 
     void setValueRanges(void);
+
+private:
+    /** Where the row of bars starts and how it is spaced. */
+    struct BarLayout {
+        uint16_t rowX;
+        uint16_t barWidth;
+        uint16_t gap;
+    };
+
+    BarLayout barLayout(void) const;
 };

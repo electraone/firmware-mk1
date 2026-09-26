@@ -149,15 +149,10 @@ void VerticalFader4Control::paintDecorations(Graphics &g)
  * i * (width / 4) + i * 4 and drawn width / 4 - 10 wide, which put the last
  * one past the box on any width.
  */
-void VerticalFader4Control::paint(Graphics &g)
+VerticalFader4Control::BarLayout VerticalFader4Control::barLayout(void) const
 {
-    const uint32_t colour = control.getColour565();
-    const uint16_t barsHeight = getBarsHeight();
-
-    g.fillAll(getUseAltBackground() ? LookAndFeel::altBackgroundColour
-                                    : LookAndFeel::backgroundColour);
-
     constexpr uint16_t minimumGap = 10;
+
     const uint16_t slot = getWidth() / numHandles;
     const uint16_t barWidth =
         (slot > minimumGap)
@@ -169,11 +164,31 @@ void VerticalFader4Control::paint(Graphics &g)
     const uint16_t rowX =
         (getWidth() > rowWidth) ? (getWidth() - rowWidth) / 2 : 0;
 
+    return (BarLayout{ rowX, barWidth, gap });
+}
+
+uint16_t VerticalFader4Control::barCentreX(uint8_t index) const
+{
+    const BarLayout layout = barLayout();
+
+    return ((uint16_t)(layout.rowX + (index * (layout.barWidth + layout.gap))
+                       + (layout.barWidth / 2)));
+}
+
+void VerticalFader4Control::paint(Graphics &g)
+{
+    const uint32_t colour = control.getColour565();
+    const uint16_t barsHeight = getBarsHeight();
+    const BarLayout layout = barLayout();
+
+    g.fillAll(getUseAltBackground() ? LookAndFeel::altBackgroundColour
+                                    : LookAndFeel::backgroundColour);
+
     for (uint8_t i = 0; i < numHandles; i++) {
         Rectangle bounds = getBounds();
 
-        bounds.setX(rowX + (i * (barWidth + gap)));
-        bounds.setWidth(barWidth);
+        bounds.setX(layout.rowX + (i * (layout.barWidth + layout.gap)));
+        bounds.setWidth(layout.barWidth);
         bounds.setHeight(barsHeight);
 
         LookAndFeel::paintBarVertical(g,

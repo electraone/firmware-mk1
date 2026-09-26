@@ -24,12 +24,15 @@
 
 namespace
 {
-    /* The knobs sit where an envelope detail's do, so the two windows read as
-     * the same window with a different graph in it. */
-    constexpr uint16_t knobX[] = { 63, 228, 394, 560 };
+    /* The strip down the right of the window that closes the detail when it
+     * is touched. */
+    constexpr uint16_t dimmedWidth = 120;
+
+    constexpr uint16_t barsTop = 40;
+    constexpr uint16_t knobRoom = 130;
+    constexpr uint16_t barsBottomGap = 20;
     constexpr uint16_t knobWidth = 80;
     constexpr uint16_t knobHeight = 100;
-    constexpr uint16_t knobBottomInset = 130;
 } // namespace
 
 DetailVerticalFader4::DetailVerticalFader4(const Control &control,
@@ -47,24 +50,54 @@ DetailVerticalFader4::DetailVerticalFader4(const Control &control,
 
 void DetailVerticalFader4::paint(Graphics &g)
 {
+    const uint16_t frameWidth = (getWidth() > dimmedWidth)
+                                    ? (uint16_t)(getWidth() - dimmedWidth)
+                                    : getWidth();
+
     g.setColour(Colours565::black);
-    g.fillRect(0, 0, getWidth() - 120, getHeight());
+    g.fillRect(0, 0, frameWidth, getHeight());
     g.setColour(Colours565::darkgrey);
-    g.drawRect(0, 0, getWidth() - 120, getHeight());
-    g.dim(getWidth() - 120, 0, 120, getHeight(), Colours565::black);
+    g.drawRect(0, 0, frameWidth, getHeight());
+    g.dim(frameWidth, 0, dimmedWidth, getHeight(), Colours565::black);
 }
 
+/*
+ * The bars fill the room above the knobs, and each knob is placed under the
+ * bar it turns - asked of the component rather than worked out again here,
+ * which is how the two came to disagree: the knobs sat at four numbers that
+ * looked about right and were forty pixels left of their bars.
+ */
 void DetailVerticalFader4::resized(void)
 {
-    component->setBounds(50, 50, 608, 150);
+    const uint16_t frameWidth = (getWidth() > dimmedWidth)
+                                    ? (uint16_t)(getWidth() - dimmedWidth)
+                                    : getWidth();
+    const uint16_t barsRoom = (getHeight() > (barsTop + knobRoom))
+                                  ? (uint16_t)(getHeight() - barsTop - knobRoom)
+                                  : getHeight();
+    const uint16_t barsHeight = (barsRoom > barsBottomGap)
+                                    ? (uint16_t)(barsRoom - barsBottomGap)
+                                    : barsRoom;
+    const uint16_t barsWidth =
+        (frameWidth > 80) ? (frameWidth - 80) : frameWidth;
+
+    component->setBounds(
+        (frameWidth - barsWidth) / 2, barsTop, barsWidth, barsHeight);
     lock->setBounds(getWidth() - 100, 25, 75, 75);
-    dimmedSection->setBounds(getWidth() - 120, 100, 120, getHeight() - 100);
+    dimmedSection->setBounds(frameWidth, 100, dimmedWidth, getHeight() - 100);
+
+    const auto *bars = dynamic_cast<const VerticalFader4Control *>(component);
+
+    if (!bars) {
+        return;
+    }
 
     for (uint8_t handle = 0; handle < VerticalFader4Control::numHandles;
          handle++) {
         resizeKnob(faderKnobs[handle],
-                   knobX[handle],
-                   getHeight() - knobBottomInset,
+                   component->getX() + bars->barCentreX(handle)
+                       - (knobWidth / 2),
+                   getHeight() - knobRoom,
                    knobWidth,
                    knobHeight);
     }
