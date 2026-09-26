@@ -56,6 +56,9 @@ public:
         Knob = 8,
         Relative = 9,
         Custom = 10,
+        Ar = 11,
+        Adssr = 12,
+        Ahdsr = 13,
         XyPad = 15,
 
         /**

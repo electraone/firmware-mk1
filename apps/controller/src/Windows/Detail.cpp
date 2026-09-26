@@ -1,9 +1,7 @@
 #include "Detail.h"
 #include "DetailFader.h"
 #include "DetailList.h"
-#include "DetailADSR.h"
-#include "DetailADR.h"
-#include "DetailDx7Env.h"
+#include "DetailEnvelope.h"
 #include "DetailVerticalFader4.h"
 #include "DetailXyPad.h"
 
@@ -152,16 +150,15 @@ Detail *Detail::createDetail(const Control &control, MainDelegate &newDelegate)
             detail = new DetailXyPad(control, newDelegate);
             break;
 
+        /* Every envelope opens the same window; what differs is how many
+         * dials it carries, which DetailEnvelope reads off the control. */
         case Control::Type::Adsr:
-            detail = new DetailADSR(control, newDelegate);
-            break;
-
+        case Control::Type::Ahdsr:
+        case Control::Type::Adssr:
         case Control::Type::Adr:
-            detail = new DetailADR(control, newDelegate);
-            break;
-
+        case Control::Type::Ar:
         case Control::Type::Dx7envelope:
-            detail = new DetailDx7Env(control, newDelegate);
+            detail = new DetailEnvelope(control, newDelegate);
             break;
 
         default:

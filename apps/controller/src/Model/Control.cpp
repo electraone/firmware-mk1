@@ -24,7 +24,18 @@
 
 const char *valueIdsAdsr[] = { "attack", "decay", "sustain", "release" };
 
+const char *valueIdsAhdsr[] = { "attack",
+                                "hold",
+                                "decay",
+                                "sustain",
+                                "release" };
+
+const char *valueIdsAdssr[] = { "attack", "decay",   "break",
+                                "slope",  "sustain", "release" };
+
 const char *valueIdsAdr[] = { "attack", "decay", "release" };
+
+const char *valueIdsAr[] = { "attack", "release" };
 
 const char *valueIdsXyPad[] = { "x", "y" };
 
@@ -226,8 +237,14 @@ Control::Type Control::translateType(const char *typeText)
             return (Control::Type::Pad);
         } else if (strcmp(typeText, "adsr") == 0) {
             return (Control::Type::Adsr);
+        } else if (strcmp(typeText, "ahdsr") == 0) {
+            return (Control::Type::Ahdsr);
+        } else if (strcmp(typeText, "adssr") == 0) {
+            return (Control::Type::Adssr);
         } else if (strcmp(typeText, "adr") == 0) {
             return (Control::Type::Adr);
+        } else if (strcmp(typeText, "ar") == 0) {
+            return (Control::Type::Ar);
         } else if (strcmp(typeText, "dx7envelope") == 0) {
             return (Control::Type::Dx7envelope);
         } else if (strcmp(typeText, "custom") == 0) {
@@ -355,9 +372,27 @@ const char *Control::translateValueId(uint8_t id) const
             }
             break;
 
+        case Control::Type::Ahdsr:
+            if (id < 5) {
+                return (valueIdsAhdsr[id]);
+            }
+            break;
+
+        case Control::Type::Adssr:
+            if (id < 6) {
+                return (valueIdsAdssr[id]);
+            }
+            break;
+
         case Control::Type::Adr:
             if (id < 3) {
                 return (valueIdsAdr[id]);
+            }
+            break;
+
+        case Control::Type::Ar:
+            if (id < 2) {
+                return (valueIdsAr[id]);
             }
             break;
 
@@ -414,9 +449,33 @@ uint8_t Control::translateValueId(const char *handle) const
                 }
             }
             break;
+        case Control::Type::Ahdsr:
+            for (uint8_t i = 0; i < 5; i++) {
+                if (strcmp(handle, valueIdsAhdsr[i]) == 0) {
+                    return (i);
+                }
+            }
+            break;
+
+        case Control::Type::Adssr:
+            for (uint8_t i = 0; i < 6; i++) {
+                if (strcmp(handle, valueIdsAdssr[i]) == 0) {
+                    return (i);
+                }
+            }
+            break;
+
         case Control::Type::Adr:
             for (uint8_t i = 0; i < 3; i++) {
                 if (strcmp(handle, valueIdsAdr[i]) == 0) {
+                    return (i);
+                }
+            }
+            break;
+
+        case Control::Type::Ar:
+            for (uint8_t i = 0; i < 2; i++) {
+                if (strcmp(handle, valueIdsAr[i]) == 0) {
                     return (i);
                 }
             }
@@ -595,9 +654,33 @@ uint8_t Control::translateValueToId(Control::Type controlType,
                 }
             }
             break;
+        case Control::Type::Ahdsr:
+            for (uint8_t i = 0; i < 5; i++) {
+                if (strcmp(handle, valueIdsAhdsr[i]) == 0) {
+                    return (i);
+                }
+            }
+            break;
+
+        case Control::Type::Adssr:
+            for (uint8_t i = 0; i < 6; i++) {
+                if (strcmp(handle, valueIdsAdssr[i]) == 0) {
+                    return (i);
+                }
+            }
+            break;
+
         case Control::Type::Adr:
             for (uint8_t i = 0; i < 3; i++) {
                 if (strcmp(handle, valueIdsAdr[i]) == 0) {
+                    return (i);
+                }
+            }
+            break;
+
+        case Control::Type::Ar:
+            for (uint8_t i = 0; i < 2; i++) {
+                if (strcmp(handle, valueIdsAr[i]) == 0) {
                     return (i);
                 }
             }
@@ -635,8 +718,17 @@ uint8_t Control::constraintValueId(Control::Type controlType, uint8_t handleId)
         case Control::Type::Adsr:
             return ((handleId < 4) ? handleId : 0);
 
+        case Control::Type::Ahdsr:
+            return ((handleId < 5) ? handleId : 0);
+
+        case Control::Type::Adssr:
+            return ((handleId < 6) ? handleId : 0);
+
         case Control::Type::Adr:
             return ((handleId < 3) ? handleId : 0);
+
+        case Control::Type::Ar:
+            return ((handleId < 2) ? handleId : 0);
 
         case Control::Type::Dx7envelope:
             return ((handleId < 8) ? handleId : 0);

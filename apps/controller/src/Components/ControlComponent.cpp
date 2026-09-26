@@ -33,6 +33,9 @@
 #include "ADSR.h"
 #include "ADR.h"
 #include "Env5Seg.h"
+#include "AHDSR.h"
+#include "ADSSR.h"
+#include "AR.h"
 #include "FaderDetailControl.h"
 #include "ListDetailControl.h"
 #include "EnvelopeDetailControl.h"
@@ -308,8 +311,14 @@ ControlComponent *
         c = new CustomControl(control, newDelegate);
     } else if (control.getType() == Control::Type::Adsr) {
         c = new ShapedEnvelope<ADSR, EnvelopeControl>(control, newDelegate);
+    } else if (control.getType() == Control::Type::Ahdsr) {
+        c = new ShapedEnvelope<AHDSR, EnvelopeControl>(control, newDelegate);
+    } else if (control.getType() == Control::Type::Adssr) {
+        c = new ShapedEnvelope<ADSSR, EnvelopeControl>(control, newDelegate);
     } else if (control.getType() == Control::Type::Adr) {
         c = new ShapedEnvelope<ADR, EnvelopeControl>(control, newDelegate);
+    } else if (control.getType() == Control::Type::Ar) {
+        c = new ShapedEnvelope<AR, EnvelopeControl>(control, newDelegate);
     } else if (control.getType() == Control::Type::Dx7envelope) {
         c = new ShapedEnvelope<Env5Seg, EnvelopeControl>(control, newDelegate);
     } else if (control.getType() == Control::Type::Knob) {
@@ -342,9 +351,17 @@ ControlComponent *
     } else if (control.getType() == Control::Type::Adsr) {
         c = new ShapedEnvelope<ADSR, EnvelopeDetailControl>(control,
                                                             newDelegate);
+    } else if (control.getType() == Control::Type::Ahdsr) {
+        c = new ShapedEnvelope<AHDSR, EnvelopeDetailControl>(control,
+                                                             newDelegate);
+    } else if (control.getType() == Control::Type::Adssr) {
+        c = new ShapedEnvelope<ADSSR, EnvelopeDetailControl>(control,
+                                                             newDelegate);
     } else if (control.getType() == Control::Type::Adr) {
         c = new ShapedEnvelope<ADR, EnvelopeDetailControl>(control,
                                                            newDelegate);
+    } else if (control.getType() == Control::Type::Ar) {
+        c = new ShapedEnvelope<AR, EnvelopeDetailControl>(control, newDelegate);
     } else if (control.getType() == Control::Type::Dx7envelope) {
         c = new ShapedEnvelope<Env5Seg, EnvelopeDetailControl>(control,
                                                                newDelegate);

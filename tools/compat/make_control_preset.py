@@ -19,6 +19,12 @@ ROW_Y = [28, 125, 222, 319, 416, 513]
 
 COLOURS = ["FFFFFF", "F45C51", "F49500", "529DEC", "03A598", "C44795"]
 
+# One device per 127 CC numbers. Device N is channel N of port one.
+DEVICES = [
+    {"id": n, "name": f"Generic MIDI {n}", "port": 1, "channel": n}
+    for n in (1, 2, 3)
+]
+
 controls = []
 pages = []
 next_id = 1
@@ -58,9 +64,9 @@ def control(page, slot, kind, name, value_ids, values, **extra):
                 "max": ranges[index][1],
                 "defaultValue": values[index],
                 "message": {
-                    "deviceId": 1,
+                    "deviceId": 1 + ((next_parameter + index - 1) // 127),
                     "type": "cc7",
-                    "parameterNumber": next_parameter + index,
+                    "parameterNumber": ((next_parameter + index - 1) % 127) + 1,
                     "min": 0,
                     "max": 127,
                 },
@@ -71,13 +77,17 @@ def control(page, slot, kind, name, value_ids, values, **extra):
     body.update(extra)
     controls.append(body)
     next_id += 1
-    # One CC per value, running from one: a parameter number worked out from
-    # the control id runs past 127 on a page of four-value controls, and the
-    # specimen is set from real CCs.
+    # One CC per value, running from one. There are more values here than a
+    # channel has CC numbers, so they run onto a second and a third device -
+    # device N is channel N of port one, which is what light2.sh sends on.
     next_parameter += len(value_ids)
-    if next_parameter > 127:
+    if next_parameter > (len(DEVICES) * 127):
         raise SystemExit("ran out of CC numbers for the specimen")
 
+
+AHDSR = ["attack", "hold", "decay", "sustain", "release"]
+ADSSR = ["attack", "decay", "break", "slope", "sustain", "release"]
+AR = ["attack", "release"]
 
 XY = ["x", "y"]
 VF = ["f1", "f2", "f3", "f4"]
@@ -144,14 +154,32 @@ for index, colour in enumerate(COLOURS):
 control(4, 6, "custom", "WIDE", ONE, [64], span=3, color="F49500")
 control(4, 9, "custom", "TALL", ONE, [96], span=3)
 
+# Page five: the three envelope types the mk2 draws that this had no control
+# type for. Same shapes, same contour code - what each adds is a segment.
+page(5, "ENVELOPES 2")
+control(5, 0, "ahdsr", "AHDSR", AHDSR, [20, 40, 50, 80, 40])
+control(5, 1, "ahdsr", "LONG HOLD", AHDSR, [10, 120, 30, 90, 30])
+control(5, 2, "ahdsr", "NO HOLD", AHDSR, [30, 0, 60, 70, 60])
+control(5, 3, "adssr", "ADSSR", ADSSR, [20, 40, 90, 60, 50, 40])
+control(5, 4, "adssr", "STEEP", ADSSR, [8, 20, 110, 20, 20, 30])
+control(5, 5, "ar", "AR", AR, [30, 60])
+control(5, 6, "ar", "SLOW AR", AR, [110, 110], color="F45C51")
+control(5, 7, "ar", "CLICK", AR, [0, 8], color="F49500")
+control(5, 8, "ahdsr", "WIDE", AHDSR, [20, 40, 50, 80, 40], span=2,
+        color="03A598")
+control(5, 10, "adssr", "WIDE", ADSSR, [20, 40, 90, 60, 50, 40], span=2,
+        color="C44795")
+# A sustain range topping out at zero, the case that used to go NaN.
+control(5, 12, "ahdsr", "ZERO TOP", AHDSR, [20, 30, 40, -30, 40],
+        ranges=[(0, 127), (0, 127), (0, 127), (-64, 0), (0, 127)],
+        color="FFFFFF")
+
 preset = {
     "version": 2,
     "name": "CONTROLS 2",
     "projectId": "controls2",
     "pages": pages,
-    "devices": [
-        {"id": 1, "name": "Generic MIDI", "port": 1, "channel": 1},
-    ],
+    "devices": DEVICES,
     "overlays": [],
     "groups": [],
     "controls": controls,

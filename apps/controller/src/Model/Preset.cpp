@@ -1886,6 +1886,15 @@ uint8_t Preset::getNumValues(Control::Type type)
         case (Control::Type::Adr):
             return (3);
 
+        case (Control::Type::Ahdsr):
+            return (5);
+
+        case (Control::Type::Adssr):
+            return (6);
+
+        case (Control::Type::Ar):
+            return (2);
+
         case (Control::Type::Adsr):
             return (4);
 
