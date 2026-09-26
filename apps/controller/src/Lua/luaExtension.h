@@ -35,6 +35,7 @@
 #include "luaControl.h"
 #include "luaDevice.h"
 #include "luaEvents.h"
+#include "luaGraphics.h"
 #include "luaGroup.h"
 #include "luaHelpers.h"
 #include "luaHooks.h"

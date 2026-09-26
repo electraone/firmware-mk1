@@ -1,5 +1,6 @@
 #include "luaControl.h"
 #include "luaValue.h"
+#include "luaCallbacks.h"
 #include "Preset.h"
 #include "MainDelegate.h"
 
@@ -18,6 +19,43 @@ int luaopen_controls(lua_State *L)
     return 1;
 }
 
+/**
+ * @brief The Lua object for a Control, with its uservalue table intact.
+ *
+ * The object is cached so that a script can hang its own fields off a control
+ * - a cube's vertices, its rotation - and find them again on the next
+ * callback. Without the cache every controls.get() would answer a fresh
+ * userdata with an empty table, and the fields set on the last one would be
+ * gone.
+ */
+void luaLE_pushControlInstance(lua_State *L, const Control &control)
+{
+    ControlCallbacks &entry = controlCallbacks(control.getId());
+
+    if (entry.userdata != LUA_REFNIL) {
+        lua_rawgeti(L, LUA_REGISTRYINDEX, entry.userdata);
+
+        if (void *cached = luaL_testudata(L, -1, "Control")) {
+            if (*reinterpret_cast<const Control **>(cached) == &control) {
+                return;
+            }
+        }
+
+        /* A stale entry: the preset was replaced and the id reused. */
+        lua_pop(L, 1);
+        luaL_unref(L, LUA_REGISTRYINDEX, entry.userdata);
+        entry.userdata = LUA_REFNIL;
+    }
+
+    luaLE_pushObject(L, "Control", &control);
+
+    lua_newtable(L);
+    lua_setuservalue(L, -2);
+
+    entry.userdata = luaL_ref(L, LUA_REGISTRYINDEX);
+    lua_rawgeti(L, LUA_REGISTRYINDEX, entry.userdata);
+}
+
 int control_create(lua_State *L)
 {
     lua_settop(L, 1);
@@ -26,10 +64,110 @@ int control_create(lua_State *L)
     const Control &control = luaPreset->getControl(controlId);
 
     if (control.isValid()) {
-        luaLE_pushObject(L, "Control", &control);
+        luaLE_pushControlInstance(L, control);
         return (1);
     }
     return (luaL_error(L, "failed: control %d does not exist", controlId));
+}
+
+/*
+ * A control answers its own methods, the fields a script has set on it, and
+ * anything put on the shared metatable - in that order, so a script's own
+ * field never hides a method it did not mean to.
+ */
+int control_index(lua_State *L)
+{
+    /* The instance's own fields */
+    lua_getuservalue(L, 1);
+    lua_pushvalue(L, 2);
+    lua_gettable(L, -2);
+
+    if (!lua_isnil(L, -1)) {
+        return (1);
+    }
+    lua_pop(L, 1);
+
+    /* The methods */
+    lua_getmetatable(L, 1);
+    lua_pushvalue(L, 2);
+    lua_rawget(L, -2);
+
+    return (1);
+}
+
+int control_newindex(lua_State *L)
+{
+    luaL_checkudata(L, 1, "Control");
+
+    lua_getuservalue(L, 1);
+    lua_pushvalue(L, 2);
+    lua_pushvalue(L, 3);
+    lua_settable(L, -3);
+
+    return (0);
+}
+
+int control_repaint(lua_State *L)
+{
+    lua_settop(L, 1);
+
+    if (Control *control = getControl(L, 1)) {
+        if (Component *component = control->getComponent()) {
+            component->repaint();
+        }
+        return (0);
+    }
+    return (luaL_error(L, "failed: not a valid control"));
+}
+
+/*
+ * A function kept in the registry until the control is told to forget it, or
+ * the preset goes away. Replacing one frees the reference it held.
+ */
+static int setControlCallback(lua_State *L, int ControlCallbacks::*which)
+{
+    if (Control *control = getControl(L, 1)) {
+        luaL_checktype(L, 2, LUA_TFUNCTION);
+
+        ControlCallbacks &entry = controlCallbacks(control->getId());
+
+        lua_pushvalue(L, 2);
+
+        const int ref = luaL_ref(L, LUA_REGISTRYINDEX);
+
+        if (entry.*which != LUA_REFNIL) {
+            luaL_unref(L, LUA_REGISTRYINDEX, entry.*which);
+        }
+
+        entry.*which = ref;
+        return (0);
+    }
+    return (luaL_error(L, "failed: not a valid control"));
+}
+
+int control_setPaintCallback(lua_State *L)
+{
+    return (setControlCallback(L, &ControlCallbacks::paint));
+}
+
+int control_setTouchCallback(lua_State *L)
+{
+    return (setControlCallback(L, &ControlCallbacks::touch));
+}
+
+int control_setPotCallback(lua_State *L)
+{
+    return (setControlCallback(L, &ControlCallbacks::pot));
+}
+
+int control_setPotTouchCallback(lua_State *L)
+{
+    return (setControlCallback(L, &ControlCallbacks::potTouch));
+}
+
+int control_setSwitchCallback(lua_State *L)
+{
+    return (setControlCallback(L, &ControlCallbacks::switchPress));
 }
 
 int control_delete(lua_State *L)
@@ -296,8 +434,11 @@ void control_register(lua_State *L)
     lua_pushcfunction(L, control_delete);
     lua_setfield(L, -2, "__gc");
 
-    lua_pushvalue(L, -1);
+    lua_pushcfunction(L, control_index);
     lua_setfield(L, -2, "__index");
+
+    lua_pushcfunction(L, control_newindex);
+    lua_setfield(L, -2, "__newindex");
 
     luaLE_addObjectMethods(L, control_functions);
 

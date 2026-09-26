@@ -29,6 +29,8 @@
 
 #include "luaIntegration.h"
 
+class Control;
+
 int control_create(lua_State *L);
 int control_delete(lua_State *L);
 int control_getId(lua_State *L);
@@ -46,6 +48,17 @@ int control_getValueIds(lua_State *L);
 int control_getValue(lua_State *L);
 int control_getValues(lua_State *L);
 int control_print(lua_State *L);
+int control_index(lua_State *L);
+int control_newindex(lua_State *L);
+int control_repaint(lua_State *L);
+int control_setPaintCallback(lua_State *L);
+int control_setTouchCallback(lua_State *L);
+int control_setPotCallback(lua_State *L);
+int control_setPotTouchCallback(lua_State *L);
+int control_setSwitchCallback(lua_State *L);
+
+/** The control's Lua object, with the fields a script has set on it. */
+void luaLE_pushControlInstance(lua_State *L, const Control &control);
 
 void control_register(lua_State *L);
 
@@ -55,12 +68,26 @@ static const luaL_Reg controls_functions[] = { { "get", control_create },
                                                { NULL, NULL } };
 
 static const luaL_Reg control_functions[] = {
-    { "getId", control_getId },         { "setVisible", control_setVisible },
-    { "isVisible", control_isVisible }, { "setName", control_setName },
-    { "getName", control_getName },     { "setColor", control_setColour },
-    { "getColor", control_getColour },  { "setPot", control_setPot },
-    { "setBounds", control_setBounds }, { "getBounds", control_getBounds },
-    { "setSlot", control_setSlot },     { "getValueIds", control_getValueIds },
-    { "getValue", control_getValue },   { "getValues", control_getValues },
-    { "print", control_print },         { NULL, NULL }
+    { "getId", control_getId },
+    { "setVisible", control_setVisible },
+    { "isVisible", control_isVisible },
+    { "setName", control_setName },
+    { "getName", control_getName },
+    { "setColor", control_setColour },
+    { "getColor", control_getColour },
+    { "setPot", control_setPot },
+    { "setBounds", control_setBounds },
+    { "getBounds", control_getBounds },
+    { "setSlot", control_setSlot },
+    { "getValueIds", control_getValueIds },
+    { "getValue", control_getValue },
+    { "getValues", control_getValues },
+    { "print", control_print },
+    { "repaint", control_repaint },
+    { "setPaintCallback", control_setPaintCallback },
+    { "setTouchCallback", control_setTouchCallback },
+    { "setPotCallback", control_setPotCallback },
+    { "setPotTouchCallback", control_setPotTouchCallback },
+    { "setSwitchCallback", control_setSwitchCallback },
+    { NULL, NULL }
 };

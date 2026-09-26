@@ -1,4 +1,5 @@
 #include "Presets.h"
+#include "luaCallbacks.h"
 #include "MidiOutput.h"
 #include "MidiCallbacks.h"
 #include "luaExtension.h"
@@ -182,6 +183,11 @@ void Presets::reset(void)
     // Reset Lua callbacks
     resetMidiCallbacks();
 
+    /* The Lua objects and callbacks the controls were given. lua_close frees
+     * the registry itself; what has to go is the map of references into it,
+     * or the next preset's control number one inherits this one's. */
+    clearControlCallbacks(L);
+
     // Reset Lua
     closeLua();
 
@@ -282,6 +288,7 @@ void Presets::runUploadedLuaScript(void)
  */
 void Presets::runPresetLuaScript(void)
 {
+    clearControlCallbacks(L);
     closeLua();
 
     luaPreset = &preset;

@@ -29,6 +29,7 @@
 #include "VerticalFader4Control.h"
 #include "XyPadControl.h"
 #include "TextBoxControl.h"
+#include "CustomControl.h"
 #include "ADSR.h"
 #include "ADR.h"
 #include "Env5Seg.h"
@@ -303,6 +304,8 @@ ControlComponent *
         c = new XyPadControl(control, newDelegate);
     } else if (control.getType() == Control::Type::TextBox) {
         c = new TextBoxControl(control, newDelegate);
+    } else if (control.getType() == Control::Type::Custom) {
+        c = new CustomControl(control, newDelegate);
     } else if (control.getType() == Control::Type::Adsr) {
         c = new ShapedEnvelope<ADSR, EnvelopeControl>(control, newDelegate);
     } else if (control.getType() == Control::Type::Adr) {

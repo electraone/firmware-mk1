@@ -1,4 +1,7 @@
 #include "luaHooks.h"
+#include "luaCallbacks.h"
+#include "luaControl.h"
+#include "Control.h"
 #include "System.h"
 #include "Trace.h"
 
@@ -114,4 +117,165 @@ uint8_t
     luaLE_postFunctionCleanUp(L);
 
     return (dataOut);
+}
+
+/* -------------------------------------------------------------------------
+ * The callbacks a Custom control runs
+ *
+ * Each one is a function the script handed to the control, kept in the
+ * registry. The control's own Lua object is the first argument, so a script
+ * reads the fields it set on the control from inside the callback; the rest
+ * is a table describing what happened.
+ * ------------------------------------------------------------------------- */
+
+namespace
+{
+    /* The function, and the control it belongs to, on the stack. Answers
+     * false and leaves the stack as it found it when there is no callback. */
+    bool pushCallback(const Control &control, int ref)
+    {
+        if (!L || (ref == LUA_REFNIL)) {
+            return (false);
+        }
+
+        lua_rawgeti(L, LUA_REGISTRYINDEX, ref);
+
+        if (!lua_isfunction(L, -1)) {
+            lua_pop(L, 1);
+            return (false);
+        }
+
+        /* The instance, not a bare object: Control's __index reads the
+         * uservalue table first, and a userdata without one takes the callback
+         * down at its first method call. */
+        luaLE_pushControlInstance(L, control);
+        return (true);
+    }
+
+    void call(const char *name, int arguments)
+    {
+        if (lua_pcall(L, arguments, 0, 0) != 0) {
+            System::logger.write(LOG_LUA,
+                                 "error running function '%s': %s",
+                                 name,
+                                 lua_tostring(L, -1));
+        }
+
+        luaLE_postFunctionCleanUp(L);
+    }
+
+    /* The valueId of the input that knob arrives on, which is what tells one
+     * knob of a twelve-knob Custom control from another. */
+    const char *valueIdForPot(const Control &control, uint8_t potId)
+    {
+        for (const auto &input : control.inputs) {
+            if (input.getPotId() == potId) {
+                return (control.translateValueId(input.getValueId()));
+            }
+        }
+        return ("value");
+    }
+
+    void runKnobCallback(const Control &control,
+                         int ref,
+                         const char *name,
+                         LuaPotEvent event,
+                         uint8_t potId,
+                         int16_t delta)
+    {
+        if (!pushCallback(control, ref)) {
+            return;
+        }
+
+        lua_newtable(L);
+        luaLE_pushTableInteger(L, "type", (int)event);
+        /* Zero based, as the mk2's is: scripts written against the release
+         * that shipped it index from zero. */
+        luaLE_pushTableInteger(L, "id", potId);
+        luaLE_pushTableString(L, "valueId", valueIdForPot(control, potId));
+        luaLE_pushTableInteger(L, "delta", delta);
+
+        call(name, 2);
+    }
+} // namespace
+
+void runPaintCallback(const Control &control)
+{
+    const ControlCallbacks *entry = findControlCallbacks(control.getId());
+
+    if (!entry || !pushCallback(control, entry->paint)) {
+        return;
+    }
+
+    call("runPaintCallback", 1);
+}
+
+void runTouchCallback(const Control &control, const TouchEvent &touchEvent)
+{
+    const ControlCallbacks *entry = findControlCallbacks(control.getId());
+
+    if (!entry || !pushCallback(control, entry->touch)) {
+        return;
+    }
+
+    lua_newtable(L);
+    luaLE_pushTableInteger(L, "type", (int)touchEvent.getEvent());
+    luaLE_pushTableInteger(L, "id", touchEvent.getId());
+    luaLE_pushTableInteger(L, "x", touchEvent.getX());
+    luaLE_pushTableInteger(L, "y", touchEvent.getY());
+    luaLE_pushTableInteger(L, "touchDownX", touchEvent.getTouchDownX());
+    luaLE_pushTableInteger(L, "touchDownY", touchEvent.getTouchDownY());
+
+    call("runTouchCallback", 2);
+}
+
+void runPotCallback(const Control &control,
+                    const PotEvent &potEvent,
+                    LuaPotEvent event)
+{
+    const ControlCallbacks *entry = findControlCallbacks(control.getId());
+
+    if (!entry) {
+        return;
+    }
+
+    runKnobCallback(
+        control,
+        entry->pot,
+        "runPotCallback",
+        event,
+        potEvent.getPotId(),
+        (event == LuaPotEvent::change) ? potEvent.getAcceleratedChange() : 0);
+}
+
+void runPotTouchCallback(const Control &control,
+                         const PotEvent &potEvent,
+                         LuaPotEvent event)
+{
+    const ControlCallbacks *entry = findControlCallbacks(control.getId());
+
+    if (!entry) {
+        return;
+    }
+
+    runKnobCallback(control,
+                    entry->potTouch,
+                    "runPotTouchCallback",
+                    event,
+                    potEvent.getPotId(),
+                    0);
+}
+
+void runSwitchCallback(const Control &control, uint8_t potId, bool pressed)
+{
+    const ControlCallbacks *entry = findControlCallbacks(control.getId());
+
+    if (!entry || !pushCallback(control, entry->switchPress)) {
+        return;
+    }
+
+    lua_pushinteger(L, potId);
+    lua_pushboolean(L, pressed);
+
+    call("runSwitchCallback", 3);
 }
