@@ -1785,10 +1785,10 @@ Rectangle
 #ifdef DEBUG
         System::logger.write(LOG_ERROR,
                              "parseBounds: bounds=[%d %d %d %d]",
-                             bounds.x,
-                             bounds.y,
-                             bounds.width,
-                             bounds.height);
+                             bounds.getX(),
+                             bounds.getY(),
+                             bounds.getWidth(),
+                             bounds.getHeight());
 #endif /* DEBUG */
     }
 
@@ -1827,7 +1827,8 @@ bool Preset::getPresetNameFast(File &file,
     copyString(presetName, doc.as<char *>(), maxPresetNameLength);
 
 #ifdef DEBUG
-    System::logger.write(LOG_ERROR, "Preset::getPresetNameFast: name=%s", name);
+    System::logger.write(
+        LOG_ERROR, "Preset::getPresetNameFast: name=%s", presetName);
 #endif /* DEBUG */
 
     return (true);

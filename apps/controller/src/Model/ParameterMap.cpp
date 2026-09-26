@@ -155,15 +155,13 @@ LookupEntry *ParameterMap::setValueSimple(uint8_t deviceId,
                                           uint16_t midiValue)
 {
 #ifdef DEBUG
-    System::logger.write(
-        LOG_TRACE,
-        "ParameterMap::setValue: deviceId=%d, type=%d, parameterNumber=%d, "
-        "midiValue=%d, origin=%d",
-        deviceId,
-        type,
-        parameterNumber,
-        midiValue,
-        origin);
+    System::logger.write(LOG_TRACE,
+                         "ParameterMap::setValueSimple: deviceId=%d, type=%d, "
+                         "parameterNumber=%d, midiValue=%d",
+                         deviceId,
+                         type,
+                         parameterNumber,
+                         midiValue);
 #endif
 
     // These messages are not device specific

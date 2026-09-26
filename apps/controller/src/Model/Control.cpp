@@ -519,7 +519,7 @@ void Control::addToParameterMap(ControlValue &value)
 {
 #ifdef DEBUG
     System::logger.write(
-        ERROR,
+        LOG_ERROR,
         "addToParameterMap: controlId: %d, handle: %d, address=%x",
         value.getControl()->getId(),
         value.getHandle(),
