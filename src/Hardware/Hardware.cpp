@@ -65,7 +65,10 @@ void Hardware::initialise(void)
     // Initialise pots
     pots.initialise();
     System::logger.write(LOG_ERROR, "Pots: initialised");
+}
 
+void Hardware::mountStorage(void)
+{
     // Mount the internal storage media
     Hardware::sdcard.mount();
 

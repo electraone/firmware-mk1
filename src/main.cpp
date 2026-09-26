@@ -54,6 +54,13 @@ void initialise(void)
     // Initialise hardware components
     Hardware::initialise();
 
+    /* The logo, the moment there is a screen to put it on. The card mount
+     * and the fonts that follow are the slow part of a boot, and a panel
+     * that stays dark through them looks like one that is not coming. */
+    displaySplashLogo(Hardware::screen);
+
+    Hardware::mountStorage();
+
     // Measure the SPI link before the application starts competing for it.
     DISPLAY_BENCHMARK_RUN();
 

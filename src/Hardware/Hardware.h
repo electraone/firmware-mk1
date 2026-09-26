@@ -54,6 +54,16 @@ public:
     Hardware() = delete;
 
     static void initialise(void);
+
+    /**
+     * @brief Mount the card and hand the pools their storage.
+     *
+     * Apart from initialise() because the mount is the long part of a boot
+     * on this model - seconds, on a card that only answers in 1-bit mode -
+     * and the display is up by then: the caller puts something on it first.
+     */
+    static void mountStorage(void);
+
     static void reset(void);
 
     static Pots pots;
