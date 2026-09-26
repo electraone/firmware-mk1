@@ -20,3 +20,4 @@ docs
 apps/*
 !apps/demo
 !apps/controllerbuild-prof
+build-prof

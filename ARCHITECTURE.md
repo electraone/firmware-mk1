@@ -34,6 +34,32 @@ because Lua and the page components come after that.
 There is no RTOS. Three contexts exist, and knowing which one a piece of
 code runs on is most of what there is to know about concurrency here.
 
+```mermaid
+flowchart TB
+  subgraph ISR["Timer interrupt - every 500 us, priority 150"]
+    RM["readMidi<br/>up to 4 messages per input"] --> RT["MidiRouter<br/>forward to other ports<br/>(drop and count if DIN is full)"]
+    SX["USB SysEx callbacks<br/>SysexHandler / SysexHandlerCtrl"]
+  end
+  subgraph MAIN["Main loop - cooperative TaskScheduler"]
+    PM["processMidi - 2 ms"] --> APP["Controller<br/>Midi::process"]
+    PS["processSysex - 5 ms"] --> API["SysexApi<br/>uploads, API calls"]
+    RP["readPots - 5 ms"] --> COMP["ControlComponent"]
+    LUA["Lua<br/>parameterMap.set"] --> PMAP
+    APP --> PMAP[("ParameterMap")]
+    COMP --> PMAP
+    PMAP --> SEND["Midi::sendMessage"]
+    PMAP -. "dirty entries" .-> RPT["repaintParameterMap - 25 ms"]
+    RPT --> GFX["repaintGraphics - 25 ms"]
+    SEND -- "outgoingQueue x64" --> SM["sendMidi - 2 ms<br/>up to 10 per tick"]
+  end
+  RM -- "incomingQueueL2 x100<br/>(shifted with IRQ masked)" --> PM
+  SX -- "sysexQueue x32" --> PS
+  SM --> IF["USB device / USB host / DIN 1-2"]
+  RT --> IF
+  GFX --> LCD["RA8876 display"]
+```
+
+
 ### 2.1 The main loop — cooperative tasks
 
 `main()` calls `System::tasks.execute()` forever. `SystemTasks`
@@ -124,7 +150,63 @@ cost nothing measurable.
 
 ## 4. The data model
 
+```mermaid
+classDiagram
+  direction TB
+  class Preset {
+    pages, groups, overlays : map
+    devices : map
+    controls : Controls
+    controlValues : Pool~ControlValue~
+    controlInputs : Pool~Input~
+    devicesByPortChannel[2][17]
+  }
+  class Controls {
+    storage : Pool~Control~ (2 KB pages, never moves)
+    byId : vector~Control*~ sorted
+    find(id) : binary search
+  }
+  class Control {
+    56 bytes
+    values : Span~ControlValue~
+    inputs : Span~Input~
+    component : Component*
+  }
+  class ControlValue {
+    52 bytes
+    message : Message
+    control, overlay : pointers
+    nextDestination : ControlValue*
+  }
+  class Message {
+    20 bytes
+    data : DataBytes* (template)
+  }
+  class Device {
+    sysexTemplates : deque~DataBytes~
+    namedTemplates : (id, index)
+  }
+  class ParameterMap {
+    index : vector of (hash, entry*) sorted
+    pool : deque~LookupEntry~
+  }
+  class LookupEntry {
+    8 bytes
+    midiValue
+    firstDestination : ControlValue*
+  }
+  Preset *-- Controls
+  Preset *-- Device
+  Controls o-- Control
+  Control --> ControlValue : Span into pool
+  ControlValue *-- Message
+  Message --> Device : points at a template
+  ParameterMap *-- LookupEntry
+  LookupEntry --> ControlValue : chain through nextDestination
+```
+
 A preset (`apps/controller/src/Model/`) is loaded from JSON into:
+
 
 - `Pages` and `Groups` — `std::map`s, few entries.
 - `Devices` — `std::map<id, Device>`; each `Device` owns its SysEx templates
@@ -178,6 +260,24 @@ Display updates are therefore batched at 40 Hz whatever the MIDI rate.
 
 ### 5.1 A knob step
 
+```mermaid
+flowchart TB
+  A["readPots task - every 5 ms<br/>Pot::process(): two ADC reads, quadrature phase, hysteresis"]
+  A --> B["PotBroadcaster::potChange<br/>to the ControlComponent assigned to that pot"]
+  B --> C["FaderControl::onPotChange<br/>ChangeAccumulator turns counts into value steps"]
+  C --> D["ControlComponent::emitValueChange<br/>parameterMap.setValue(Origin::internal)"]
+  D --> E["LookupEntry::setMidiValue<br/>nothing more if the value is unchanged"]
+  E --> F["parameterMap.onChange<br/>Midi::sendMessage builds the message: 11-13 us"]
+  F --> G["MidiOutput::addToQueue<br/>outgoingQueue x64"]
+  E -. "entry dirty" .-> H["repaintParameterMap - within 25 ms<br/>onMidiValueChange, repaint()"]
+  G --> I["sendMidi - next 2 ms tick<br/>up to 10 messages to USB device, USB host, DIN"]
+  H --> J["repaintGraphics - within 25 ms"]
+  style A fill:#eef
+  style I fill:#efe
+  style J fill:#efe
+```
+
+
 `readPots` (5 ms) → `Pot::process` (two ADC reads, quadrature phase,
 hysteresis) → `PotBroadcaster::potChange` → the listener registered for
 that pot (`ControlComponent`, via `assignPot`) → `FaderControl::onPotChange`
@@ -196,6 +296,24 @@ knob produces at most 200 events a second, and the message goes out on the
 next `sendMidi` tick, within 2 ms.
 
 ### 5.2 An incoming MIDI message
+
+```mermaid
+flowchart TB
+  A["USB device / USB host / DIN input"]
+  A --> B["readMidi - timer ISR, every 500 us<br/>up to 4 messages per input per tick"]
+  B --> C["MidiRouter::routeMessage<br/>forward to other ports; DIN only if canSend(), else drop and count"]
+  C --> D["incomingQueueL2 x100"]
+  D --> E["processMidi - every 2 ms<br/>shift with interrupts masked"]
+  E --> F["Controller::handleIncomingMidiMessage<br/>MIDI control port, MIDI learn, Lua midi.* callbacks"]
+  F --> G["Midi::process<br/>device by port and channel: one table lookup<br/>RPN / CC14 detectors"]
+  G --> H["parameterMap.setValue(Origin::midi)<br/>12-18 us per message end to end"]
+  H -. "entry dirty" .-> I["repaintParameterMap - within 25 ms<br/>Lua formatter / function, onMidiValueChange"]
+  I --> J["repaintGraphics - within 25 ms"]
+  style B fill:#fee
+  style E fill:#eef
+  style J fill:#efe
+```
+
 
 Timer ISR (`readMidi`, **1–2 µs average, 309 µs worst** per tick, the worst
 being a tick that also ran SysEx callbacks) → L2 → `processMidi` →
@@ -246,6 +364,23 @@ block: **24 µs average** for a short message against 269 templates (most
 fail at the first differing byte), 260 µs for the long ones at boot.
 
 ## 6. Windows, components, repainting
+
+```mermaid
+flowchart TB
+  WM["WindowManager - stack of windows,<br/>the top one gets pots, buttons, touch"]
+  WM --> MW["MainWindow"]
+  MW --> PV["PageView (rebuilt on page switch, ~1 ms)"]
+  PV --> CC["ControlComponent x ~36<br/>one per control on the page"]
+  PV --> GC["GroupControl per group"]
+  WM --> DW["DetailWindow / Detail<br/>knobs = private copies of the values,<br/>linked into the ParameterMap for its lifetime"]
+  WM --> POP["Preset / page selection,<br/>snapshots, USB host ports"]
+  CC -- "repaint()" --> RQ[("repaint queue")]
+  DW -- "repaint()" --> RQ
+  RQ --> RG["repaintGraphics - 25 ms<br/>full page ~90 ms on the display"]
+  RG --> LCD["RA8876"]
+  SP["switchPreset"] -- "1. close every window<br/>2. delete the PageView<br/>3. replace the preset<br/>4. page 1" --> WM
+```
+
 
 `WindowManager` keeps a stack of `Window`s; the top one is active and gets
 the pot, button and touch events. `MainWindow` owns the `PageView`, whose
