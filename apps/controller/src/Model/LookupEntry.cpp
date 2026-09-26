@@ -22,7 +22,10 @@
 #include "LookupEntry.h"
 
 LookupEntry::LookupEntry()
-    : midiValue(MIDI_VALUE_DO_NOT_SEND), dirty(false), callFunction(false)
+    : midiValue(MIDI_VALUE_DO_NOT_SEND),
+      dirty(false),
+      callFunction(false),
+      firstDestination(nullptr)
 {
 }
 
@@ -66,50 +69,65 @@ bool LookupEntry::hasValidMidiValue(void) const
 
 bool LookupEntry::addDestination(ControlValue *newDestination)
 {
-    bool added = false;
-    if (std::find(messageDestination.begin(),
-                  messageDestination.end(),
-                  newDestination)
-        == messageDestination.end()) {
-        messageDestination.push_back(newDestination);
-        added = true;
+    /* Appended at the tail so the first value registered stays first, which
+     * is the one getMessage() answers with. The chains are one or two values
+     * long, so the walk costs nothing worth a tail pointer. */
+    ControlValue **link = &firstDestination;
+
+    while (*link) {
+        if (*link == newDestination) {
+            return (false);
+        }
+        link = &(*link)->nextDestinationRef();
     }
-    return (added);
+    newDestination->setNextDestination(nullptr);
+    *link = newDestination;
+    return (true);
 }
 
 bool LookupEntry::removeDestination(ControlValue *destination)
 {
-    bool removed = false;
-    auto it = std::find(
-        messageDestination.begin(), messageDestination.end(), destination);
-    if (it != messageDestination.end()) {
-        messageDestination.erase(it);
-        removed = true;
+    ControlValue **link = &firstDestination;
+
+    while (*link) {
+        if (*link == destination) {
+            *link = destination->getNextDestination();
+            destination->setNextDestination(nullptr);
+            return (true);
+        }
+        link = &(*link)->nextDestinationRef();
     }
-    return (removed);
+    return (false);
 }
 
 void LookupEntry::removeAllDestinations(void)
 {
-    messageDestination.clear();
+    ControlValue *value = firstDestination;
+
+    while (value) {
+        ControlValue *next = value->getNextDestination();
+        value->setNextDestination(nullptr);
+        value = next;
+    }
+    firstDestination = nullptr;
 }
 
 bool LookupEntry::hasDestinations(void) const
 {
-    return (!messageDestination.empty());
+    return (firstDestination != nullptr);
 }
 
-std::vector<ControlValue *> &LookupEntry::getDestinations(void)
+DestinationRange LookupEntry::getDestinations(void) const
 {
-    return (messageDestination);
+    return (DestinationRange(firstDestination));
 }
 
 Message &LookupEntry::getMessage(void)
 {
-    if (messageDestination.empty()) {
+    if (!firstDestination) {
         return (emptyMessage);
     }
-    return (messageDestination[0]->message);
+    return (firstDestination->message);
 }
 
 void LookupEntry::markForRepaintWithoutFunction(void)

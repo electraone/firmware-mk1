@@ -48,7 +48,7 @@ PageView::PageView(Preset *preset,
 
 PageView::~PageView(void)
 {
-    for (const auto &[id, control] : model->controls) {
+    for (const auto &control : model->controls) {
         if (control.getPageId() == pageId) {
             delegate.removeComponentFromControl(control.getId());
         }
@@ -68,7 +68,7 @@ void PageView::setControlSet(uint8_t newControlSetId)
 
     resetUsedPots();
 
-    for (const auto &[id, control] : model->controls) {
+    for (const auto &control : model->controls) {
         if (control.getPageId() == pageId) {
             auto cc = dynamic_cast<ControlComponent *>(control.getComponent());
 
@@ -222,7 +222,7 @@ void PageView::resized(void)
 
 void PageView::addControls(const Controls &controls)
 {
-    for (const auto &[id, control] : controls) {
+    for (const auto &control : controls) {
         if (control.getPageId() == pageId) {
             addControl(control);
         }

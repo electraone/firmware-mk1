@@ -57,6 +57,7 @@ ControlValue::ControlValue()
       function(0),
       control(nullptr),
       overlay(nullptr),
+      nextDestination(nullptr),
       relative(false),
       accelerated(false),
       labelSet(false),
@@ -87,6 +88,7 @@ ControlValue::ControlValue(Control *newControl,
       formatter(newFormatter),
       function(newFunction),
       overlay(newOverlay),
+      nextDestination(nullptr),
       labelSet(false),
       labelHandle(VramStore::invalidHandle),
       value(defaultValue)
@@ -106,6 +108,16 @@ ControlValue::ControlValue(Control *newControl,
 void ControlValue::setControl(Control *newControl)
 {
     control = newControl;
+}
+
+ControlValue *ControlValue::getNextDestination(void) const
+{
+    return (nextDestination);
+}
+
+void ControlValue::setNextDestination(ControlValue *newNext)
+{
+    nextDestination = newNext;
 }
 
 Control *ControlValue::getControl(void) const

@@ -30,8 +30,7 @@
 
 Device::Device()
     : MidiOutput(MidiInterface::Type::MidiAll, 0, 0, 0),
-      id(0),
-      lastMessageId(100)
+      id(0)
 {
     *name = '\0';
 }
@@ -42,8 +41,7 @@ Device::Device(uint8_t newId,
                uint8_t newChannel,
                uint16_t newRate)
     : MidiOutput(MidiInterface::Type::MidiAll, newPort, newChannel, newRate),
-      id(newId),
-      lastMessageId(1)
+      id(newId)
 {
     setName(newName);
 }
@@ -90,19 +88,34 @@ uint8_t Device::getResponseIndex(uint8_t id) const
  */
 std::vector<uint8_t> *Device::registerData(JsonVariant jData, Preset *preset)
 {
-    std::vector<uint8_t> *registeredData;
-
     if (jData.is<JsonArray>()) {
         Data data(jData.as<JsonArray>(), preset);
         data.makeSysexData();
-        sysexMessages[lastMessageId] = data.get();
-        registeredData = &sysexMessages[lastMessageId];
-        lastMessageId++;
-    } else {
-        uint16_t sysexDataId = jData.as<uint16_t>();
-        registeredData = &(sysexMessages[sysexDataId]);
+        sysexTemplates.push_back(data.get());
+        return (&sysexTemplates.back());
     }
-    return (registeredData);
+    return (getNamedTemplate(jData.as<uint16_t>()));
+}
+
+void Device::setNamedTemplate(uint16_t id, const DataBytes &bytes)
+{
+    *getNamedTemplate(id) = bytes;
+}
+
+DataBytes *Device::getNamedTemplate(uint16_t id)
+{
+    for (const auto &[templateId, index] : namedTemplates) {
+        if (templateId == id) {
+            return (&sysexTemplates[index]);
+        }
+    }
+
+    /* Named before it was defined, or never defined: an empty template, as
+     * the map used to create on the same lookup, so a message that names a
+     * missing id sends nothing rather than something else's bytes. */
+    namedTemplates.emplace_back(id, sysexTemplates.size());
+    sysexTemplates.emplace_back();
+    return (&sysexTemplates.back());
 }
 
 void Device::print(uint8_t logLevel) const
@@ -114,5 +127,6 @@ void Device::print(uint8_t logLevel) const
     System::logger.write(logLevel, "rate: %d", getRate());
     System::logger.write(logLevel, "requests: %d", requests.size());
     System::logger.write(logLevel, "responses: %d", responses.size());
-    System::logger.write(logLevel, "sysex messages: %d", sysexMessages.size());
+    System::logger.write(
+        logLevel, "sysex templates: %d", sysexTemplates.size());
 }

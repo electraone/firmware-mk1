@@ -50,7 +50,7 @@ const char *valueIdsDx7Env[] = {
  * paid for that many times. The face cost nothing: it went into padding the
  * bitfield was already leaving behind. Adding a field that grows this is a
  * decision, and it should be made on purpose rather than noticed later. */
-static_assert(sizeof(Control) == 68,
+static_assert(sizeof(Control) == 56,
               "sizeof(Control) has changed - every preset pays for it once "
               "per control, so check that it was meant");
 
@@ -197,9 +197,9 @@ void Control::setBounds(const Rectangle &newBounds)
     bounds = newBounds;
 }
 
-void Control::setValues(std::vector<ControlValue> newValues)
+void Control::setValues(std::vector<ControlValue> &newValues)
 {
-    values = newValues;
+    values = Span<ControlValue>(newValues.data(), newValues.size());
 }
 
 ControlValue &Control::getValue(uint8_t index)

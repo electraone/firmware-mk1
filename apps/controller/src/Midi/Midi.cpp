@@ -515,11 +515,9 @@ void Midi::processSysex(const MidiMessage &midiMessage)
     }
 
     for (const auto &[id, device] : model.devices) {
-        for (const auto &[messageId, sysexMessage] : device.sysexMessages) {
-            if (id < 100) { // only for user defined messages
-                if (processSysexData(sysexMessage, device, sysexBlock)) {
-                    break;
-                }
+        for (const auto &sysexMessage : device.sysexTemplates) {
+            if (processSysexData(sysexMessage, device, sysexBlock)) {
+                break;
             }
         }
 

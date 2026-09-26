@@ -31,6 +31,7 @@
 #include "GroupControl.h"
 #include "BottomBar.h"
 #include "Preset.h"
+#include "Controls.h"
 #include "MainDelegate.h"
 #include "UiApi.h"
 #include "UiFeatures.h"

@@ -1111,7 +1111,7 @@ void MainWindow::setDefaultValue(uint16_t controlId, uint8_t handle)
  */
 void MainWindow::setAllDefaultValues(void)
 {
-    for (auto &[id, control] : preset.controls) {
+    for (auto &control : preset.controls) {
         for (auto &value : control.values) {
             control.setDefaultValue(value, true);
         }
@@ -1288,7 +1288,7 @@ void MainWindow::closeAllWindows(void)
 
 void MainWindow::sendAllControls(void)
 {
-    for (auto &[id, control] : preset.controls) {
+    for (auto &control : preset.controls) {
         for (auto &value : control.values) {
             value.message.setValue(
                 parameterMap.getValue(value.message.getDeviceId(),

@@ -4,8 +4,6 @@
 #include "MidiCallbacks.h"
 #include "luaExtension.h"
 
-#pragma GCC optimize("O0")
-
 Presets::Presets(const char *newAppSandbox,
                  const bool &shouldKeepPresetState,
                  const bool &shouldLoadPresetStateOnStartup)
@@ -111,11 +109,12 @@ bool Presets::loadPreset(LocalFile file)
         // Display the preset if valid.
         if (preset.isValid()) {
             // Initialise the parameterMap
-            for (auto &[id, control] : preset.controls) {
+            for (auto &control : preset.controls) {
                 for (auto &value : control.values) {
                     control.setDefaultValue(value, false);
                 }
             }
+            parameterMap.compact();
 
             if (Hardware::ram.adj_free() > 62000) {
                 parameterMap.setProjectId(preset.getProjectId());

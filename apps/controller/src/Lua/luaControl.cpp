@@ -67,8 +67,7 @@ int controls_print(lua_State *L)
 {
     lua_settop(L, 0);
 
-    for (const auto &[controlId, control] : luaPreset->controls) {
-        (void)controlId;
+    for (const auto &control : luaPreset->controls) {
         control.print(LOG_LUA);
     }
 

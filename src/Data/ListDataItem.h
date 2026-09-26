@@ -67,7 +67,7 @@ public:
         address = saveRecord(bitmap.getAddress(), colour, label);
     }
 
-    virtual ~ListDataItem() = default;
+    
 
     int16_t getValue(void) const
     {
@@ -242,9 +242,12 @@ private:
         record.label[read - recordPrefix - 1] = '\0';
     }
 
-    int16_t value;
+        /* Eight bytes, of which the label is none: it lives in the display's
+     * memory behind the handle. A preset with a thousand list items pays
+     * for every byte here a thousand times, so the handle goes first to
+     * leave no padding, and there is no vtable. */
     VramStore::Handle address;
-
+    int16_t value;
     struct {
         bool labelIsEmpty : 1;
         bool bitmapIsEmpty : 1;

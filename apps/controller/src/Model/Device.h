@@ -30,6 +30,7 @@
 #include <cstdint>
 #include <vector>
 #include <map>
+#include <deque>
 #include "Response.h"
 #include "Message.h"
 #include "MidiOutput.h"
@@ -55,6 +56,11 @@ public:
     const char *getName(void) const;
     uint8_t getResponseIndex(uint8_t id) const;
     DataBytes *registerData(JsonVariant jData, Preset *preset);
+
+    /** A template the preset gave an id, from the device's patch messages,
+     *  so a value's message may name it instead of carrying its own. */
+    void setNamedTemplate(uint16_t id, const DataBytes &bytes);
+    DataBytes *getNamedTemplate(uint16_t id);
     void print(uint8_t logLevel = LOG_TRACE) const;
 
 private:
@@ -64,12 +70,22 @@ private:
         uint8_t id : 6;
     };
     char name[MaxNameLength + 1];
-    uint16_t lastMessageId;
+
+    /* The ids the preset wrote, and which template each names. A message
+     * carrying its own data has no id and needs none - it keeps a pointer
+     * straight to its template. */
+    std::vector<std::pair<uint16_t, uint16_t>> namedTemplates;
 
 public:
     std::vector<std::vector<uint8_t>> requests;
     std::vector<Response> responses;
-    SysexMessages sysexMessages;
+    /* Every SysEx template of this device, in the order they were met. A
+     * deque, not a vector: messages point at their template, and a deque
+     * does not move what it holds when it grows. Not a map: this used to be
+     * one, keyed by an eight-bit id that was also handed out by counting,
+     * so a preset with more than 255 SysEx controls had its later templates
+     * overwrite its first ones, and every node cost 40 bytes besides. */
+    std::deque<DataBytes> sysexTemplates;
 };
 
 typedef std::map<uint8_t, Device> Devices;

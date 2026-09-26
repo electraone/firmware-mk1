@@ -10,6 +10,9 @@
 #include "Overlay.h"
 #include "Group.h"
 #include "Control.h"
+#include "Controls.h"
+#include "Pool.h"
+
 
 #include "Rule.h"
 #include "Checksum.h"
@@ -57,6 +60,10 @@ public:
     Overlay &addOverlay(uint8_t id);
 
     void resetComponents(void);
+
+        /** Give back what the indexes grew into, once the preset is read. */
+    void compactControls(void);
+
 
 public:
     static constexpr uint8_t MaxNameLength = 20;
@@ -121,17 +128,17 @@ private:
     // Controls
     Control parseControl(JsonObject jControl);
 
-    // Inputs
-    std::vector<Input> parseInputs(File &file,
-                                   size_t startPosition,
-                                   size_t endPosition,
-                                   Control::Type controlType);
+        // Inputs: placed in controlInputs and handed to the control
+        void parseInputs(File &file,
+                     size_t startPosition,
+                     size_t endPosition,
+                     Control &control);
     Input
         parseInput(File &file, size_t startPosition, Control::Type controlType);
     Input parseInput(Control::Type controlType, JsonObject jInput);
 
-    // Values
-    std::vector<ControlValue> parseValues(File &file,
+        // Values: placed in controlValues and handed to the control
+    void parseValues(File &file,
                                           size_t startPosition,
                                           size_t endPosition,
                                           Control *control);
@@ -216,6 +223,12 @@ private:
     char name[MaxNameLength + 1];
     char projectId[MaxProjectIdLength + 1];
     bool valid;
+
+        /* Every value and every input of every control. A control holds a Span
+     * into these - see Span.h and Pool.h. */
+    Pool<ControlValue, 2048> controlValues;
+    Pool<Input, 512> controlInputs;
+
 
 public: // Public on the purpose
     Pages pages;

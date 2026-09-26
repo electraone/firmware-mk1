@@ -91,9 +91,16 @@ public:
         return (items[index].getValue());
     }
 
-    uint16_t getNumItems(void) const
+        uint16_t getNumItems(void) const
     {
         return (items.size());
+    }
+
+    /** Give back the room push_back() grew into and did not use. Called
+     *  once the items have all been added. */
+    void compact(void)
+    {
+        items.shrink_to_fit();
     }
 
     uint16_t getMaxIndex(void) const

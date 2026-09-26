@@ -28,8 +28,7 @@
 #pragma once
 
 #include <vector>
-#include <map>
-
+#include "Span.h"
 #include "ControlValue.h"
 #include "Input.h"
 #include "Rectangle.h"
@@ -122,7 +121,7 @@ public:
             bool visible,
             const Font &font = Font());
 
-    virtual ~Control() = default;
+    
 
     bool isValid(void) const;
     void setId(uint16_t newId);
@@ -148,7 +147,7 @@ public:
     Font getFont(void) const;
     Rectangle getBounds(void) const;
     void setBounds(const Rectangle &bounds);
-    void setValues(std::vector<ControlValue> values);
+        void setValues(std::vector<ControlValue> &values);
     ControlValue &getValue(uint8_t index);
     const ControlValue &getValue(uint8_t index) const;
     const ControlValue &getValueByValueId(const char *valueId) const;
@@ -207,9 +206,12 @@ private:
 
     Component *component;
 
+/* A control does not own its values and inputs. The preset keeps all of
+ * them in one pool each, and these are views into those pools - see Span.h
+ * and Pool.h. */
 public:
-    std::vector<ControlValue> values;
-    std::vector<Input> inputs;
+    Span<ControlValue> values;
+    Span<Input> inputs;
 };
 
-typedef std::map<uint16_t, Control> Controls;
+

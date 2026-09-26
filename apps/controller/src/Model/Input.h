@@ -14,7 +14,6 @@ public:
     {
     }
 
-    virtual ~Input() = default;
 
     void setPotId(uint8_t newPotId)
     {

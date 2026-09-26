@@ -34,6 +34,8 @@
 #include "Event.h"
 #include "System.h"
 #include <functional>
+#include <deque>
+#include <vector>
 
 class ParameterMapWindow;
 
@@ -391,6 +393,10 @@ public:
      */
     void processQueue(void);
 
+    /** Give back the room the index grew into. Called once a preset has
+     *  registered all of its values. */
+    void compact(void);
+
 private:
     /**
      * @brief Find a LookupEntry by hash
@@ -513,7 +519,21 @@ private:
      */
     inline static uint16_t getParameterNumber(uint32_t hash);
 
-    std::map<uint32_t, LookupEntry> entries;
+    /* Every incoming MIDI message and every knob turn looks a parameter up
+     * here, so the index is one sorted array of eight-byte records, found
+     * by binary search - not a red-black tree of separately allocated
+     * nodes. The entries themselves live in a deque, because callers hold
+     * pointers to them and a deque never moves what it holds when it grows;
+     * an insertion only shifts the index records, which nobody keeps. */
+    struct IndexRecord {
+        uint32_t hash;
+        LookupEntry *entry;
+    };
+
+    std::vector<IndexRecord>::iterator findSlot(uint32_t hash);
+
+    std::vector<IndexRecord> index;
+    std::deque<LookupEntry> pool;
     LookupEntry *lastRead;
     uint32_t lastReadHash;
     bool enabled;

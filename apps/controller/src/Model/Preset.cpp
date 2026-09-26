@@ -1,4 +1,7 @@
 #include "Preset.h"
+#include <algorithm>
+#include <exception>
+
 #include "Hardware.h"
 #include "Colours.h"
 #include "JsonTools.h"
@@ -7,6 +10,8 @@
 Page Preset::pageNotFound;
 Device Preset::deviceNotFound;
 Control Preset::controlNotFound;
+/* Controls has no source file of its own; its one static lives here. */
+Control Controls::notStored;
 Group Preset::groupNotFound;
 
 Preset::Preset() : valid(false)
@@ -32,9 +37,23 @@ bool Preset::load(const char *filename)
         return (false);
     }
 
-    file.setTimeout(5);
+        file.setTimeout(5);
 
-    if (!parse(file)) {
+    /* Building the model allocates, and an allocation that fails throws.
+     * Uncaught, that reached std::terminate, whose handler writes to a
+     * stderr this board does not have and hard faults there - so the
+     * preset that was merely too big took the whole instrument down. */
+    bool parsed = false;
+    try {
+        parsed = parse(file);
+    } catch (const std::exception &e) {
+        System::logger.write(LOG_ERROR,
+                             "Preset::load: exception while parsing: %s",
+                             e.what());
+        reset();
+    }
+
+    if (!parsed) {
         System::logger.write(LOG_ERROR,
                              "Preset::load: cannot parse preset: filename=%s",
                              filename);
@@ -78,12 +97,9 @@ void Preset::resetRoot(void)
  */
 void Preset::resetControls(void)
 {
-    for (auto &[id, control] : controls) {
-        control.inputs = std::vector<Input>();
-        control.values = std::vector<ControlValue>();
-    }
-
     controls.clear();
+    controlValues.clear();
+    controlInputs.clear();
 }
 
 /*--------------------------------------------------------------------------*/
@@ -233,14 +249,12 @@ const Group &Preset::getGroup(uint16_t groupId) const
  */
 Control &Preset::getControl(uint16_t controlId)
 {
-    try {
-        return controls.at(controlId);
-    } catch (std::out_of_range const &) {
-        System::logger.write(LOG_ERROR,
-                             "getControl: control does not exist: controlId=%d",
-                             controlId);
+    if (Control *control = controls.find(controlId)) {
+        return (*control);
     }
-
+    System::logger.write(LOG_ERROR,
+                         "getControl: control does not exist: controlId=%d",
+                         controlId);
     return (Preset::controlNotFound);
 }
 
@@ -249,15 +263,7 @@ Control &Preset::getControl(uint16_t controlId)
  */
 const Control &Preset::getControl(uint16_t controlId) const
 {
-    try {
-        return controls.at(controlId);
-    } catch (std::out_of_range const &) {
-        System::logger.write(LOG_ERROR,
-                             "getControl: control does not exist: controlId=%d",
-                             controlId);
-    }
-
-    return (Preset::controlNotFound);
+    return (const_cast<Preset *>(this)->getControl(controlId));
 }
 
 Control &Preset::moveControlToSlot(uint16_t controlId,
@@ -302,12 +308,17 @@ Overlay &Preset::addOverlay(uint8_t id)
 
 void Preset::resetComponents(void)
 {
-    for (auto &[id, control] : controls) {
+    for (auto &control : controls) {
         control.resetComponent();
     }
     for (auto &[id, group] : groups) {
         group.resetComponent();
     }
+}
+
+void Preset::compactControls(void)
+{
+    controls.compact();
 }
 
 /*--------------------------------------------------------------------------*/
@@ -379,10 +390,15 @@ bool Preset::parse(File &file)
         reset();
         return (false);
     }
-    if (!parseControls(file)) {
+        if (!parseControls(file)) {
         System::logger.write(LOG_ERROR, "Preset::parse: parseControls failed");
         reset();
+                return (false);
     }
+
+    compactControls();
+
+
     //#ifdef DEBUG
     System::logger.write(
         LOG_INFO,
@@ -768,19 +784,15 @@ bool Preset::parseControls(File &file)
         JsonObject jControl = doc.as<JsonObject>();
 
         if (jControl) {
-            Control control = parseControl(jControl);
+                                    /* Stored first, because it does not move once stored, so its
+             * values can point back at it as they are read. */
+            Control &control = controls.add(parseControl(jControl));
 
-            uint16_t controlId = control.getId();
-            controls[controlId] = control;
-            controls[controlId].values = parseValues(file,
-                                                     controlStartPosition,
-                                                     controlEndPosition,
-                                                     &controls[controlId]);
-            controls[controlId].inputs = parseInputs(file,
-                                                     controlStartPosition,
-                                                     controlEndPosition,
-                                                     control.getType());
-            pages[controls[controlId].getPageId()].setHasObjects(true);
+            parseValues(
+                file, controlStartPosition, controlEndPosition, &control);
+            parseInputs(
+                file, controlStartPosition, controlEndPosition, control);
+            pages[control.getPageId()].setHasObjects(true);
         } else {
             System::logger.write(LOG_ERROR, "parseControls: broken control");
             break;
@@ -1009,12 +1021,12 @@ void Preset::parseMessages(File &file,
                 return;
             }
 
-            uint8_t id = doc["id"] | 0;
+                        uint16_t id = doc["id"] | 0;
             Data data(doc["data"].as<JsonArray>(), this);
 
             data.makeSysexData();
 
-            device->sysexMessages[id] = data.get();
+            device->setNamedTemplate(id, data.get());
 
         } while (file.findUntil(",", "]"));
     }
@@ -1089,12 +1101,13 @@ bool Preset::parseOverlayItems(File &file, Overlay &overlay)
                 bitmap);
 #endif /* DEBUG */
 
-            overlay.addItem(value, label, bitmap, colour, colourIsSet);
+                        overlay.addItem(value, label, bitmap, colour, colourIsSet);
         } else {
             break;
         }
     } while (file.findUntil(",", "]"));
 
+    overlay.compact();
     return (true);
 }
 
@@ -1111,8 +1124,7 @@ Group Preset::parseGroup(JsonObject jGroup)
     uint8_t pageId = constrainPageId(jGroup["pageId"]);
     Rectangle bounds = parseBounds(jGroup["bounds"]);
     const char *name = jGroup["name"];
-    uint32_t colour =
-        Colours565::fromString(jGroup["color"].as<const char *>());
+        uint32_t colour = Colours565::fromString(jGroup["color"] | "FFFFFF");
     Group::Variant variantType = Group::translateVariant(jGroup["variant"]);
     Group group(groupId, pageId, bounds, name, colour, variantType);
 
@@ -1157,8 +1169,8 @@ Control Preset::parseControl(JsonObject jControl)
     Rectangle bounds = parseBounds(jControl["bounds"]);
     Control::Type controlType = Control::translateType(jControl["type"]);
     Control::Mode controlMode = Control::translateControlMode(jControl["mode"]);
-    uint32_t colour =
-        Colours565::fromString(jControl["color"].as<const char *>());
+        /* A control without a colour used to hand strtol a null pointer. */
+    uint32_t colour = Colours565::fromString(jControl["color"] | "FFFFFF");
     Control::Variant variantType =
         Control::translateVariant(jControl["variant"]);
     uint8_t controlSetId = constrainControlSetId(jControl["controlSetId"]);
@@ -1187,27 +1199,33 @@ Control Preset::parseControl(JsonObject jControl)
 /** Parse an array of Control inputs
  *
  */
-std::vector<Input> Preset::parseInputs(File &file,
-                                       size_t startPosition,
-                                       size_t endPosition,
-                                       Control::Type controlType)
+void Preset::parseInputs(File &file,
+                         size_t startPosition,
+                         size_t endPosition,
+                         Control &control)
 {
     std::vector<Input> inputs;
 
     if (file.seek(startPosition) == false) {
         System::logger.write(
             LOG_ERROR, "Preset::parseInputs: cannot rewind the start position");
-        return (inputs);
+        return;
     }
+
     if (findElement(file, "\"inputs\"", ARRAY, endPosition)) {
         do {
             size_t valueStartPosition = file.position();
-
-            auto input = parseInput(file, valueStartPosition, controlType);
-            inputs.push_back(input);
+            inputs.push_back(
+                parseInput(file, valueStartPosition, control.getType()));
         } while (file.findUntil(",", "]"));
     }
-    return (inputs);
+
+    Input *run = controlInputs.allocate(inputs.size());
+
+    if (run) {
+        std::copy(inputs.begin(), inputs.end(), run);
+        control.inputs = Span<Input>(run, inputs.size());
+    }
 }
 
 /** Parse an individual Control input
@@ -1262,18 +1280,20 @@ Input Preset::parseInput(Control::Type controlType, JsonObject jInput)
 /** Parse array of Value objects in the Control
  *
  */
-std::vector<ControlValue> Preset::parseValues(File &file,
-                                              size_t startPosition,
-                                              size_t endPosition,
-                                              Control *control)
+void Preset::parseValues(File &file,
+                         size_t startPosition,
+                         size_t endPosition,
+                         Control *control)
 {
+    /* Assembled here first because the values arrive in any order and land
+     * by index; the run then goes to the pool whole. */
     // Set the initial size of vector according to the type of Control
     std::vector<ControlValue> values(Preset::getNumValues(control->getType()));
 
     if (file.seek(startPosition) == false) {
         System::logger.write(
-            LOG_ERROR, "Preset::parseValues: cannot rewind the start position");
-        return (values);
+                                    LOG_ERROR, "Preset::parseValues: cannot rewind the start position");
+        return;
     }
     uint8_t ordinal = 0;
 
@@ -1298,13 +1318,21 @@ std::vector<ControlValue> Preset::parseValues(File &file,
                 values.resize(index + 1);
             }
 
-            ControlValue &currentValue = values[index];
-            currentValue = value;
-            currentValue.message.setControlValue(&currentValue);
+                                    values[index] = value;
         } while (file.findUntil(",", "]"));
     }
 
-    return (values);
+    ControlValue *run = controlValues.allocate(values.size());
+
+    if (!run) {
+        return;
+    }
+    for (size_t i = 0; i < values.size(); i++) {
+        run[i] = values[i];
+        run[i].setControl(control);
+        run[i].message.setControlValue(&run[i]);
+    }
+    control->values = Span<ControlValue>(run, values.size());
 }
 
 /* Parse individual Value out of the Value Array
@@ -1450,6 +1478,7 @@ ControlValue
     }
 
 #ifdef DEBUG
+#ifdef DEBUG
     System::logger.write(
         LOG_ERROR,
         "parseValue: id=%s, index=%d, defaultValue=%d, min=%d, max=%d, overlayId=%d, formatter=%s, function=%s, overlay=%x",
@@ -1462,6 +1491,7 @@ ControlValue
         luaFunctions[formatterIndex].c_str(),
         function,
         overlay);
+#endif /* DEBUG */
 #endif /* DEBUG */
     ControlValue value(control,
                        valueId,
@@ -2030,7 +2060,7 @@ void Preset::print(void) const
 
     System::logger.write(LOG_ERROR,
                          "--[Controls]-----------------------------------");
-    for (const auto &[id, control] : controls) {
+        for (const auto &control : controls) {
         control.print();
     }
 

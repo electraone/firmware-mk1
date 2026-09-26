@@ -67,10 +67,16 @@ public:
                  uint8_t newFunction,
                  Overlay *newOverlay);
 
-    virtual ~ControlValue() = default;
 
     void setControl(Control *newControl);
     Control *getControl(void) const;
+    /** The next value listening to the same parameter - see LookupEntry. */
+    ControlValue *getNextDestination(void) const;
+    void setNextDestination(ControlValue *newNext);
+    ControlValue *&nextDestinationRef(void)
+    {
+        return (nextDestination);
+    }
     int16_t getHandle(void) const;
     int16_t getIndex(void) const;
     const char *getId(void) const;
@@ -187,6 +193,10 @@ private:
     uint8_t function;
     Control *control;
     Overlay *overlay;
+    /* A parameter map entry lists the values it drives by threading them
+     * through this field, instead of keeping a vector of pointers to them.
+     * A value listens to exactly one parameter, so one link is enough. */
+    ControlValue *nextDestination;
     /** The label lives in the display's memory. The space is taken the
      *  first time a label is set, and rewritten in place after that, because
      *  a Lua formatter rewrites it on every value change. */

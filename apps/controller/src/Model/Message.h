@@ -81,7 +81,6 @@ public:
             bool newRelative,
             RelativeMode newRelativeMode,
             bool newAccelerated);
-    virtual ~Message() = default;
 
     /**
      * @brief  Sets the device id.
@@ -401,4 +400,3 @@ private:
     };
 };
 
-typedef std::map<uint8_t, std::vector<uint8_t>> SysexMessages;

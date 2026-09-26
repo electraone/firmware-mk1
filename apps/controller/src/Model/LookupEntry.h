@@ -30,7 +30,62 @@
 
 #include "ControlValue.h"
 #include <cstdint>
-#include <vector>
+
+/**
+ * @brief The values a parameter map entry drives, as something a range-for
+ *        can walk.
+ *
+ * The entry does not keep a container of them. Each value carries a link to
+ * the next value listening to the same parameter, and this walks that
+ * chain; a control value listens to one parameter, so it is on one chain.
+ */
+class DestinationRange
+{
+public:
+    class Iterator
+    {
+    public:
+        explicit Iterator(ControlValue *newValue) : value(newValue)
+        {
+        }
+
+        ControlValue *operator*(void) const
+        {
+            return (value);
+        }
+
+        Iterator &operator++(void)
+        {
+            value = value->getNextDestination();
+            return (*this);
+        }
+
+        bool operator!=(const Iterator &other) const
+        {
+            return (value != other.value);
+        }
+
+    private:
+        ControlValue *value;
+    };
+
+    explicit DestinationRange(ControlValue *newFirst) : first(newFirst)
+    {
+    }
+
+    Iterator begin(void) const
+    {
+        return (Iterator(first));
+    }
+
+    Iterator end(void) const
+    {
+        return (Iterator(nullptr));
+    }
+
+private:
+    ControlValue *first;
+};
 
 class LookupEntry
 {
@@ -113,7 +168,7 @@ public:
      * 
      * @return std::vector<ControlValue*>& the list of destinations
      */
-    std::vector<ControlValue *> &getDestinations(void);
+    DestinationRange getDestinations(void) const;
 
     /**
      * @brief Returns the first MIDI message associated with the entry
@@ -177,7 +232,11 @@ private:
         bool dirty : 1;
         bool callFunction : 1;
     };
-    std::vector<ControlValue *> messageDestination;
+    /* Head of the chain of values this parameter drives; they link on
+     * through ControlValue::nextDestination. Nearly every entry has exactly
+     * one, which a vector charged 12 bytes of handles and a heap block
+     * for. */
+    ControlValue *firstDestination;
 
     static Message emptyMessage;
 };

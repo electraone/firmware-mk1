@@ -24,8 +24,10 @@
 #include "ControlComponent.h"
 #include "JsonTools.h"
 #include "luaExtension.h"
+#include <algorithm>
 
-#pragma GCC optimize("O0")
+
+
 
 // Global pointer to current ParameterMap instance. \todo get rid of that.
 ParameterMap parameterMap;
@@ -46,16 +48,30 @@ void ParameterMap::setAppSandbox(const char *newAppSandbox)
     copyString(appSandbox, newAppSandbox, 20);
 }
 
+std::vector<ParameterMap::IndexRecord>::iterator
+    ParameterMap::findSlot(uint32_t hash)
+{
+    return (std::lower_bound(
+        index.begin(),
+        index.end(),
+        hash,
+        [](const IndexRecord &record, uint32_t key) {
+            return (record.hash < key);
+        }));
+}
+
 LookupEntry *ParameterMap::getAndCache(uint32_t hash)
 {
     if (lastRead && (lastReadHash == hash)) {
         return (lastRead);
     }
-    auto it = entries.find(hash);
-    if (it != entries.end()) {
-        lastRead = &(it->second);
+
+    auto it = findSlot(hash);
+
+    if ((it != index.end()) && (it->hash == hash)) {
+        lastRead = it->entry;
         lastReadHash = hash;
-        return &(it->second);
+        return (it->entry);
     }
     return (nullptr);
 }
@@ -65,18 +81,27 @@ LookupEntry *ParameterMap::getOrCreate(uint8_t deviceId,
                                        uint16_t parameterNumber,
                                        ControlValue *controlValue)
 {
-    uint32_t hash = calculateHash(deviceId, type, parameterNumber);
+        uint32_t hash = calculateHash(deviceId, type, parameterNumber);
 
-    auto insertResult = entries.emplace(hash, LookupEntry());
+    auto it = findSlot(hash);
+    LookupEntry *entry = nullptr;
 
-    if (controlValue) {
-        insertResult.first->second.addDestination(controlValue);
+    if ((it != index.end()) && (it->hash == hash)) {
+        entry = it->entry;
+    } else {
+        pool.emplace_back();
+        entry = &pool.back();
+        index.insert(it, IndexRecord{ hash, entry });
     }
 
-    lastRead = &(insertResult.first->second);
+    if (controlValue) {
+        entry->addDestination(controlValue);
+    }
+
+    lastRead = entry;
     lastReadHash = hash;
 
-    return &(insertResult.first->second);
+    return (entry);
 }
 
 LookupEntry *ParameterMap::get(uint8_t deviceId,
@@ -299,10 +324,10 @@ bool ParameterMap::removeDestination(ControlValue *value)
 
 void ParameterMap::resetDeviceValues(uint8_t deviceId)
 {
-    for (auto &[hash, lookupEntry] : entries) {
-        if ((hash >> 24) == deviceId) {
-            if (getType(hash) != Message::Type::none) {
-                lookupEntry.resetMidiValue();
+        for (auto &record : index) {
+        if ((record.hash >> 24) == deviceId) {
+            if (getType(record.hash) != Message::Type::none) {
+                record.entry->resetMidiValue();
             }
         }
     }
@@ -311,9 +336,9 @@ void ParameterMap::resetDeviceValues(uint8_t deviceId)
 
 void ParameterMap::resetAllValues(void)
 {
-    for (auto &[hash, lookupEntry] : entries) {
-        if (getType(hash) != Message::Type::none) {
-            lookupEntry.resetMidiValue();
+        for (auto &record : index) {
+        if (getType(record.hash) != Message::Type::none) {
+            record.entry->resetMidiValue();
         }
     }
     postRepaint();
@@ -323,11 +348,13 @@ void ParameterMap::clear(void)
 {
     setProjectId("undefined");
 
-    for (auto &[hash, lookupEntry] : entries) {
-        lookupEntry.removeAllDestinations();
+        for (auto &record : index) {
+        record.entry->removeAllDestinations();
     }
-    entries.clear();
-
+    index.clear();
+    index.shrink_to_fit();
+    pool.clear();
+    pool.shrink_to_fit();
     lastRead = nullptr;
 }
 
@@ -335,7 +362,10 @@ void ParameterMap::print(uint8_t logLevel)
 {
     System::logger.write(logLevel,
                          "--[Parameter Map]---------------------------------");
-    for (auto &[hash, entry] : entries) {
+        for (auto &record : index) {
+        const uint32_t hash = record.hash;
+        LookupEntry &entry = *record.entry;
+
         if (getType(hash) != Message::Type::none) {
             System::logger.write(
                 logLevel,
@@ -398,7 +428,9 @@ void ParameterMap::serializeMap(File &file)
 
     file.print(",\"parameters\":[");
 
-    for (const auto &[hash, entry] : entries) {
+        for (const auto &record : index) {
+        const uint32_t hash = record.hash;
+        const LookupEntry &entry = *record.entry;
         const auto deviceId = getDeviceId(hash);
         const auto messageType = getType(hash);
         const auto parameterNumber = getParameterNumber(hash);
@@ -626,8 +658,10 @@ void ParameterMap::disable(void)
 
 void ParameterMap::scheduleLuaProcessing(void)
 {
-    for (auto &[hash, mapEntry] : entries) {
-        for (auto &messageDestination : mapEntry.getDestinations()) {
+        for (auto &record : index) {
+        LookupEntry &mapEntry = *record.entry;
+
+        for (auto *messageDestination : mapEntry.getDestinations()) {
             if (messageDestination->hasLua()) {
                 if (messageDestination->message.getType()
                     == Message::Type::none) {
@@ -642,7 +676,10 @@ void ParameterMap::scheduleLuaProcessing(void)
 
 void ParameterMap::repaintParameterMap(void)
 {
-    for (auto &[hash, mapEntry] : entries) {
+        for (auto &record : index) {
+        const uint32_t hash = record.hash;
+        LookupEntry &mapEntry = *record.entry;
+
         if (mapEntry.isDirty() && mapEntry.hasValidMidiValue()) {
             System::logger.write(
                 LOG_TRACE,
@@ -666,7 +703,7 @@ void ParameterMap::repaintParameterMap(void)
 
 void ParameterMap::repaintLookupEntry(LookupEntry *mapEntry)
 {
-    for (auto &messageDestination : mapEntry->getDestinations()) {
+        for (auto *messageDestination : mapEntry->getDestinations()) {
         if (mapEntry->hasValidMidiValue()) {
             // Process User Lua callbacks assigned to the ControlValue
             if (mapEntry->isForFullRepaint()
@@ -710,6 +747,11 @@ void ParameterMap::repaintLookupEntry(LookupEntry *mapEntry)
     }
 
     mapEntry->markAsProcessed();
+}
+
+void ParameterMap::compact(void)
+{
+    index.shrink_to_fit();
 }
 
 void ParameterMap::prepareMapStateFilename(char *buffer, size_t maxLength)
