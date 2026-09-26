@@ -49,6 +49,8 @@ private:
     bool handleCtrlFileReceived(uint8_t port,
                                 LocalFile file,
                                 ElectraCommand::Object fileType) override;
+    void handleStagedFilesApplied(uint8_t port,
+                                  bool currentSlotWritten) override;
     bool handleCtrlFileRemoved(uint8_t bankNumber,
                                uint8_t slot,
                                ElectraCommand::Object fileType) override;

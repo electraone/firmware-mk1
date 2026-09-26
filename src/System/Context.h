@@ -138,6 +138,22 @@ public:
         snprintf(buffer, maxSize - 1, "%s/p%03d.lua", appName, fileNumber);
     }
 
+    /**
+     * @brief Where a staged upload puts a file until its transaction commits.
+     *
+     * On the card rather than in memory: a preset is tens of kilobytes and
+     * there is a quarter of a megabyte of RAM.
+     */
+    void formatCacheDirectory(char *buffer, size_t maxSize)
+    {
+        snprintf(buffer, maxSize - 1, "%s/cache", appName);
+    }
+
+    void formatCacheFilename(char *buffer, size_t maxSize, uint8_t fileId)
+    {
+        snprintf(buffer, maxSize - 1, "%s/cache/f%03d", appName, fileId);
+    }
+
     void formatPreloadedFilename(char *buffer,
                                  size_t maxSize,
                                  const char *preloadedPath,

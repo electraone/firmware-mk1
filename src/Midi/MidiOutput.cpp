@@ -276,6 +276,30 @@ void MidiOutput::sendAvailable(MidiInterface::Type interface, uint8_t port)
     sendMessage(interface, port, message);
 }
 
+void MidiOutput::sendStagedProgress(MidiInterface::Type interface,
+                                    uint8_t port,
+                                    uint32_t bytes)
+{
+    uint8_t data[11] = { 0xF0,
+                         0x00,
+                         0x21,
+                         0x45,
+                         EVENT_MESSAGE,
+                         STAGED_PROGRESS,
+                         (uint8_t)(bytes & 0x7f),
+                         (uint8_t)((bytes >> 7) & 0x7f),
+                         (uint8_t)((bytes >> 14) & 0x7f),
+                         (uint8_t)((bytes >> 21) & 0x7f),
+                         0xF7 };
+
+    SysexBlock sysexBlock = SysexBlock(App::get()->sysexPool.openMemoryBlock());
+    sysexBlock.writeBytes(data, sizeof(data));
+    sysexBlock.close();
+
+    MidiMessage message(sysexBlock);
+    sendMessage(interface, port, message);
+}
+
 void MidiOutput::sendUsbHostDevices(MidiInterface::Type interface, uint8_t port)
 {
     uint8_t data[512];

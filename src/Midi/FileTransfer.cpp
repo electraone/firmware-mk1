@@ -39,10 +39,20 @@
 
 namespace
 {
-    /** The one location this serves, and the one type kept in it. */
+    /** The one location a listing or a fetch serves, and its one type. */
     constexpr const char *tmpLocation = "tmp";
     constexpr const char *screenshotType = "screenshot";
     constexpr const char *screenshotExtension = ".bmp";
+
+    /** The two a commit can write to, and the types they hold. */
+    constexpr const char *slotsLocation = "slots";
+    constexpr const char *rootLocation = "root";
+    constexpr const char *presetType = "preset";
+    constexpr const char *luaType = "lua";
+    constexpr const char *configType = "config";
+
+    constexpr int numberOfBanks = 6;
+    constexpr int slotsPerBank = 12;
 
     /** As much of a listing as is sent. A hundred or so names fit. */
     constexpr size_t listingCapacity = 2048;
@@ -187,6 +197,85 @@ void FileTransfer::sendListing(uint8_t port, const char *directory)
     }
 
     MidiOutput::sendFileListing(MidiInterface::Type::MidiUsbDev, port, doc);
+}
+
+bool FileTransfer::resolveDestination(char *path,
+                                      size_t size,
+                                      JsonObject descriptor)
+{
+    const char *location = descriptor["location"];
+    const char *type = descriptor["type"];
+
+    if (!location || !type) {
+        System::logger.write(
+            LOG_ERROR,
+            "FileTransfer: the destination needs a location and a type");
+        return (false);
+    }
+
+    if (strcmp(location, slotsLocation) == 0) {
+        const int bankNumber = descriptor["bankNumber"] | -1;
+        const int slot = descriptor["slot"] | -1;
+
+        if ((bankNumber < 0) || (bankNumber >= numberOfBanks) || (slot < 0)
+            || (slot >= slotsPerBank)) {
+            System::logger.write(LOG_ERROR,
+                                 "FileTransfer: no such slot: bank=%d, slot=%d",
+                                 bankNumber,
+                                 slot);
+            return (false);
+        }
+
+        /* A slot holds one script on this model, so the `path` a newer
+         * firmware uses to put several in one slot has nowhere to go. Refused
+         * rather than ignored: a host that asked for `modules/x.lua` and was
+         * given `the script` would not find what it wrote. */
+        if (descriptor["path"].is<const char *>()) {
+            System::logger.write(
+                LOG_ERROR,
+                "FileTransfer: a slot holds one script, so it takes no path");
+            return (false);
+        }
+
+        const uint16_t fileNumber =
+            (uint16_t)((bankNumber * slotsPerBank) + slot);
+
+        if (strcmp(type, presetType) == 0) {
+            System::context.formatPresetFilename(path, size, fileNumber);
+            return (true);
+        }
+
+        if (strcmp(type, luaType) == 0) {
+            System::context.formatLuaFilename(path, size, fileNumber);
+            return (true);
+        }
+
+        System::logger.write(
+            LOG_ERROR, "FileTransfer: a slot holds no %s", type);
+        return (false);
+    }
+
+    if ((strcmp(location, rootLocation) == 0)
+        && (strcmp(type, configType) == 0)) {
+        copyString(path, System::context.getCurrentConfigFile(), size - 1);
+        return (true);
+    }
+
+    System::logger.write(LOG_ERROR,
+                         "FileTransfer: nothing is kept at %s/%s on this model",
+                         location,
+                         type);
+    return (false);
+}
+
+bool FileTransfer::namesTheLoadedSlot(const char *path)
+{
+    if (path == nullptr) {
+        return (false);
+    }
+
+    return ((strcmp(path, System::context.getCurrentPresetFile()) == 0)
+            || (strcmp(path, System::context.getCurrentLuaFile()) == 0));
 }
 
 bool FileTransfer::removeLocation(const char *directory)

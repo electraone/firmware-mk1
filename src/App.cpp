@@ -108,6 +108,11 @@ void App::indicateMidiActivity(uint8_t port,
     }
 }
 
+void App::handleStagedFilesApplied([[maybe_unused]] uint8_t port,
+                                   [[maybe_unused]] bool currentSlotWritten)
+{
+}
+
 uint8_t App::getUsbHostPortAssigment(const char *productName)
 {
     return (0);

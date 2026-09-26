@@ -68,6 +68,7 @@
 #define PRESET_BANK_SWITCH 0x08
 #define USB_HOST_CHANGE 0x09
 #define POT_TOUCH 0x0A
+#define STAGED_PROGRESS 0x2D
 #define AVAILABLE 0x7F
 
 /*
@@ -146,6 +147,17 @@ public:
      * reads it with the same code on either.
      */
     static void sendUsbHostDevices(MidiInterface::Type interface, uint8_t port);
+
+    /**
+     * @brief How much of a staged upload has arrived, in bytes.
+     *
+     * Sent as each chunk is taken, so a host can draw a progress bar over a
+     * transfer that takes tens of seconds. Twenty-eight bits, seven to a byte,
+     * low byte first - the same shape the size is registered in.
+     */
+    static void sendStagedProgress(MidiInterface::Type interface,
+                                   uint8_t port,
+                                   uint32_t bytes);
     static void sendAck(MidiInterface::Type interface, uint8_t port);
     static void sendNack(MidiInterface::Type interface, uint8_t port);
     static void sendAvailable(MidiInterface::Type interface, uint8_t port);

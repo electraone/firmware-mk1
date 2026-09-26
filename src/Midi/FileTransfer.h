@@ -41,6 +41,8 @@
 
 #pragma once
 
+#include "ArduinoJson.h"
+
 #include <cstddef>
 #include <cstdint>
 
@@ -98,5 +100,23 @@ namespace FileTransfer
 
     /** Removes the directory. Refuses a directory with anything in it. */
     bool removeDirectory(const char *directory);
+
+    /**
+ * @brief Where a committed file goes, from the descriptor in the commit.
+ *
+ * The writing counterpart of resolve(). It takes a JSON object rather than a
+ * message because a commit names several files in one document.
+ *
+ * Three destinations, which is what this model has: a slot's preset, a slot's
+ * script, and the configuration. The locations the newer firmware also serves -
+ * preloaded modules, asset packs, firmware images - have nowhere to go here and
+ * are refused rather than guessed at.
+ *
+ * @return false when the descriptor names somewhere this does not keep files
+ */
+    bool resolveDestination(char *path, size_t size, JsonObject descriptor);
+
+    /** Whether a path is the preset or the script of the loaded slot. */
+    bool namesTheLoadedSlot(const char *path);
 
 } // namespace FileTransfer

@@ -121,6 +121,48 @@ rather than guessed at, because a guess here is a path.
 | `07 36` | Make a location's directory. Already there is success |
 | `05 36` | Remove it. Refused unless it is empty |
 
+### Staged upload
+
+The cache transaction, which is how a host writes a slot it is not sitting on,
+and the only way to write a preset and its script as one thing.
+
+| Message | What it does |
+| --- | --- |
+| `01 2D` | Open a transaction, discarding anything a previous one left |
+| `01 2E [id] [size × 4]` | Announce a file: its id, and its size in 28 bits, seven to a byte, low first |
+| `01 2F [id] [bytes …]` | One chunk of that file |
+| `04 2D [commit json]` | Verify every file and move them all into place |
+| `7E 2D [size × 4]` | Sent back as each chunk lands: bytes received so far |
+
+The commit names where each file goes and what it should hash to:
+
+```json
+{"files":[
+  {"id":1,"location":"slots","type":"preset","bankNumber":1,"slot":0,"md5":"…"},
+  {"id":2,"location":"slots","type":"lua","bankNumber":1,"slot":0,"md5":"…"}
+]}
+```
+
+Three destinations, which is what this model keeps: `slots` + `preset`,
+`slots` + `lua`, and `root` + `config`. The locations the newer firmware also
+serves - preloaded modules, asset packs, firmware images - have nowhere to go
+here and are refused rather than guessed at.
+
+Nothing is applied until every file in the commit is complete and matches its
+digest, and then they are all applied. A commit that fails leaves the slot
+exactly as it was and the staged files where they are, so a host can send the
+commit again without sending the files again.
+
+A chunk's payload is the file's own bytes, unpacked, so every byte has to be
+under `0x80`. That covers what this model stores - presets, scripts and
+configuration are all text. There is no verified packing for binary content and
+none is invented here: an eight bit byte would be refused by the MIDI layer
+long before the digest could catch it.
+
+Unlike the preset upload message, a commit does **not** delete the slot's
+script. That is the point of it: a preset and the script that belongs with it
+go into the slot together, and the slot is never left holding one of them.
+
 ### Events the controller sends
 
 `7E 01` ACK · `7E 00` NACK · `7E 02` preset switched · `7E 03` snapshot changed
@@ -135,20 +177,6 @@ line.
 
 Each of these is refused with a NACK. They are listed with what implementing
 them would actually take, which in every case is more than a binding.
-
-### Staged upload — `01 2D`, `01 2E`, `01 2F`, `04 2D`, `7E 2D`
-
-The cache transaction: open, register each file with its size, send it in
-chunks, commit with an MD5 of each. Presets, scripts and configuration all have
-their own upload messages here and those work, so this is needed only for what
-this model does not have anyway - firmware images, preloaded modules, asset
-packs.
-
-Two things are missing rather than unwritten. There is no MD5 anywhere in this
-firmware, and a commit that skipped the digest would defeat the point of the
-transaction. And the encoding of a chunk's payload is not documented; guessing
-it would produce a firmware that accepts uploads and silently corrupts them,
-which is worse than one that refuses them.
 
 ### Captures — `02 30`, `02 31`, `04 06`, `05 06`, `06 06`, `14 33`, `01 30`
 

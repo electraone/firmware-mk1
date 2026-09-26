@@ -69,6 +69,11 @@ public:
         Function = 0x0D,
         Value = 0x0E,
         UsbHostList = 0x10,
+        /* The staged upload transaction: the cache itself, one file's header,
+         * and a chunk of one file. */
+        StagedCache = 0x2D,
+        StagedHeader = 0x2E,
+        StagedChunk = 0x2F,
         Location = 0x34, /* a directory, by descriptor */
         File = 0x35, /* one file, by descriptor */
         Directory = 0x36, /* a directory to make or remove, by descriptor */
@@ -148,6 +153,12 @@ public:
             return (Object::UsbHostList);
         } else if (objectByte == 0x70) {
             return (Object::FileUi);
+        } else if (objectByte == 0x2D) {
+            return (Object::StagedCache);
+        } else if (objectByte == 0x2E) {
+            return (Object::StagedHeader);
+        } else if (objectByte == 0x2F) {
+            return (Object::StagedChunk);
         } else if (objectByte == 0x34) {
             return (Object::Location);
         } else if (objectByte == 0x35) {

@@ -72,6 +72,18 @@ public:
     virtual bool handleCtrlFileRemoved(uint8_t bankNumber,
                                        uint8_t slot,
                                        ElectraCommand::Object fileType);
+
+    /**
+     * @brief A staged transaction has moved its files into place.
+     *
+     * The base firmware knows how to write the files and nothing about what
+     * they mean, so what to do about it - refresh the preset list, load the
+     * slot again if it is the one on screen - belongs to the application.
+     *
+     * @param currentSlotWritten whether one of them was the loaded slot's
+     */
+    virtual void handleStagedFilesApplied(uint8_t port,
+                                          bool currentSlotWritten);
     virtual void runUserTask(void);
 
     void clearScreen(void);

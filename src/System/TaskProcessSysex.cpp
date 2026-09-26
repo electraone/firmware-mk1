@@ -29,6 +29,7 @@
 #include "helpers.h"
 #include "MidiOutput.h"
 #include "luaExtensionBase.h"
+#include "StagedUpload.h"
 #include "App.h"
 
 CircularBuffer<SysexTransport, SYSEX_QUEUE_SIZE> sysexQueue;
@@ -151,7 +152,19 @@ void processSysexMemory(uint8_t port, const SysexBlock &sysexBlock)
         ElectraCommand::Object object = cmd.getObject();
         MemoryBlock sysexPayload = sysexBlock.getElectraSysexPayload();
 
-        if (cmd.isFileUpload()) {
+        if (cmd.isFileUpload()
+            && (object == ElectraCommand::Object::StagedCache)) {
+            StagedUpload::open(port);
+        } else if (cmd.isFileUpload()
+                   && (object == ElectraCommand::Object::StagedHeader)) {
+            StagedUpload::registerFile(port, cmd);
+        } else if (cmd.isFileUpload()
+                   && (object == ElectraCommand::Object::StagedChunk)) {
+            StagedUpload::receiveChunk(port, sysexBlock);
+        } else if (cmd.isUpdate()
+                   && (object == ElectraCommand::Object::StagedCache)) {
+            StagedUpload::commit(port, sysexPayload);
+        } else if (cmd.isFileUpload()) {
             LocalFile file;
 
             if (object == ElectraCommand::Object::FilePreset) {

@@ -134,6 +134,26 @@ bool Controller::handleCtrlFileReceived(uint8_t port,
     return (status);
 }
 
+/** Staged transaction applied.
+ *  The files are already on the card; what is left is telling the rest of the
+ *  application about them.
+ */
+void Controller::handleStagedFilesApplied(uint8_t port, bool currentSlotWritten)
+{
+    /* The names in the preset list come from the preset files, and a commit
+     * may have replaced any of them. */
+    model.presets.assignPresetNames();
+    MidiOutput::sendPresetSlotChanged(MidiInterface::Type::MidiUsbDev, port);
+
+    /* What is on screen is the preset that was read off the card, so a commit
+     * that replaced that slot's files has to be read again or the panel goes
+     * on showing the preset that is no longer there. */
+    if (currentSlotWritten) {
+        delegate.switchPreset(model.presets.getCurrentBankNumber(),
+                              model.presets.getCurrentSlot());
+    }
+}
+
 /** File removed handler.
  *  handleCtrlFileRemoved() is called whenever file is removed using
  *  the Electra upload SysEx command.
