@@ -19,4 +19,4 @@ docs
 
 apps/*
 !apps/demo
-!apps/controller
+!apps/controllerbuild-prof
