@@ -47,6 +47,13 @@ public:
      * only thing this costs in main memory is the one shared buffer. */
     static constexpr int MaxLabelLength = 20;
 
+    /** @brief The rate factor a value moves at unless it declares another. */
+    static constexpr float DefaultSensitivity = 1.0f;
+
+    /** @brief The range a preset may ask for. */
+    static constexpr float MinSensitivity = 0.001f;
+    static constexpr float MaxSensitivity = 100.0f;
+
     ControlValue();
     ControlValue(Control *newControl,
                  const char *newValueId,
@@ -106,6 +113,29 @@ public:
     int16_t translateMidiValue(uint16_t midiValue) const;
 
     /**
+     * @brief How far a knob turns to move this value.
+     *
+     * A factor on the usual rate, which is a whole range per POT_SWEEP_DEGREES
+     * of travel: 0.1 is a tenth of that, so ten sweeps end to end, and 10 is ten
+     * times it. Clamped to MinSensitivity .. MaxSensitivity; anything that is
+     * not a positive number is the default.
+     *
+     * @attention kept to a single byte, and the byte is one the bitfields above
+     * already waste on alignment - so this costs nothing per value, and there
+     * are a great many values. A byte cannot hold a float, so what is stored is
+     * a mantissa of five bits and a power of ten of three: every figure a preset
+     * is likely to write - 0.001, 0.05, 0.25, 0.3, 2, 100 - lands exactly, and
+     * one that does not is rounded to four percent or so, which is far below
+     * what a hand can feel. Nothing reads it back out as JSON on this model, so
+     * there is no round trip for the rounding to show up in.
+     */
+    void setSensitivity(float newSensitivity);
+    float getSensitivity(void) const;
+
+    /** @brief Whether the value declares a sensitivity of its own. */
+    bool hasSensitivity(void) const;
+
+    /**
      * @brief Sets the flag that Control is using relative MIDI messages
      * 
      * @param shouldBeRelative use true when relative messages should be used
@@ -145,6 +175,10 @@ private:
          * to fetch and the test must not itself cost a transfer. */
         bool labelSet : 1;
     };
+
+    /* The knob rate factor, encoded - see setSensitivity(). Zero means the
+     * value declares none and moves at the usual rate. */
+    uint8_t sensitivity;
 
     int16_t defaultValue;
     int16_t min;

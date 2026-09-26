@@ -1463,17 +1463,27 @@ ControlValue
         function,
         overlay);
 #endif /* DEBUG */
-    return (ControlValue(control,
-                         valueId,
-                         valueIndex,
-                         defaultValue,
-                         min,
-                         max,
-                         overlayId,
-                         message,
-                         formatterIndex,
-                         functionIndex,
-                         overlay));
+    ControlValue value(control,
+                       valueId,
+                       valueIndex,
+                       defaultValue,
+                       min,
+                       max,
+                       overlayId,
+                       message,
+                       formatterIndex,
+                       functionIndex,
+                       overlay);
+
+    /* How far a knob turns to move the value - a factor on the usual rate, so
+     * 0.1 is a tenth of it. Optional; a value without one moves a whole range
+     * per sweep of the knob, which is what every value does. Set here rather
+     * than passed to the constructor, which already takes eleven things. */
+    if (jValue["sensitivity"].is<float>()) {
+        value.setSensitivity(jValue["sensitivity"].as<float>());
+    }
+
+    return (value);
 }
 
 /*--------------------------------------------------------------------------*/

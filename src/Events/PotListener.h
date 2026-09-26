@@ -32,6 +32,8 @@
 #include <math.h>
 #include "core_pins.h"
 #include "compat.h"
+#include "settings.h"
+#include "ChangeAccumulator.h"
 #include "PotBroadcaster.h"
 #include "PotEvent.h"
 
@@ -134,8 +136,10 @@ public:
     uint16_t getNumValues(void);
 
     /**
-	 * Calculates accelerated rate of change of the pot value
-	 */
+     * @brief Turn rotation of the knob into a change of the value it drives.
+     *
+     * @param relativeChange rotation since the last report, in phase counts
+     */
     int16_t computeRate(int16_t relativeChange);
 
     void resetStepCount(void);
@@ -143,16 +147,40 @@ public:
     static constexpr uint8_t AllPots = 255;
     static PotBroadcaster potBroadcaster;
 
+protected:
+    /**
+     * @brief How many distinct values the knob's own value holds.
+     *
+     * The scaling of a turn is a property of what the knob drives, and what a
+     * component drives can change while the knob is being held - an envelope
+     * hands its knob to whichever segment is in focus. The default is the one
+     * range the listener was assigned with.
+     */
+    virtual uint16_t numValuesForPot(void) const
+    {
+        return (numValues);
+    }
+
+    /**
+     * @brief The factor on the usual rate for turns of this knob.
+     *
+     * What the value the knob drives declares - see
+     * ControlValue::setSensitivity().
+     */
+    virtual float sensitivityForPot(void) const
+    {
+        return (1.0f);
+    }
+
 private:
-    int16_t decreaseRate(int16_t relativeChange);
-    static uint8_t getAccelerationTable(uint16_t numValues);
-    static uint8_t getIntervalBasedIndex(uint32_t interval);
+    /* Rotation banked towards the next report, in phase counts. Declared first
+     * on purpose: it wants four byte alignment, and the three small members
+     * below then fit in the padding the vtable pointer and it leave between
+     * them. Every Component on the screen is one of these, so the four bytes
+     * that ordering saves are four bytes a Component. */
+    ChangeAccumulator<POT_SWEEP_COUNTS, POT_ENCODER_DETENT_COUNTS> rate;
 
-    uint8_t potId;
-    uint32_t tsLastUpdate;
     uint16_t numValues;
-    int8_t stepCount;
+    uint8_t potId;
     bool encoderMode;
-
-    static const uint16_t accelerationTable[9][10];
 };

@@ -24,12 +24,32 @@
 #include "luaExtension.h"
 #include "Hardware.h"
 
+#include <cmath>
+
 char ControlValue::labelBuffer[ControlValue::MaxLabelLength + 1];
+
+namespace
+{
+    /* The encoding of the sensitivity byte: five bits of mantissa and three of
+     * power of ten, the power biased so that the middle of the range is unity.
+     * See ControlValue::setSensitivity(). */
+    constexpr uint8_t mantissaMask = 0x1f;
+    constexpr uint8_t maxMantissa = 31;
+    constexpr uint8_t exponentShift = 5;
+    constexpr uint8_t numExponents = 8;
+    constexpr int8_t exponentBias = 3;
+
+    /* 10 to the power of (index - exponentBias), which is what the mantissa is
+     * multiplied by. */
+    const float powersOfTen[numExponents] = { 1e-3f, 1e-2f, 1e-1f, 1e0f,
+                                              1e1f,  1e2f,  1e3f,  1e4f };
+} // namespace
 
 ControlValue::ControlValue()
     : handle(0),
       index(0),
       overlayId(0),
+      sensitivity(0),
       defaultValue(0),
       min(0),
       max(NOT_SET),
@@ -58,6 +78,7 @@ ControlValue::ControlValue(Control *newControl,
                            Overlay *newOverlay)
     : control(newControl),
       index(newIndex),
+      sensitivity(0),
       defaultValue(newDefaultValue),
       min(newMin),
       max(newMax),
@@ -373,6 +394,13 @@ void ControlValue::print(uint8_t logLevel) const
     System::logger.write(logLevel, "        min: %d", getMin());
     System::logger.write(logLevel, "        max: %d", getMax());
     System::logger.write(logLevel, "        overlayId: %d", getOverlayId());
+
+    /* As thousandths, because the logger has no float. A value that declares
+     * none prints 1000, which is the rate it moves at. */
+    System::logger.write(logLevel,
+                         "        sensitivity: %d/1000 (declared: %d)",
+                         (int)(getSensitivity() * 1000.0f),
+                         (int)hasSensitivity());
     System::logger.write(logLevel, "        function: %s", getFunction());
     System::logger.write(
         logLevel, "        formatter: %s", getFormatter().c_str());
@@ -395,6 +423,59 @@ bool ControlValue::isAccelerated(void) const
 int16_t ControlValue::calculateRelativeDelta(int16_t value) const
 {
     return (accelerated ? value : sign(value));
+}
+
+/*
+ * A byte rather than a float, because there is one of these for every value of
+ * every control and the byte is free where a float is not - see the note on the
+ * member. The mantissa is taken at the finest power of ten that still fits in
+ * five bits, so that the significant figures a preset wrote are the ones kept:
+ * 0.25 is stored as 25 thousandths of ten, not as 3 tenths.
+ */
+void ControlValue::setSensitivity(float newSensitivity)
+{
+    /* Written this way round so that a NaN, which compares false with
+     * everything, falls to the default rather than through both clamps. */
+    if (!(newSensitivity > 0.0f)) {
+        sensitivity = 0;
+        return;
+    }
+
+    if (newSensitivity < MinSensitivity) {
+        newSensitivity = MinSensitivity;
+    } else if (newSensitivity > MaxSensitivity) {
+        newSensitivity = MaxSensitivity;
+    }
+
+    for (uint8_t exponent = 0; exponent < numExponents; exponent++) {
+        const long mantissa =
+            std::lroundf(newSensitivity / powersOfTen[exponent]);
+
+        if ((mantissa >= 1) && (mantissa <= maxMantissa)) {
+            sensitivity =
+                (uint8_t)mantissa | (uint8_t)(exponent << exponentShift);
+            return;
+        }
+    }
+
+    /* Unreachable for anything inside the clamps above: the coarsest power of
+     * ten covers a hundred with a mantissa of ten. */
+    sensitivity = 0;
+}
+
+float ControlValue::getSensitivity(void) const
+{
+    if (sensitivity == 0) {
+        return (DefaultSensitivity);
+    }
+
+    return ((float)(sensitivity & mantissaMask)
+            * powersOfTen[sensitivity >> exponentShift]);
+}
+
+bool ControlValue::hasSensitivity(void) const
+{
+    return (sensitivity != 0);
 }
 
 int16_t ControlValue::sign(int16_t value)

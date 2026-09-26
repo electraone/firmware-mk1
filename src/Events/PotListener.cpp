@@ -30,12 +30,7 @@
 
 PotBroadcaster PotListener::potBroadcaster;
 
-PotListener::PotListener()
-    : potId(AllPots),
-      tsLastUpdate(0),
-      numValues(0),
-      stepCount(0),
-      encoderMode(0)
+PotListener::PotListener() : numValues(0), potId(AllPots), encoderMode(false)
 {
 }
 
@@ -85,73 +80,24 @@ uint16_t PotListener::getNumValues(void)
 
 void PotListener::resetStepCount(void)
 {
-    stepCount = 0;
+    rate.reset();
 }
 
+/**
+ * @brief Turn rotation into a change of the listener's value.
+ *
+ * Rotation arrives as raw phase counts, POT_COUNTS_PER_REVOLUTION to a turn of
+ * the knob. What that is worth is decided by ChangeAccumulator; all this adds is
+ * what the component in front of it has to say about the value being driven.
+ *
+ * @param[in] relativeChange rotation since the last report, in phase counts
+ *
+ * @return the change to apply to the listener's value
+ */
 int16_t PotListener::computeRate(int16_t relativeChange)
 {
-    if (numValues < 63
-        || encoderMode) { // this is for the controls with low number of values
-        return (decreaseRate(relativeChange));
-    } else {
-        uint32_t ts = millis();
-        uint32_t tp = ts - tsLastUpdate;
-        tsLastUpdate = ts;
-
-        uint8_t tableId = getAccelerationTable(numValues);
-        uint8_t index = getIntervalBasedIndex(tp);
-        return (accelerationTable[tableId][index] * relativeChange);
-    }
+    return (rate.compute(relativeChange,
+                         numValuesForPot(),
+                         sensitivityForPot(),
+                         encoderMode));
 }
-
-int16_t PotListener::decreaseRate(int16_t relativeChange)
-{
-    int16_t acceleratedChange = 0;
-    stepCount += relativeChange;
-
-    uint16_t threshold = 0;
-
-    if (encoderMode) {
-        threshold =
-            constrain((1 << std::max(0, __builtin_clz(numValues) - 24)), 1, 8)
-            * 2;
-    } else {
-        threshold =
-            constrain((1 << std::max(0, __builtin_clz(numValues) - 27)), 1, 16);
-    }
-    /*
-    System::logger.write(LOG_ERROR, "threshold: %d, stepCount: %d: _b: %d",
-               threshold,
-               stepCount,
-               __builtin_clz(numValues));*/
-    if (abs(stepCount) >= threshold) {
-        acceleratedChange = ((stepCount > 0) ? 1 : -1);
-        stepCount = 0;
-        return (acceleratedChange);
-    }
-
-    return (0);
-}
-
-uint8_t PotListener::getAccelerationTable(uint16_t numValues)
-{
-    // clz on ARM uses 32bits
-    return (std::max(0, 26 - __builtin_clz(numValues & 0x3FFF)));
-}
-
-uint8_t PotListener::getIntervalBasedIndex(uint32_t interval)
-{
-    return ((100 - std::min((uint32_t)100, (interval / 10) * 10)) / 10);
-}
-
-const uint16_t PotListener::accelerationTable[9][10] = {
-    { 1, 1, 1, 1, 1, 1, 1, 1, 1, 2 },
-    { 1, 1, 1, 1, 1, 1, 2, 2, 2, 3 },
-    { 1, 1, 1, 2, 2, 3, 4, 6, 8, 10 },
-    { 1, 2, 3, 4, 5, 6, 7, 9, 11, 14 },
-    { 1, 2, 3, 4, 6, 8, 10, 13, 18, 25 },
-    { 1, 2, 4, 8, 10, 13, 20, 32, 48, 64 },
-    { 1, 2, 4, 8, 16, 24, 32, 48, 64, 128 },
-    { 1, 4, 8, 16, 32, 48, 64, 96, 128, 256 },
-    { 1, 8, 16, 32, 64, 96, 128, 192, 256, 512 }
-};

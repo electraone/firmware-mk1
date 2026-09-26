@@ -84,12 +84,12 @@ void PotBroadcaster::triggerCallbacks(PotEvent &potEvent, plFunction function)
             Component *eventComponent = static_cast<Component *>(listener);
             potEvent.setEventCompoment(eventComponent);
 
-            if (listener->getNumValues() > 0) {
-                potEvent.setAcceleratedChange(
-                    listener->computeRate(potEvent.getRelativeChange()));
-            } else {
-                potEvent.setAcceleratedChange(potEvent.getRelativeChange());
-            }
+            /* Every listener is scaled, including one that never declared a
+             * range: what arrives here is raw phase counts, which mean nothing
+             * to anything downstream. A listener with no range of its own is
+             * read as an encoder - one step per detent of travel. */
+            potEvent.setAcceleratedChange(
+                listener->computeRate(potEvent.getRelativeChange()));
 
             if ((eventComponent->getWindow() == originatingWindow)
                 || eventComponent->isWindow()) {

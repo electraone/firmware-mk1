@@ -42,6 +42,49 @@
 #define NR_OF_USB_DEVICES 2
 #define NR_OF_HW_POTS 12
 #define MAX_POT_ID 12
+
+/* Phase counts the pot reader reports for one whole turn of a knob. The two
+ * gangs of a knob sit a quarter turn apart, so read against each other they
+ * trace a diamond that is walked once per revolution; a quarter of that walk is
+ * one converter range, and the converter here is ten bits. */
+#define POT_COUNTS_PER_REVOLUTION (4096)
+
+/* How far a knob travels to take a proportional control from one end of its
+ * range to the other. Three hundred degrees is about as far as a wrist reaches
+ * in one go, so minimum to maximum is a single gesture with no regripping,
+ * whatever the control's resolution. */
+#define POT_SWEEP_DEGREES (300)
+#define POT_SWEEP_COUNTS ((POT_COUNTS_PER_REVOLUTION * POT_SWEEP_DEGREES) / 360)
+
+/* How far a knob turns between two steps of a discrete control. Lists, pads and
+ * anything else that counts rather than sweeps reads like an encoder instead -
+ * one step per detent, regardless of how many entries there are - so that
+ * stepping through a list feels the same whether it holds four entries or
+ * forty. */
+#define POT_ENCODER_DETENT_DEGREES (45)
+#define POT_ENCODER_DETENT_COUNTS                                              \
+    ((POT_COUNTS_PER_REVOLUTION * POT_ENCODER_DETENT_DEGREES) / 360)
+
+/* How often one knob is read, in microseconds. Only the knobs under a finger
+ * are read, so this is the cadence the knob being turned gets: two hundred
+ * readings a second, where it used to be sixty-six. One reading costs sixty
+ * microseconds, measured, so a knob in a hand is a bit over one percent of the
+ * processor and an untouched panel is none of it.
+ *
+ * It matters more than it used to. Rotation is no longer multiplied by how fast
+ * the knob is moving, so what reaches a control is however much travel arrived
+ * since the last reading: read too seldom and a quick sweep lands as a handful
+ * of jumps instead of a slide. */
+#define POT_SCAN_TICK (5000)
+
+/* The same, for the special boot that does not use knob touch and so has to
+ * sweep all twelve. Faster per reading, because each reading is a different
+ * knob: twelve of these is one visit to each knob, which puts a knob's own
+ * cadence at thirty a second rather than two hundred. That is what it has
+ * always been, and this boot mode exists for a unit whose touch sensing does
+ * not work rather than for turning knobs on. */
+#define POT_SCAN_TICK_ALL (2500)
+
 #define MIDI_CTRL_PORT 2
 
 #define MAX_DEVICE_NAME_LENGTH 20

@@ -199,6 +199,45 @@ int value_setOverlayId(lua_State *L)
     return (0);
 }
 
+/*
+ * setSensitivity(factor) - how far a knob turns to move the value, as a factor
+ * on the usual rate: 0.1 is a tenth of it, so ten sweeps of the knob end to
+ * end. Written straight to the value rather than through the delegate - nothing
+ * on the screen depends on it, and every turn reads it afresh, so the next one
+ * already moves at the new rate.
+ */
+int value_setSensitivity(lua_State *L)
+{
+    lua_settop(L, 2);
+
+    ControlValue *value = getControlValue(L, 1);
+    const lua_Number factor = luaL_checknumber(L, 2);
+
+    luaL_argcheck(L,
+                  (factor >= ControlValue::MinSensitivity)
+                      && (factor <= ControlValue::MaxSensitivity),
+                  2,
+                  "sensitivity out of range");
+
+    if (value) {
+        value->setSensitivity(static_cast<float>(factor));
+    } else {
+        return (luaL_error(L, "failed: not a valid value"));
+    }
+    return (0);
+}
+
+int value_getSensitivity(lua_State *L)
+{
+    lua_settop(L, 1);
+
+    if (ControlValue *value = getControlValue(L, 1)) {
+        lua_pushnumber(L, value->getSensitivity());
+        return (1);
+    }
+    return (luaL_error(L, "failed: not a valid value"));
+}
+
 int value_getOverlayId(lua_State *L)
 {
     lua_settop(L, 1);

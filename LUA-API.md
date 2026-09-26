@@ -254,7 +254,19 @@ only, `4` dial, `5` checkbox, `7` baseline.
 `getMax()` / `setMax(value)`,
 `setRange(min, max, default, updateMessage)`,
 `getOverlayId()` / `setOverlayId(overlayId)`,
+`getSensitivity()` / `setSensitivity(factor)`,
 `overrideValue(text)`, `cancelOverride()`, `print()`.
+
+`setSensitivity(factor)` is how far the knob turns to move this value, as a
+factor on the usual rate: `0.1` is a tenth of it, `10` ten times. The usual rate
+is a whole range per three hundred degrees of travel, whatever the range. It is
+read on every turn, so the next one already moves at the new rate, and `0.001` to
+`100` is the range a factor may take. A preset carries the same thing as
+`"sensitivity"` on a value.
+
+The device keeps a factor in one byte, so what comes back out of
+`getSensitivity()` is the nearest of two significant figures times a power of
+ten - every round figure exactly, and `0.333` as `0.3`.
 
 ### `Message` — from `value:getMessage()`
 

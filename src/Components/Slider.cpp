@@ -126,8 +126,11 @@ void Slider::onTouchUp([[maybe_unused]] const TouchEvent &touchEvent)
 
 void Slider::onPotChange(const PotEvent &potEvent)
 {
-    if (potEvent.getRelativeChange()) {
-        applyValue(potEvent.getRelativeChange());
+    /* The scaled change, not the raw one: what the pot reports is phase counts,
+     * four thousand to a turn of the knob, and a slider moves in its own
+     * values. */
+    if (int16_t delta = potEvent.getAcceleratedChange()) {
+        applyValue(delta);
     }
 }
 

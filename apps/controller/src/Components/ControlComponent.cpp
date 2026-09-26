@@ -93,6 +93,45 @@ void ControlComponent::onTouchDoubleClick(
     delegate.setDefaultValue(getId(), handle);
 }
 
+/*
+ * Which value a turn of the knob moves. MultiValue is how a control says it has
+ * segments and which one is in focus, and it is the test ControlComponent
+ * already uses to find the handle a double tap should reset.
+ */
+uint8_t ControlComponent::handleForPot(void) const
+{
+    if (const MultiValue *mv = dynamic_cast<const MultiValue *>(this)) {
+        return (mv->getActiveSegment());
+    }
+
+    return (0);
+}
+
+uint16_t ControlComponent::numValuesForPot(void) const
+{
+    const uint8_t handle = handleForPot();
+
+    /* A Custom control may declare no values at all, and a segment may name one
+     * the control does not have. Falling back on what the pot was assigned with
+     * is what this used to do for every control. */
+    if (handle >= control.values.size()) {
+        return (Component::numValuesForPot());
+    }
+
+    return (control.getValue(handle).getNumSteps());
+}
+
+float ControlComponent::sensitivityForPot(void) const
+{
+    const uint8_t handle = handleForPot();
+
+    if (handle >= control.values.size()) {
+        return (ControlValue::DefaultSensitivity);
+    }
+
+    return (control.getValue(handle).getSensitivity());
+}
+
 void ControlComponent::onPotTouchDown(const PotEvent &potEvent)
 {
     delegate.setActivePotTouch(potEvent.getPotId(), this);

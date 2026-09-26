@@ -25,6 +25,11 @@ PadControl::PadControl(const Control &control, MainDelegate &newDelegate)
     : ControlComponent(control, newDelegate), state(false)
 {
     updateValueFromParameterMap();
+
+    /* A pad counts rather than sweeps: it holds two states, and a knob that had
+     * to travel a whole sweep to reach the other one would read as broken. One
+     * detent flips it, the same as one detent steps a list. */
+    enableEncoderMode(true);
 }
 
 PadControl::~PadControl()

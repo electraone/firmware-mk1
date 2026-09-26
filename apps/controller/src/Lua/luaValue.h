@@ -39,6 +39,8 @@ int value_getMin(lua_State *L);
 int value_setMax(lua_State *L);
 int value_getMax(lua_State *L);
 int value_setRange(lua_State *L);
+int value_setSensitivity(lua_State *L);
+int value_getSensitivity(lua_State *L);
 int value_getOverlayId(lua_State *L);
 int value_setOverlayId(lua_State *L);
 int value_getMessage(lua_State *L);
@@ -58,6 +60,8 @@ static const luaL_Reg value_functions[] = {
     { "setMax", value_setMax },
     { "getMax", value_getMax },
     { "setRange", value_setRange },
+    { "setSensitivity", value_setSensitivity },
+    { "getSensitivity", value_getSensitivity },
     { "getOverlayId", value_getOverlayId },
     { "setOverlayId", value_setOverlayId },
     { "getMessage", value_getMessage },
