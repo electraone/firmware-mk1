@@ -34,6 +34,10 @@ namespace
     constexpr uint16_t knobRowHeight = 115;
     constexpr uint16_t knobRoom = 130;
 
+    /** Between the contour's baseline and the top of the dials. Without it
+     *  the two touch, and the envelope looks like it is standing on them. */
+    constexpr uint16_t contourBottomGap = 18;
+
     /** More than this many dials and the row is split in two. */
     constexpr uint8_t maxInOneRow = 6;
 } // namespace
@@ -98,10 +102,14 @@ void DetailEnvelope::resized(void)
                                       : frameWidth;
     const uint16_t rows = numRows();
     const uint16_t knobsRoom = knobRoom + ((rows - 1) * knobRowHeight);
-    const uint16_t contourHeight =
+    const uint16_t contourRoom =
         (getHeight() > (contourTop + knobsRoom))
             ? (uint16_t)(getHeight() - contourTop - knobsRoom)
             : getHeight();
+    const uint16_t contourHeight =
+        (contourRoom > contourBottomGap)
+            ? (uint16_t)(contourRoom - contourBottomGap)
+            : contourRoom;
 
     component->setBounds((frameWidth - contourWidth) / 2,
                          contourTop,
