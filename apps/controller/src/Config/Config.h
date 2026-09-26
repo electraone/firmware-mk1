@@ -6,6 +6,7 @@
 #include "PresetBank.h"
 #include "MidiControl.h"
 #include "UiFeatures.h"
+#include "HardwareControl.h"
 #include <ArduinoJson.h>
 #include <vector>
 #include <array>
@@ -20,6 +21,7 @@ public:
     void useDefault(void);
     void resetPresetBanks(void);
     void resetUiFeatures(void);
+    void resetHardwareControls(void);
     uint8_t getUsbHostAssigment(const char *pattern);
 
     static constexpr uint8_t numPresetBanks = 6;
@@ -29,6 +31,7 @@ public:
     std::vector<MidiControl> midiControls;
     std::array<PresetBank, numPresetBanks> presetBanks;
     UiFeatures uiFeatures;
+    HardwareControl hardwareControl;
 
 private:
     bool parse(File &file);
@@ -37,6 +40,13 @@ private:
     bool parseUsbHostAssigments(File &file);
     bool parseMidiControl(File &file);
     bool parseUiFeatures(File &file);
+    bool parseHardwareControls(File &file);
+
+    static void assignButton(ButtonAction &action,
+                             const char *commandName,
+                             int16_t parameter,
+                             const char *buttonName,
+                             const char *role);
 
     static const char *translatePresetBankColour(uint32_t rgb888);
 };

@@ -1,44 +1,31 @@
 #pragma once
 
 #include "MidiMessage.h"
-#include "Enums.h"
+#include "UiCommand.h"
 
+/**
+ * @brief One incoming MIDI message, and what the instrument does about it.
+ *
+ * What used to be a short list of named events is now any command the
+ * instrument has - see Commands.inc. The nine names the configuration could
+ * carry before are all commands, so a configuration written for the old list
+ * still reads.
+ */
 struct MidiControl {
-    MidiControl(AppEventType newEventType,
-                uint8_t newEventParameter,
+    MidiControl(UiCommand::Type newCommand,
+                int16_t newParameter,
                 MidiMessage::Type newMidiMessageType,
                 uint8_t newParameterNumber)
-        : command(false),
-          eventType(newEventType),
-          eventParameter1(newEventParameter),
-          eventParameter2(0),
-          eventParameter3(0),
-          midiMessageType(newMidiMessageType),
-          parameterNumber(newParameterNumber)
-    {
-    }
-
-    MidiControl(AppEventType newEventType,
-                uint8_t newEventParameter1,
-                uint8_t newEventParameter2,
-                MidiMessage::Type newMidiMessageType,
-                uint8_t newParameterNumber)
-        : command(true),
-          eventType(newEventType),
-          eventParameter1(newEventParameter1),
-          eventParameter2(newEventParameter2),
-          eventParameter3(0),
-          midiMessageType(newMidiMessageType),
-          parameterNumber(newParameterNumber)
+        : midiMessageType(newMidiMessageType),
+          parameterNumber(newParameterNumber),
+          command(newCommand),
+          parameter(newParameter)
     {
     }
 
     MidiMessage::Type midiMessageType;
     uint8_t parameterNumber;
 
-    bool command;
-    AppEventType eventType;
-    uint8_t eventParameter1;
-    uint8_t eventParameter2;
-    uint8_t eventParameter3;
+    UiCommand::Type command;
+    int16_t parameter;
 };

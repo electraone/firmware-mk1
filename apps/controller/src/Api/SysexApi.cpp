@@ -6,7 +6,9 @@
 #include "FileTransfer.h"
 #include "ScreenCapture.h"
 
-SysexApi::SysexApi(MainDelegate &newDelegate) : delegate(newDelegate)
+SysexApi::SysexApi(MainDelegate &newDelegate,
+                   CommandManager &newCommandManager)
+    : delegate(newDelegate), commandManager(newCommandManager)
 {
 }
 
@@ -114,6 +116,8 @@ bool SysexApi::process(uint8_t port, const SysexBlock &sysexBlock)
     } else if (cmd.isExecute()) {
         if (object == ElectraCommand::Object::PresetSlot) {
             reloadPresetSlot(port, sysexPayload);
+        } else if (object == ElectraCommand::Object::Command) {
+            runCommand(port, sysexPayload);
         } else {
             handled = false;
         }
@@ -570,6 +574,60 @@ void SysexApi::sendUsbHostDevices(uint8_t port)
  * The same place info.setText() writes to, so the two cannot disagree about
  * what is showing.
  */
+/**
+ * @brief Runs one of the instrument's commands.
+ *
+ * The payload is either the command's name on its own, which is what makes
+ * this usable from anything that can send a SysEx message by hand, or a JSON
+ * object when the command takes a number:
+ *
+ *     {"command":"switchPage","parameter":3}
+ *
+ * A name nothing answers to, or a number the command will not take, is a NACK
+ * rather than silence - the host asked for something the instrument cannot do
+ * and has to be told so.
+ */
+void SysexApi::runCommand(uint8_t port, MemoryBlock &sysexPayload)
+{
+    /* Long enough for the longest name and a small JSON object around it. */
+    char payload[128];
+    size_t length = sysexPayload.getLength();
+
+    if (length > (sizeof(payload) - 1)) {
+        length = sizeof(payload) - 1;
+    }
+
+    sysexPayload.seek(0);
+    length = sysexPayload.readBytes((uint8_t *)payload, length);
+    payload[length] = '\0';
+
+    const char *name = payload;
+    int16_t parameter = 0;
+
+    StaticJsonDocument<192> doc;
+
+    if (payload[0] == '{') {
+        DeserializationError err = deserializeJson(doc, payload);
+
+        if (err) {
+            System::logger.write(LOG_ERROR,
+                                 "SysexApi::runCommand: not JSON: %s",
+                                 err.c_str());
+            MidiOutput::sendNack(MidiInterface::Type::MidiUsbDev, port);
+            return;
+        }
+
+        name = doc["command"] | "";
+        parameter = doc["parameter"] | (int16_t)0;
+    }
+
+    if (commandManager.run(name, parameter)) {
+        MidiOutput::sendAck(MidiInterface::Type::MidiUsbDev, port);
+    } else {
+        MidiOutput::sendNack(MidiInterface::Type::MidiUsbDev, port);
+    }
+}
+
 void SysexApi::setBottomBarText(uint8_t port, MemoryBlock &sysexPayload)
 {
     /* Forty is what the API documents, and one more for the terminator. Longer

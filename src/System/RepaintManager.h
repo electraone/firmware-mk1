@@ -85,8 +85,16 @@ public:
      */
     void clearRepaintQueue(void);
 
-private:
+    /**
+     * @brief Forgets whatever is queued for one component.
+     *
+     * Called when a component is destroyed. The queue holds bare pointers and
+     * is walked a frame later, so anything left in it for a component that has
+     * gone is a read of freed memory.
+     */
     void invalidateEntries(Component *component);
+
+private:
     void unfoldNestedComponents(void);
     void unfoldComponent(Component *component);
     void repaintQueueEntries(Window *window);

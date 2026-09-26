@@ -10,6 +10,7 @@
  */
 Config::Config()
 {
+    resetHardwareControls();
 }
 
 bool Config::load(void)
@@ -53,6 +54,7 @@ bool Config::parse(File &file)
     parseUsbHostAssigments(file);
     parseMidiControl(file);
     parseUiFeatures(file);
+    parseHardwareControls(file);
 
     return (true);
 }
@@ -305,72 +307,58 @@ bool Config::parseMidiControl(File &file)
             uint8_t parameterNumber =
                 jMidiControl["parameterNumber"].as<uint8_t>();
 
+            if (parameterNumber > 127) {
+                parameterNumber = 0;
+            }
+
+            /*
+             * Two spellings, because both have been written. The older one
+             * names the command in "event" with its number in
+             * "eventParameter"; the newer one puts both in a "command" object,
+             * where the number is called after what it meant for the one
+             * command that used it. Either way what comes out is a command and
+             * a number.
+             */
+            const char *commandName = nullptr;
+            int16_t parameter = 0;
+
             if (jMidiControl["command"]) {
-                const char *event =
-                    jMidiControl["command"]["type"].as<char *>();
-                uint8_t eventParameter1 =
-                    jMidiControl["command"]["pageId"].as<uint8_t>();
-                uint8_t eventParameter2 =
-                    jMidiControl["command"]["controlSetId"].as<uint8_t>();
+                JsonObject jCommand = jMidiControl["command"];
 
-                if (eventParameter1 > 12) {
-                    eventParameter1 = 0;
+                commandName = jCommand["type"].as<char *>();
+
+                if (jCommand["parameter"].is<int>()) {
+                    parameter = jCommand["parameter"].as<int16_t>();
+                } else if (jCommand["pageId"].is<int>()) {
+                    parameter = jCommand["pageId"].as<int16_t>();
+                } else if (jCommand["controlSetId"].is<int>()) {
+                    parameter = jCommand["controlSetId"].as<int16_t>();
                 }
-
-                if (eventParameter2 > 3) {
-                    eventParameter2 = 3;
-                }
-
-                if (parameterNumber > 127) {
-                    parameterNumber = 0;
-                }
-
-                AppEventType eventType = translateAppEventType(event);
-                MidiMessage::Type midiMessageType =
-                    MidiMessage::translateType(midiMessage);
-
-                midiControls.push_back(MidiControl(eventType,
-                                                   eventParameter1,
-                                                   eventParameter2,
-                                                   midiMessageType,
-                                                   parameterNumber));
-                System::logger.write(
-                    LOG_TRACE,
-                    "Config::parseMidiControl: midi control assigment: "
-                    "event=%s (%d), eventParameter1=%d, eventParameter2=%d, "
-                    "midiMessage=%s (%d), parameterNumber=%d",
-                    event,
-                    eventType,
-                    eventParameter1,
-                    eventParameter2,
-                    midiMessage,
-                    midiMessageType,
-                    parameterNumber);
             } else {
-                const char *event = jMidiControl["event"].as<char *>();
-                uint8_t eventParameter =
-                    jMidiControl["eventParameter"].as<uint8_t>();
+                commandName = jMidiControl["event"].as<char *>();
+                parameter = jMidiControl["eventParameter"].as<int16_t>();
+            }
 
-                if (parameterNumber > 127) {
-                    parameterNumber = 0;
-                }
+            UiCommand::Type command = UiCommand::translate(commandName);
+            MidiMessage::Type midiMessageType =
+                MidiMessage::translateType(midiMessage);
 
-                AppEventType eventType = translateAppEventType(event);
-                MidiMessage::Type midiMessageType =
-                    MidiMessage::translateType(midiMessage);
+            if (command == UiCommand::Type::None) {
+                System::logger.write(
+                    LOG_WARNING,
+                    "Config::parseMidiControl: no such command: %s",
+                    commandName ? commandName : "(none)");
+            } else {
+                midiControls.push_back(MidiControl(
+                    command, parameter, midiMessageType, parameterNumber));
 
-                midiControls.push_back(MidiControl(eventType,
-                                                   eventParameter,
-                                                   midiMessageType,
-                                                   parameterNumber));
                 System::logger.write(
                     LOG_TRACE,
                     "Config::parseMidiControl: midi control assigment: "
-                    "event=%s (%d), eventParameter=%d, midiMessage=%s (%d), "
+                    "command=%s, parameter=%d, midiMessage=%s (%d), "
                     "parameterNumber=%d",
-                    event,
-                    eventType,
-                    eventParameter,
+                    UiCommand::translateToText(command),
+                    parameter,
                     midiMessage,
                     midiMessageType,
                     parameterNumber);
@@ -458,6 +446,131 @@ void Config::resetPresetBanks(void)
     presetBanks[5] = PresetBank(6, "BANK #6", Colours565::purple);
 }
 
+/*
+ * What the six buttons on the panel do:
+ *
+ *     "hardware": {
+ *         "buttons": {
+ *             "leftTop":     { "primary": "openPresetMenu" },
+ *             "rightBottom": { "primary": "switchPage", "parameter": 3,
+ *                              "knobTouch": "openDetail" }
+ *         }
+ *     }
+ *
+ * "primary" is what the button does on its own and "knobTouch" what it does
+ * while a finger is on a knob, which is the mk2's spelling. A button the file
+ * does not name keeps what it has always done, and so does a button whose
+ * command is not one this instrument has.
+ */
+bool Config::parseHardwareControls(File &file)
+{
+    const size_t capacityHardware = JSON_OBJECT_SIZE(1) + 2000;
+    const size_t capacityFilter = JSON_OBJECT_SIZE(1) + 100;
+    StaticJsonDocument<capacityHardware> doc;
+    StaticJsonDocument<capacityFilter> filter;
+
+    resetHardwareControls();
+
+    filter["hardware"] = true;
+
+    if (file.seek(0) == false) {
+        System::logger.write(
+            LOG_ERROR, "Config::parseHardwareControls: cannot rewind the file");
+        return (false);
+    }
+
+    DeserializationError err =
+        deserializeJson(doc, file, DeserializationOption::Filter(filter));
+
+    if (err) {
+        System::logger.write(LOG_ERROR,
+                             "Config::parseHardwareControls: parsing failed: %s",
+                             err.c_str());
+        return (false);
+    }
+
+    JsonObject buttons = doc["hardware"]["buttons"];
+
+    if (!buttons) {
+        System::logger.write(
+            LOG_INFO,
+            "Config::parseHardwareControls: no button assignments");
+        return (true);
+    }
+
+    for (JsonPair keyValue : buttons) {
+        const char *buttonName = keyValue.key().c_str();
+        const uint8_t buttonId =
+            HardwareControl::translateButtonName(buttonName);
+
+        if (buttonId >= NR_OF_HW_BUTTONS) {
+            System::logger.write(
+                LOG_WARNING,
+                "Config::parseHardwareControls: no such button: %s",
+                buttonName);
+            continue;
+        }
+
+        JsonObject jButton = keyValue.value().as<JsonObject>();
+
+        if (!jButton) {
+            continue;
+        }
+
+        /* One number for the button, whichever of its two commands wants one.
+         * A button that runs two commands needing different numbers is not
+         * something anyone has asked for, and a second field for it would be
+         * a field to explain. */
+        const int16_t parameter = jButton["parameter"] | (int16_t)0;
+
+        assignButton(hardwareControl.button[buttonId],
+                     jButton["primary"],
+                     parameter,
+                     buttonName,
+                     "primary");
+        assignButton(hardwareControl.knobTouch[buttonId],
+                     jButton["knobTouch"],
+                     parameter,
+                     buttonName,
+                     "knobTouch");
+    }
+
+    return (true);
+}
+
+void Config::assignButton(ButtonAction &action,
+                          const char *commandName,
+                          int16_t parameter,
+                          const char *buttonName,
+                          const char *role)
+{
+    if (!commandName) {
+        return;
+    }
+
+    const UiCommand::Type command = UiCommand::translate(commandName);
+
+    if (command == UiCommand::Type::None) {
+        System::logger.write(LOG_WARNING,
+                             "Config::parseHardwareControls: %s %s: no such "
+                             "command: %s",
+                             buttonName,
+                             role,
+                             commandName);
+        return;
+    }
+
+    action.command = command;
+    action.parameter = parameter;
+
+    System::logger.write(LOG_INFO,
+                         "Config::parseHardwareControls: %s %s = %s (%d)",
+                         buttonName,
+                         role,
+                         commandName,
+                         parameter);
+}
+
 void Config::resetUiFeatures(void)
 {
     uiFeatures.touchSwitchControlSets = true;
@@ -467,10 +580,16 @@ void Config::resetUiFeatures(void)
     uiFeatures.loadPresetStateOnStartup = false;
 }
 
+void Config::resetHardwareControls(void)
+{
+    hardwareControl.reset();
+}
+
 void Config::useDefault(void)
 {
     resetPresetBanks();
     resetUiFeatures();
+    resetHardwareControls();
 }
 
 uint8_t Config::getUsbHostAssigment(const char *productName)

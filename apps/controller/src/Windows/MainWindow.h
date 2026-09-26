@@ -7,6 +7,7 @@
 #include "DetailWindow.h"
 #include "SnapshotsWindow.h"
 #include "UsbHostWindow.h"
+#include "PresetFunctionsWindow.h"
 #include "PageView.h"
 #include "MainDelegate.h"
 #include "Model.h"
@@ -45,6 +46,11 @@ public:
     void closeUsbHostPorts(void) override;
     void openSnapshots(void) override;
     void closeSnapshots(void) override;
+    void openPresetFunctions(void) override;
+    void closePresetFunctions(void) override;
+    void openDetailOfActivePotTouch(void) override;
+    void switchHandleNext(void) override;
+    void switchHandlePrev(void) override;
     void repaintPage(void) override;
     void displayPage(void) override;
 
@@ -320,6 +326,7 @@ public:
     void removeComponentFromGroup(uint16_t groupId) override;
 
     void setDefaultValue(uint16_t controlId, uint8_t handle) override;
+    void setAllDefaultValues(void) override;
 
     void setActiveControlSetType(
         ActiveControlSetType newActiveControlSetType) override;
@@ -366,6 +373,22 @@ private:
     // UI Activity API handler
     UiApi uiApi;
 
+public:
+    /**
+     * @brief Where a button press or an incoming message is turned into an act.
+     *
+     * Set once the application has built one - it needs this window, and this
+     * window needs it, so neither can hold the other by construction. A window
+     * without one falls back to the buttons it was born with.
+     */
+    void setCommandManager(CommandManager *newCommandManager)
+    {
+        commandManager = newCommandManager;
+    }
+
+private:
+    CommandManager *commandManager;
+
     // Window content
     PageView *pageView;
 
@@ -375,6 +398,7 @@ private:
     DetailWindow *detailWindow;
     SnapshotsWindow *snapshotsWindow;
     UsbHostWindow *usbHostWindow;
+    PresetFunctionsWindow *presetFunctionsWindow;
 
     // Current state
     uint8_t currentPageId;

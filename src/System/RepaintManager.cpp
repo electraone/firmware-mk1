@@ -75,18 +75,38 @@ void RepaintManager::invalidateEntries(Component *component)
     }
 }
 
+/*
+ * Indexed rather than iterated, and only as far as the queue reached when this
+ * started.
+ *
+ * Unfolding a component calls repaint() on it and on every child, and that
+ * appends to this same queue. An iterator - which is what a range for gives -
+ * points into the vector's storage, and a push_back that grows the vector moves
+ * that storage somewhere else: every following step then reads freed memory,
+ * and the dynamic_cast below takes whatever it finds there for a vtable. It
+ * faults on a knob if you are lucky and paints nonsense if you are not.
+ *
+ * Reading the entry through the index each time survives the move. The bound is
+ * taken once for the same reason the loop always had it: the entries unfolding
+ * appends are the expansion, and expanding those again would never end.
+ */
 void RepaintManager::unfoldNestedComponents()
 {
-    for (const RepaintRequest &request : repaintQueue) {
-        if (request.valid && request.component) {
-            Component *component = request.component;
+    const size_t queued = repaintQueue.size();
 
-            if (Window *window = dynamic_cast<Window *>(component)) {
-                unfoldComponent(window);
-                component = window->getOwnedContent();
-            }
-            unfoldComponent(component);
+    for (size_t i = 0; i < queued; i++) {
+        if (!repaintQueue[i].valid || !repaintQueue[i].component) {
+            continue;
         }
+
+        Component *component = repaintQueue[i].component;
+
+        if (Window *window = dynamic_cast<Window *>(component)) {
+            unfoldComponent(window);
+            component = window->getOwnedContent();
+        }
+
+        unfoldComponent(component);
     }
 }
 
@@ -101,22 +121,30 @@ void RepaintManager::unfoldComponent(Component *component)
     }
 }
 
+/* Indexed for the same reason as unfoldNestedComponents(): painting a component
+ * can ask for another repaint, and that appends here. */
 void RepaintManager::repaintQueueEntries(Window *window)
 {
-    for (RepaintRequest &request : repaintQueue) {
-        if (request.valid == false) {
+    const size_t queued = repaintQueue.size();
+
+    for (size_t i = 0; i < queued; i++) {
+        if (repaintQueue[i].valid == false) {
             continue;
         }
 
-        if (request.component) {
-            Window *componentWindow = request.component->getWindow();
+        if (repaintQueue[i].component) {
+            Component *component = repaintQueue[i].component;
+            Window *componentWindow = component->getWindow();
+
             if ((componentWindow == nullptr) || (componentWindow == window)) {
-                paintComponent(request.component);
-                request.valid = false;
+                repaintQueue[i].valid = false;
+                paintComponent(component);
             }
         } else {
-            clearArea(request.areaToClear);
-            request.valid = false;
+            const Rectangle area = repaintQueue[i].areaToClear;
+
+            repaintQueue[i].valid = false;
+            clearArea(area);
         }
     }
 }

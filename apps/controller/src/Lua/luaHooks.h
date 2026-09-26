@@ -53,3 +53,40 @@ void runFunction(const char *function, const void *object, int16_t value);
 uint8_t runTemplateFunction(const char *function,
                             const void *object,
                             int16_t value);
+
+/*
+ * The preset's own functions - preset.userFunctions in the script.
+ *
+ * A table of entries named after the knob that offers them, each carrying the
+ * name to put on the screen, the function to call, and whether running it
+ * should put the window away:
+ *
+ *     preset.userFunctions = {
+ *         pot1 = { name = "INIT", call = function() ... end, close = true },
+ *         pot4 = { name = "PANIC", call = panic }
+ *     }
+ *
+ * Nothing is stored for them here. The table belongs to the script, and both
+ * of these read it where it lives, so a preset with no script and a preset
+ * that declares none cost the same: nothing.
+ */
+
+/** @brief How many functions a preset may offer: one per knob. */
+constexpr uint8_t numUserFunctions = 12;
+
+/**
+ * @brief The name of one function, as the script declares it.
+ *
+ * @param functionId counted from zero
+ * @param buffer where the name is left; emptied when there is no function
+ *
+ * @return false when the preset declares no function in that place
+ */
+bool getUserFunctionName(uint8_t functionId, char *buffer, size_t size);
+
+/**
+ * @brief Runs one function.
+ *
+ * @return true when the entry asked for the window that offered it to close
+ */
+bool runUserFunction(uint8_t functionId);

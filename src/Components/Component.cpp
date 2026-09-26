@@ -51,6 +51,13 @@ Component::Component(const char *newName)
 
 Component::~Component()
 {
+    /* A component that is going away must not be left in the repaint queue:
+     * the queue holds bare pointers, and the repaint task walks it a whole
+     * frame later. Until now only SnapshotsView knew this, and it dealt with
+     * it by emptying the queue from its own destructor - which worked for
+     * that one window and for nothing else. */
+    System::repaintManager.invalidateEntries(this);
+
     setParentComponent(nullptr);
     releasePot();
     deleteAllChildren();

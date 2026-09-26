@@ -41,6 +41,8 @@ public:
 
     void snapshots_close(void);
 
+    void presetFunctions_close(void);
+
     void usbHost_close(void);
     void usbHost_openPresetSelection(void);
     void usbHost_openPageSelection(void);

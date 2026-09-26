@@ -7,6 +7,7 @@
 #include "MainDelegate.h"
 #include "SysexApi.h"
 #include "MidiApi.h"
+#include "CommandManager.h"
 #include "Config/Config.h"
 #include "MidiLearn.h"
 #include "MidiRouter.h"
@@ -19,8 +20,9 @@ public:
           midi(model.currentPreset),
           mainWindow(MainWindow(model, midi, appConfig)),
           delegate(mainWindow),
-          sysexApi(mainWindow),
-          midiApi(appConfig.midiControls, mainWindow),
+          commandManager(mainWindow),
+          sysexApi(mainWindow, commandManager),
+          midiApi(appConfig.midiControls, mainWindow, commandManager),
           midiLearn(model.currentPreset),
           midiRouter(appConfig.router)
     {
@@ -75,6 +77,11 @@ private:
     // UI
     MainWindow mainWindow;
     MainDelegate &delegate;
+
+    /* Where every surface that can ask the instrument for something ends up:
+     * the panel's buttons, the MIDI control assignments, a host over SysEx and
+     * a script. */
+    CommandManager commandManager;
 
     // Interfaces
     Midi midi;

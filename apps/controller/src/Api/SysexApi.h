@@ -1,12 +1,13 @@
 #pragma once
 
+#include "CommandManager.h"
 #include "MainDelegate.h"
 #include "SysexBlock.h"
 
 class SysexApi
 {
 public:
-    explicit SysexApi(MainDelegate &newDelegate);
+    SysexApi(MainDelegate &newDelegate, CommandManager &newCommandManager);
     virtual ~SysexApi() = default;
 
     bool process(uint8_t port, const SysexBlock &sysexBlock);
@@ -22,6 +23,7 @@ private:
     void sendSnapshotList(uint8_t port, MemoryBlock &sysexPayload);
     void sendSnapshot(uint8_t port, MemoryBlock &sysexPayload);
     void sendPresetList(uint8_t port);
+    void runCommand(uint8_t port, MemoryBlock &sysexPayload);
     void enableMidiLearn(uint8_t port);
     void disableMidiLearn(uint8_t port);
     void switchPreset(uint8_t port, uint8_t bankNumber, uint8_t slot);
@@ -60,4 +62,5 @@ private:
     void takeScreenshot(uint8_t port);
 
     MainDelegate &delegate;
+    CommandManager &commandManager;
 };

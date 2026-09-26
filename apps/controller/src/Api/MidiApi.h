@@ -1,12 +1,15 @@
 #pragma once
 
 #include "Config/Config.h"
+#include "CommandManager.h"
 #include "MainDelegate.h"
 
 class MidiApi
 {
 public:
-    MidiApi(const MidiControls &newMidiControls, MainDelegate &newDelegate);
+    MidiApi(const MidiControls &newMidiControls,
+            MainDelegate &newDelegate,
+            CommandManager &newCommandManager);
     virtual ~MidiApi() = default;
 
     void process(const MidiMessage &midiMessage);
@@ -20,5 +23,6 @@ private:
 
     const MidiControls &midiControls;
     MainDelegate &delegate;
+    CommandManager &commandManager;
     ProgramChangeMode programChangeMode;
 };

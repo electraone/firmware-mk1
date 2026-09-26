@@ -32,6 +32,7 @@
 #include "MainDelegate.h"
 
 #include "luaExtensionBase.h"
+#include "luaCommands.h"
 #include "luaControl.h"
 #include "luaDevice.h"
 #include "luaEvents.h"

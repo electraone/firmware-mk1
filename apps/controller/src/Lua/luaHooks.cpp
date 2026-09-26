@@ -317,3 +317,114 @@ void runSwitchCallback(const Control &control, uint8_t potId, bool pressed)
 
     call("runSwitchCallback", 3);
 }
+
+/*
+ * Both of these walk preset.userFunctions and leave the stack as they found
+ * it. The entry is named after the knob that offers it - pot1 to pot12 - which
+ * is the mk2's spelling, so a preset written for one runs on the other.
+ */
+namespace
+{
+    /** Pushes preset.userFunctions.pot<n>, or nothing. */
+    bool pushUserFunction(uint8_t functionId)
+    {
+        if ((L == nullptr) || (functionId >= numUserFunctions)) {
+            return (false);
+        }
+
+        lua_getglobal(L, "preset");
+
+        if (!lua_istable(L, -1)) {
+            lua_pop(L, 1);
+            return (false);
+        }
+
+        lua_getfield(L, -1, "userFunctions");
+
+        if (!lua_istable(L, -1)) {
+            lua_pop(L, 2);
+            return (false);
+        }
+
+        /* "pot" and two digits. */
+        char potKey[8];
+
+        snprintf(potKey, sizeof(potKey), "pot%d", functionId + 1);
+        lua_getfield(L, -1, potKey);
+
+        if (!lua_istable(L, -1)) {
+            lua_pop(L, 3);
+            return (false);
+        }
+
+        return (true);
+    }
+
+    /** Removes what pushUserFunction() left: the entry, the table, preset. */
+    void popUserFunction(void)
+    {
+        lua_pop(L, 3);
+    }
+} // namespace
+
+bool getUserFunctionName(uint8_t functionId, char *buffer, size_t size)
+{
+    if ((buffer == nullptr) || (size == 0)) {
+        return (false);
+    }
+
+    buffer[0] = '\0';
+
+    if (!pushUserFunction(functionId)) {
+        return (false);
+    }
+
+    bool named = false;
+
+    lua_getfield(L, -1, "name");
+
+    if (lua_isstring(L, -1)) {
+        copyString(buffer, lua_tostring(L, -1), size - 1);
+        named = (buffer[0] != '\0');
+    }
+
+    lua_pop(L, 1);
+    popUserFunction();
+
+    return (named);
+}
+
+bool runUserFunction(uint8_t functionId)
+{
+    if (!pushUserFunction(functionId)) {
+        return (false);
+    }
+
+    lua_getfield(L, -1, "call");
+
+    if (lua_isfunction(L, -1)) {
+        if (lua_pcall(L, 0, 0, 0) != LUA_OK) {
+            System::logger.write(LOG_LUA,
+                                 "error running preset function %d: %s",
+                                 functionId + 1,
+                                 lua_tostring(L, -1));
+            lua_pop(L, 1);
+        }
+    } else {
+        /* Whatever "call" held, so that the entry is on top again. */
+        lua_pop(L, 1);
+    }
+
+    bool shouldClose = false;
+
+    lua_getfield(L, -1, "close");
+
+    if (lua_isboolean(L, -1)) {
+        shouldClose = (lua_toboolean(L, -1) != 0);
+    }
+
+    lua_pop(L, 1);
+    popUserFunction();
+
+    return (shouldClose);
+}

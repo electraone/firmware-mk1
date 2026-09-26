@@ -85,6 +85,18 @@ send the preset first.
 | `09 0B [set]` | Switch control set |
 | `14 77` | The text in the bottom bar, up to forty characters |
 | `03 01`, `03 00` | MIDI learn on and off |
+| `08 13` | Run one of the instrument's commands |
+
+The payload of `08 13` is either the command's name on its own, or a JSON
+object when the command takes a number:
+
+```json
+{"command":"switchPage","parameter":3}
+```
+
+It is refused when the name is not one the instrument has, or the number is
+outside what the command takes. Every name, and the three other ways of asking
+for one, are in COMMANDS.md.
 
 ### Events and logging
 

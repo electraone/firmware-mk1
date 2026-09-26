@@ -178,21 +178,33 @@ public:
         longTouched = true;
     }
 
+    /*
+     * Every member is read and written before a callback runs, and onClick goes
+     * last.
+     *
+     * A callback is free to close the window the button lives in - that is what
+     * picking a page or running a preset function does - and the button is part
+     * of that window, so once the callback returns there is no button left to
+     * touch. The tail that used to be here read and wrote freed memory.
+     */
     void onTouchUp([[maybe_unused]] const TouchEvent &touchEvent) override
     {
         if (highlighted) {
             setHighlighted(false);
         }
 
-        if (!longTouched && onClick) {
-            onClick();
-        }
+        const bool shouldClick = (!longTouched && (bool)onClick);
+        const bool shouldRelease = (bool)onRelease;
 
-        if (onRelease) {
+        longTouched = false;
+
+        if (shouldRelease) {
             onRelease();
         }
 
-        longTouched = false;
+        if (shouldClick) {
+            onClick();
+        }
     }
 
     void onPotTouchDown([[maybe_unused]] const PotEvent &potEvent) override
@@ -202,18 +214,22 @@ public:
         }
     }
 
+    /** The same, for a finger lifted off the knob the button is under. */
     void onPotTouchUp([[maybe_unused]] const PotEvent &potEvent) override
     {
         if (highlighted) {
             setHighlighted(false);
         }
 
-        if (onClick) {
-            onClick();
+        const bool shouldClick = (bool)onClick;
+        const bool shouldRelease = (bool)onRelease;
+
+        if (shouldRelease) {
+            onRelease();
         }
 
-        if (onRelease) {
-            onRelease();
+        if (shouldClick) {
+            onClick();
         }
     }
 

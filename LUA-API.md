@@ -163,6 +163,24 @@ No functions; three callbacks. `preset.onLoad()` when the script has been read,
 `preset.onReady()` when the parameter map has been brought up to date, and
 `preset.onExit()` when the preset is being unloaded.
 
+`preset.userFunctions` is a table the script writes rather than a function it
+calls: what the preset offers under FUNCTIONS, one entry per knob.
+
+```lua
+preset.userFunctions = {
+    pot1 = { name = "DEFAULTS",
+             call = function() commands.run("setAllDefaultValues") end },
+    pot2 = { name = "PAGE 1",
+             call = function() commands.run("switchPage", 1) end,
+             close = true }
+}
+```
+
+`name` goes on the button, `call` is what running it does, and `close` asks for
+the window to be put away afterwards. The same entries are reachable as the
+`runUserFunction` command, so a hardware button or an incoming MIDI message can
+fire one without the window being open - see COMMANDS.md.
+
 ### `patch` — `apps/controller/src/Lua/luaPatch.cpp`
 
 `requestAll()`.
@@ -205,6 +223,24 @@ Callbacks: `events.onPageChange(newPageId, oldPageId)`,
 `events.onPotTouchChange(potId, controlId, touched)` (also accepted under the
 older name `events.onPotTouch`),
 `events.onUsbHostChange(port, eventType)`.
+
+### `commands` — `apps/controller/src/Lua/luaCommands.cpp`
+
+| Function | What it does |
+| --- | --- |
+| `run(name [, parameter])` | asks the instrument for one of the things it can do |
+| `exists(name)` | whether a name is one it has |
+| `getNames()` | every name, as an array |
+
+`run` is the same road a button on the panel, a MIDI control assignment and a
+host over SysEx take, so a script cannot ask for anything they cannot. It
+returns whether the command ran, and raises only when the name is not one the
+instrument has. Every name is in COMMANDS.md.
+
+```lua
+commands.run("openPresetMenu")
+commands.run("switchPage", 3)
+```
 
 ### `info` — `apps/controller/src/Lua/luaInfo.cpp`
 
@@ -370,5 +406,4 @@ than a binding:
   and left without being unloaded. Here loading a preset is entering it, so
   `preset.onLoad` and `preset.onExit` already mark both edges; adding the pair
   would mean a separate preset-residency lifecycle.
-* **`preset.userFunctions`**. Needs an entry in the Preset Menu to trigger the
-  functions from, which is UI work rather than a binding.
+

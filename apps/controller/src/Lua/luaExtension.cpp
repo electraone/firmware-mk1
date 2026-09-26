@@ -37,6 +37,7 @@ void loadLuaLibs(void)
                                            { "events", luaopen_events },
                                            { "overlays", luaopen_overlays },
                                            { "graphics", luaopen_graphics },
+                                           { "commands", luaopen_commands },
                                            { NULL, NULL } };
 
     luaLE_openEoslibs(L, ctrlv2libs);

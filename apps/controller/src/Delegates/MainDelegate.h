@@ -31,6 +31,22 @@ public:
     virtual void closeUsbHostPorts(void) = 0;
     virtual void openSnapshots(void) = 0;
     virtual void closeSnapshots(void) = 0;
+
+    /** @brief The window that offers the preset's own functions. */
+    virtual void openPresetFunctions(void) = 0;
+    virtual void closePresetFunctions(void) = 0;
+
+    /**
+     * @brief The detail of whichever control a finger is on a knob of.
+     *
+     * What a button on the panel means by "open detail": there is no control
+     * id to give it, only a hand on a knob.
+     */
+    virtual void openDetailOfActivePotTouch(void) = 0;
+
+    /** @brief Moves the knob on to the next value of the control it drives. */
+    virtual void switchHandleNext(void) = 0;
+    virtual void switchHandlePrev(void) = 0;
     virtual void repaintPage(void) = 0;
     virtual void displayPage(void) = 0;
 
@@ -166,6 +182,9 @@ public:
     virtual void setActivePotTouch(uint8_t potId, Component *component) = 0;
     virtual void resetActivePotTouch(uint8_t potId) = 0;
     virtual void setDefaultValue(uint16_t controlId, uint8_t handle) = 0;
+
+    /** @brief Every value of every control on the preset, back to its default. */
+    virtual void setAllDefaultValues(void) = 0;
     virtual void closeAllWindows(void) = 0;
 
     // Config

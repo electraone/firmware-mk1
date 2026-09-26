@@ -143,6 +143,11 @@ void UiApi::pageSelection_close(void)
     delegate.closePageSelection();
 }
 
+void UiApi::presetFunctions_close(void)
+{
+    delegate.closePresetFunctions();
+}
+
 void UiApi::snapshots_close(void)
 {
     delegate.closeSnapshots();

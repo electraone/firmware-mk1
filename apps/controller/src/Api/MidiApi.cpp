@@ -1,9 +1,12 @@
 #include "MidiApi.h"
 #include "System.h"
 
-MidiApi::MidiApi(const MidiControls &newMidiControls, MainDelegate &newDelegate)
+MidiApi::MidiApi(const MidiControls &newMidiControls,
+                 MainDelegate &newDelegate,
+                 CommandManager &newCommandManager)
     : midiControls(newMidiControls),
       delegate(newDelegate),
+      commandManager(newCommandManager),
       programChangeMode(Presets)
 {
 }
@@ -51,45 +54,25 @@ void MidiApi::processProgramChange(uint8_t programNumber)
     }
 }
 
+/*
+ * Any command the instrument has, not the handful of events this used to know:
+ * the configuration names one and CommandManager decides what it means, which
+ * is the same road a button on the panel and a host over SysEx take.
+ */
 bool MidiApi::processMidiControl(MidiMessage::Type type, uint8_t data1)
 {
     for (const auto &midiControl : midiControls) {
-        if (midiControl.midiMessageType == type) {
-            if (midiControl.parameterNumber == data1) {
-                delegate.closeAllWindows();
-                uint8_t presetId = 0;
-                switch (midiControl.eventType) {
-                    case AppEventType::switchPreset:
-                        presetId = midiControl.eventParameter1
-                                   - 1; // zero based index is needed
-                        delegate.switchPreset(presetId / 12, presetId % 12);
-                        return (true);
+        if ((midiControl.midiMessageType == type)
+            && (midiControl.parameterNumber == data1)) {
+            /* Whatever is open goes first, as it always has: a message from
+             * off the instrument means the hands are somewhere else. The
+             * window a command opens is opened after this. */
+            delegate.closeAllWindows();
 
-                    case AppEventType::switchPage:
-                        delegate.switchPage(midiControl.eventParameter1);
-                        return (true);
-
-                    case AppEventType::switchPageNext:
-                        delegate.switchPageNext();
-                        return (true);
-
-                    case AppEventType::switchPagePrev:
-                        delegate.switchPagePrev();
-                        return (true);
-
-                    case AppEventType::switchPresetNext:
-                        delegate.switchPresetNext();
-                        return (true);
-
-                    case AppEventType::switchPresetPrev:
-                        delegate.switchPresetPrev();
-                        return (true);
-
-                    default:
-                        break;
-                }
-            }
+            return (commandManager.run(midiControl.command,
+                                       midiControl.parameter));
         }
     }
+
     return (false);
 }

@@ -1,4 +1,5 @@
 #include "MainWindow.h"
+#include "CommandManager.h"
 #include "ListDetailLayout.h"
 #include "ControlComponent.h"
 #include "GroupControl.h"
@@ -21,6 +22,8 @@ MainWindow::MainWindow(Model &newModel, Midi &newMidi, Config &newConfig)
       detailWindow(nullptr),
       snapshotsWindow(nullptr),
       usbHostWindow(nullptr),
+      presetFunctionsWindow(nullptr),
+      commandManager(nullptr),
       currentPageId(0),
       currentControlSetId(0),
       currentSnapshotBank(0),
@@ -36,9 +39,28 @@ void MainWindow::resized(void)
 {
 }
 
+/*
+ * What the configuration says first, and what the instrument has always done
+ * when it says nothing. A button means a different thing while a finger is on
+ * a knob, so the two are assigned separately.
+ */
 void MainWindow::onButtonDown(uint8_t buttonId)
 {
-    if (getNumActivePotTouch() > 0) {
+    if (buttonId >= NR_OF_HW_BUTTONS) {
+        return;
+    }
+
+    const bool knobIsTouched = (getNumActivePotTouch() > 0);
+    const ButtonAction &assigned = knobIsTouched
+                                       ? setup.hardwareControl.knobTouch[buttonId]
+                                       : setup.hardwareControl.button[buttonId];
+
+    if (commandManager && assigned.isAssigned()
+        && commandManager->run(assigned.command, assigned.parameter)) {
+        return;
+    }
+
+    if (knobIsTouched) {
         if (buttonId == 0) {
             showDetailOfActivePotTouch();
         } else if (buttonId == 1) {
@@ -47,7 +69,7 @@ void MainWindow::onButtonDown(uint8_t buttonId)
             switchToPreviousHandleOfActivePotTouch();
         }
     } else {
-        if (0 <= buttonId && buttonId <= 2) {
+        if (buttonId <= 2) {
             uiApi.switchControlSet(buttonId);
         } else if (buttonId == 3) {
             requestAllPatches();
@@ -225,6 +247,40 @@ void MainWindow::closeSnapshots(void)
     Window::close(snapshotsWindow);
     snapshotsWindow = nullptr;
     repaintPage();
+}
+
+void MainWindow::openPresetFunctions(void)
+{
+    /* Nothing to run them with means nothing to put in the window: every one
+     * of its buttons is a command. */
+    if (!commandManager) {
+        return;
+    }
+
+    presetFunctionsWindow = PresetFunctionsWindow::createPresetFunctionsWindow(
+        *commandManager, uiApi, preset.getName());
+}
+
+void MainWindow::closePresetFunctions(void)
+{
+    Window::close(presetFunctionsWindow);
+    presetFunctionsWindow = nullptr;
+    repaintPage();
+}
+
+void MainWindow::openDetailOfActivePotTouch(void)
+{
+    showDetailOfActivePotTouch();
+}
+
+void MainWindow::switchHandleNext(void)
+{
+    switchToNextHandleOfActivePotTouch();
+}
+
+void MainWindow::switchHandlePrev(void)
+{
+    switchToPreviousHandleOfActivePotTouch();
 }
 
 void MainWindow::repaintPage(void)
@@ -1048,6 +1104,20 @@ void MainWindow::setDefaultValue(uint16_t controlId, uint8_t handle)
     }
 }
 
+/*
+ * Every value of every control, the way a double tap does one of them. The
+ * control decides what its default means and whether to send it, so this is
+ * the same act repeated rather than a second way of doing it.
+ */
+void MainWindow::setAllDefaultValues(void)
+{
+    for (auto &[id, control] : preset.controls) {
+        for (auto &value : control.values) {
+            control.setDefaultValue(value, true);
+        }
+    }
+}
+
 void MainWindow::setActiveControlSetType(
     ActiveControlSetType newActiveControlSetType)
 {
@@ -1213,6 +1283,7 @@ void MainWindow::closeAllWindows(void)
     closePageSelection();
     closeUsbHostPorts();
     closeSnapshots();
+    closePresetFunctions();
 }
 
 void MainWindow::sendAllControls(void)

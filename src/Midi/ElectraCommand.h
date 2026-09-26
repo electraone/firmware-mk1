@@ -69,6 +69,10 @@ public:
         Function = 0x0D,
         Value = 0x0E,
         UsbHostList = 0x10,
+        /* A named thing the instrument can be told to do - see Commands.inc.
+         * Free in the published table, which runs Datafile at 0x12 and picks
+         * up again at FileFirmware. */
+        Command = 0x13,
         /* The staged upload transaction: the cache itself, one file's header,
          * and a chunk of one file. */
         StagedCache = 0x2D,
@@ -151,6 +155,8 @@ public:
             return (Object::Value);
         } else if (objectByte == 0x10) {
             return (Object::UsbHostList);
+        } else if (objectByte == 0x13) {
+            return (Object::Command);
         } else if (objectByte == 0x70) {
             return (Object::FileUi);
         } else if (objectByte == 0x2D) {

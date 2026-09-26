@@ -10,6 +10,11 @@ void Controller::initialise(void)
     // Set delegates
     luaDelegate = &delegate;
 
+    /* The window and the command manager each need the other, so neither can
+     * be handed the other at construction. */
+    mainWindow.setCommandManager(&commandManager);
+    luaCommandManager = &commandManager;
+
     // Get info about the last used preset
     uint8_t presetId = System::runtimeInfo.getLastActivePreset();
 
