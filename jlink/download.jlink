@@ -1,6 +1,0 @@
-SelectInterface SWD
-Speed 1000
-connect
-LoadFile build/firmware.hex
-Reset
-quit
