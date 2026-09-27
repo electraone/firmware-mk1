@@ -29,7 +29,7 @@
  * and less so after every change to the real thing. So this builds real
  * controls and lets the real components paint them, which makes the second
  * screen the same picture by construction rather than a resemblance
- * maintained by hand. It is what the mk2's satellite does, for the same
+ * maintained by hand. It is what the mk2's Electra Link does, for the same
  * reason.
  *
  * That needs somewhere for a Control to live, and a Control lives in a

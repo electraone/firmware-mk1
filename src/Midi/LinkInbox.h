@@ -29,7 +29,7 @@
  * the SPI bus: written from the MIDI interrupt as the packets land, read back
  * on the main loop when the message is handled. That is the right home for a
  * preset upload, which is far too big for main memory. A link message is at
- * most 433 bytes, arrives up to a hundred times a second while a satellite is
+ * most 433 bytes, arrives up to a hundred times a second while an Electra Link is
  * following a knob, and would otherwise cost two SPI transfers each - the
  * first of them inside an interrupt, competing with whatever the main loop is
  * drawing.

@@ -36,7 +36,7 @@
  * gesture, because what a knob does to one is its script's business and the
  * script runs on the primary.
  *
- * The same rules the mk2's satellite applies, in the same order.
+ * The same rules the mk2's Electra Link applies, in the same order.
  */
 
 #pragma once

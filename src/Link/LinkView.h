@@ -22,16 +22,16 @@
 /**
  * @file LinkView.h
  *
- * @brief Everything the satellite knows: what to draw, and what it holds.
+ * @brief Everything the Electra Link knows: what to draw, and what it holds.
  *
- * This is the whole of the satellite's state. There is no preset here, no
+ * This is the whole of the Electra Link's state. There is no preset here, no
  * parameter map, no overlays and no formatters - a value that should be shown
  * as words arrives as words, because the primary is the only end that can turn
  * one into the other.
  *
  * It lives in src/ beside the records, and for the same reason they do: both
  * ends of the link hold a view - the primary that describes it and whatever
- * runs the satellite program - and the only way to be sure they agree about it
+ * runs the Electra Link program - and the only way to be sure they agree about it
  * is to compile the same file. Nothing here knows how anything is drawn.
  *
  * An element's id is opaque. It is not a control id and nothing may be read
@@ -87,7 +87,7 @@ namespace Link
         Link::ElementType type = Link::ElementType::None;
 
         /* What the control is on the controller. Zero when the primary did
-         * not say. Only a satellite that draws the controller's own control
+         * not say. Only an Electra Link that draws the controller's own control
          * components reads these; see ElementRecord. */
         uint8_t nativeType = 0;
         uint8_t nativeVariant = 0;
@@ -154,12 +154,12 @@ namespace Link
         std::string name;
     };
 
-    /** @brief One of the primary's live presets, as offered to the satellite. */
+    /** @brief One of the primary's live presets, as offered to the Electra Link. */
     struct LivePreset {
         uint8_t presetId = 0;
 
-        /** What the preset calls itself wherever it is loaded; how a
-         *  satellite's saved assignments find it again. */
+        /** What the preset calls itself wherever it is loaded; how an
+         *  Electra Link's saved assignments find it again. */
         std::string projectId;
         uint8_t bankNumber = 0;
         uint8_t slot = 0;
@@ -189,7 +189,7 @@ namespace Link
     };
 
     /**
-     * @brief What the satellite is showing.
+     * @brief What the Electra Link is showing.
      *
      * Elements arrive one message at a time after the header, so a view is
      * held incomplete for a moment. Nothing is drawn from it until it is
@@ -221,7 +221,7 @@ namespace Link
     }
 
     /**
-     * @brief One control the satellite asked to have gathered.
+     * @brief One control the Electra Link asked to have gathered.
      *
      * Fed by the controller whatever is being shown, so a knob assigned to a
      * preset running in the background still knows where its control stands -
@@ -349,7 +349,7 @@ namespace Link
          * @brief Put one whole overlay into the view, replacing any partial.
          *
          * How a view being assembled is seeded from the session's overlay
-         * store: a primary that knows the satellite still holds an overlay
+         * store: a primary that knows the Electra Link still holds an overlay
          * does not send it again, so the view has to start with what the
          * session already carries. An overlay that does arrive afterwards
          * replaces this via addOverlayItems' sequence-0 restart.

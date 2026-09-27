@@ -63,7 +63,7 @@ public:
      * @brief Put a control together from parts, the way the parser does.
      *
      * For a program that is handed its controls rather than reading them
-     * from a file - the Electra Link satellite builds a page from what the
+     * from a file - the Electra Link builds a page from what the
      * primary sent. The values and inputs go into the preset's pools and the
      * control is given spans over them, with every back-pointer set, so the
      * result is indistinguishable from a parsed control.

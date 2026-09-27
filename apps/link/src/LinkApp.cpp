@@ -221,7 +221,7 @@ void LinkApp::handleElectraSysex(uint8_t port, const SysexBlock &sysexBlock)
         return;
     }
 
-    /* Not something a satellite does. The NACK is the honest answer, and it
+    /* Not something an Electra Link does. The NACK is the honest answer, and it
      * is what keeps a host's queue moving. */
     MidiOutput::sendNack(MidiInterface::Type::MidiUsbDev, port);
 }

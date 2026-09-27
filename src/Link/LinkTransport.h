@@ -22,7 +22,7 @@
 /**
  * @file LinkTransport.h
  *
- * @brief How a satellite's messages leave it.
+ * @brief How an Electra Link's messages leave it.
  *
  * A link client composes records and knows nothing about how they travel. On
  * a computer that is RtMidi and a SysEx message assembled by hand; on an

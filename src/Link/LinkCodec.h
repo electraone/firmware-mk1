@@ -22,17 +22,17 @@
 /**
  * @file LinkCodec.h
  *
- * @brief Reading and writing Electra Satellite Link records.
+ * @brief Reading and writing Electra Link records.
  *
  * Written against a buffer the caller owns, and allocates nothing, so that the
- * same code serves the controller, a satellite and a desktop application.
+ * same code serves the controller, an Electra Link and a desktop application.
  *
  * Every field is little endian, and every read is bounds checked. A reader
  * that runs off the end does not read anything it should not; it sets its
  * failed flag and every later call answers false. A writer that runs out of
  * room does the same. That means a truncated or malformed message is caught by
  * testing one flag at the end rather than by testing every call - and, more to
- * the point, a satellite cannot be made to walk off a buffer by whatever
+ * the point, an Electra Link cannot be made to walk off a buffer by whatever
  * arrives on its MIDI port.
  */
 
@@ -162,20 +162,20 @@ namespace Link
 
         /**
          * What the preset calls itself across every controller it is loaded
-         * on. A satellite keys anything it remembers about a preset - a map
+         * on. An Electra Link keys anything it remembers about a preset - a map
          * from its own knobs, say - to this rather than to a slot number,
          * which says only where the preset happens to be sitting today.
          */
         StringField projectId;
 
-        /** Page records follow the header, so the satellite can offer them. */
+        /** Page records follow the header, so the Electra Link can offer them. */
         uint8_t pageCount;
 
         /** Element messages follow, one per element. */
         uint16_t elementCount;
     };
 
-    /** @brief One page a satellite may ask to be shown. */
+    /** @brief One page an Electra Link may ask to be shown. */
     struct PageRecord {
         uint8_t id;
         StringField name;
@@ -188,8 +188,8 @@ namespace Link
          *
          * The list is sent one preset per message, and it is a *set* rather
          * than a stream of additions: a preset that stops running has to
-         * disappear from the satellite's copy. Index zero is what tells the
-         * satellite the list has started again, so it can replace rather than
+         * disappear from the Electra Link's copy. Index zero is what tells the
+         * Electra Link the list has started again, so it can replace rather than
          * accumulate.
          */
         uint8_t index;
@@ -207,7 +207,7 @@ namespace Link
         /**
          * What the preset calls itself, wherever it is loaded.
          *
-         * Sent once per preset, and never again: a satellite keys the
+         * Sent once per preset, and never again: an Electra Link keys the
          * assignments it saves to this, so that a map made for a preset finds
          * it again after a reboot or a move to another slot. Everything else
          * on the wire uses the one byte slot id this list pairs it with.
@@ -218,8 +218,8 @@ namespace Link
     struct ElementRecord {
         /**
          * Opaque, and assigned by the primary. For a preset page it is the
-         * control's own id; for a master performance it is the satellite's
-         * subscription index, which is what lets the satellite match an
+         * control's own id; for a master performance it is the Electra Link's
+         * subscription index, which is what lets the Electra Link match an
          * element back to the assignment that asked for it.
          */
         ElementId id;
@@ -236,19 +236,19 @@ namespace Link
         ElementType type;
 
         /**
-         * What the control is on the controller, for a satellite that can
+         * What the control is on the controller, for an Electra Link that can
          * draw the real thing.
          *
          * `type` above is the negotiated shape: the primary chose it from
-         * what the satellite said it could draw, substituting the nearest
-         * claimed type for one it does not know. That is what stops a
-         * satellite and a primary needing to be updated in lockstep, and it
+         * what the Electra Link said it could draw, substituting the nearest
+         * claimed type for one it does not know. That is what stops an
+         * Electra Link and a primary needing to be updated in lockstep, and it
          * stays exactly as it was.
          *
          * These three are the control as the controller holds it -
          * Control::Type, Control::Variant, Control::Mode - and they are
-         * ignorable. A satellite drawing shapes of its own reads `type` and
-         * skips them. A satellite that is an Electra One builds the
+         * ignorable. An Electra Link drawing shapes of its own reads `type` and
+         * skips them. An Electra Link that is an Electra One builds the
          * controller's own control component from them, which is what makes
          * its screen the same picture rather than a resemblance: variant
          * decides a fader's bar height and inset, mode decides whether the
@@ -289,7 +289,7 @@ namespace Link
     /**
      * @brief The head of one overlay message: which overlay, and how much.
      *
-     * `sequence` counts messages within one overlay, not items; a satellite
+     * `sequence` counts messages within one overlay, not items; an Electra Link
      * takes sequence 0 as "start this overlay again", so a view re-sent after
      * a page change does not append to what the last one left. `final` says
      * the overlay is complete.
@@ -334,7 +334,7 @@ namespace Link
      * The op bytes follow the header in the same message, `count` of them. A
      * frame larger than one message travels in pieces: `sequence` counts the
      * messages of one frame, sequence zero starts the frame afresh, and
-     * `final` is what commits it - a satellite draws nothing from a frame it
+     * `final` is what commits it - an Electra Link draws nothing from a frame it
      * only has the front of. `viewId` is the view the frame was captured
      * for; a frame arriving after the view moved on is dropped rather than
      * painted onto whatever element shares the number.
@@ -351,7 +351,7 @@ namespace Link
     bool read(Reader &reader, PrimitivesHeaderRecord &record);
 
     /**
-     * @brief One gesture made on a satellite's custom control.
+     * @brief One gesture made on an Electra Link's custom control.
      *
      * Every field is written whatever the kind, because a fixed record is
      * simpler than four and the whole thing is sixteen bytes. What each
@@ -389,7 +389,7 @@ namespace Link
     struct BankRecord {
         uint8_t index;
 
-        /** How many banks there are, so a satellite knows when it has them
+        /** How many banks there are, so an Electra Link knows when it has them
          *  all without the message having to be split. */
         uint8_t count;
         uint32_t colour;
@@ -408,7 +408,7 @@ namespace Link
         InputKind kind;
 
         /**
-         * The view the satellite was looking at when the user did this.
+         * The view the Electra Link was looking at when the user did this.
          *
          * An element id means different things on different views - a
          * control's own id on a preset page, a place in the subscription on a
@@ -427,7 +427,7 @@ namespace Link
         int16_t b;
     };
 
-    /** @brief One control a satellite wants gathered into its master view. */
+    /** @brief One control an Electra Link wants gathered into its master view. */
     struct SubscriptionEntry {
         uint8_t presetId;
         uint16_t controlId;
@@ -435,7 +435,7 @@ namespace Link
     };
 
     /**
-     * @brief A piece of a satellite's subscription.
+     * @brief A piece of an Electra Link's subscription.
      *
      * A full set of assignments does not fit one SysEx message, so it arrives
      * in pieces. Sequence zero starts a new set - the primary replaces rather
@@ -457,7 +457,7 @@ namespace Link
          *
          * Pinning names a preset and says which way, and a toggle would have
          * been the shorter thing to send and the wrong one: a request that
-         * arrives twice would undo itself, and the satellite would be telling
+         * arrives twice would undo itself, and the Electra Link would be telling
          * the controller to change something rather than what to change it to.
          */
         uint8_t argument2;

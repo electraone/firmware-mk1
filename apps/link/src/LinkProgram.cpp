@@ -83,11 +83,11 @@ LinkProgram::LinkProgram(LinkTransport &newTransport)
 
         for (const Link::ViewValue &value : element->values) {
             if (value.handle == handle) {
-                view.updateValue(
-                    elementId,
-                    handle,
-                    (int16_t)value.current,
-                    value.label.empty() ? nullptr : value.label.c_str());
+                view.updateValue(elementId,
+                                 handle,
+                                 (int16_t)value.current,
+                                 value.label.empty() ? nullptr
+                                                     : value.label.c_str());
                 return;
             }
         }
@@ -145,7 +145,7 @@ const LinkClient &LinkProgram::getLink(void) const
  * @brief Describe this machine to a primary.
  *
  * The screen size and the knob and button counts are the panel's own. The
- * primary lays out for exactly what is claimed here and the satellite never
+ * primary lays out for exactly what is claimed here and the Electra Link never
  * scales or reflows.
  */
 Link::HelloRecord LinkProgram::composeIdentity(const char *name)

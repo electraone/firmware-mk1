@@ -12,7 +12,7 @@
  * @brief The controller's delegate interface, answered by doing nothing.
  *
  * The control components are built for a controller and ask their
- * delegate for things a satellite does not have: a detail window, a
+ * delegate for things an Electra Link does not have: a detail window, a
  * default value, a preset to reload. Every request lands here and is
  * declined. The one thing the components need to work - a value moving
  * on the screen - never goes through the delegate at all.
@@ -41,7 +41,8 @@ public:
         return (false);
     }
 
-    bool switchPage([[maybe_unused]] uint8_t pageId, [[maybe_unused]] uint8_t controlSetId) override
+    bool switchPage([[maybe_unused]] uint8_t pageId,
+                    [[maybe_unused]] uint8_t controlSetId) override
     {
         return (false);
     }
@@ -133,63 +134,89 @@ public:
     {
     }
 
-    void setControlVisible([[maybe_unused]] uint16_t controlId, [[maybe_unused]] bool shouldBeVisible) override
+    void setControlVisible([[maybe_unused]] uint16_t controlId,
+                           [[maybe_unused]] bool shouldBeVisible) override
     {
     }
 
-    void setControlName([[maybe_unused]] uint16_t controlId, [[maybe_unused]] const char *newName) override
+    void setControlName([[maybe_unused]] uint16_t controlId,
+                        [[maybe_unused]] const char *newName) override
     {
     }
 
-    void setControlColour([[maybe_unused]] uint16_t controlId, [[maybe_unused]] uint32_t newColour) override
+    void setControlColour([[maybe_unused]] uint16_t controlId,
+                          [[maybe_unused]] uint32_t newColour) override
     {
     }
 
-    void setControlVariant([[maybe_unused]] uint16_t controlId, [[maybe_unused]] uint8_t newVariant) override
+    void setControlVariant([[maybe_unused]] uint16_t controlId,
+                           [[maybe_unused]] uint8_t newVariant) override
     {
     }
 
-    void setControlPot([[maybe_unused]] uint16_t controlId, [[maybe_unused]] uint8_t newControlSetId, [[maybe_unused]] uint8_t newPotId) override
+    void setControlPot([[maybe_unused]] uint16_t controlId,
+                       [[maybe_unused]] uint8_t newControlSetId,
+                       [[maybe_unused]] uint8_t newPotId) override
     {
     }
 
-    void setControlBounds([[maybe_unused]] uint16_t controlId, [[maybe_unused]] const Rectangle &bounds) override
+    void setControlBounds([[maybe_unused]] uint16_t controlId,
+                          [[maybe_unused]] const Rectangle &bounds) override
     {
     }
 
-    void setControlSlot([[maybe_unused]] uint16_t controlId, [[maybe_unused]] uint8_t newSlot) override
+    void setControlSlot([[maybe_unused]] uint16_t controlId,
+                        [[maybe_unused]] uint8_t newSlot) override
     {
     }
 
-    void setControlSlot([[maybe_unused]] uint16_t controlId, [[maybe_unused]] uint8_t newPageId, [[maybe_unused]] uint8_t newSlot) override
+    void setControlSlot([[maybe_unused]] uint16_t controlId,
+                        [[maybe_unused]] uint8_t newPageId,
+                        [[maybe_unused]] uint8_t newSlot) override
     {
     }
 
-    void setControlValueLabel([[maybe_unused]] uint16_t controlId, [[maybe_unused]] const char *valueId, [[maybe_unused]] const char *text) override
+    void setControlValueLabel([[maybe_unused]] uint16_t controlId,
+                              [[maybe_unused]] const char *valueId,
+                              [[maybe_unused]] const char *text) override
     {
     }
 
-    void setControlValueLabel([[maybe_unused]] uint16_t controlId, [[maybe_unused]] uint8_t handleId, [[maybe_unused]] const char *text) override
+    void setControlValueLabel([[maybe_unused]] uint16_t controlId,
+                              [[maybe_unused]] uint8_t handleId,
+                              [[maybe_unused]] const char *text) override
     {
     }
 
-    void setControlValueOverlay([[maybe_unused]] uint16_t controlId, [[maybe_unused]] uint8_t handleId, [[maybe_unused]] uint8_t newOverlayId) override
+    void setControlValueOverlay([[maybe_unused]] uint16_t controlId,
+                                [[maybe_unused]] uint8_t handleId,
+                                [[maybe_unused]] uint8_t newOverlayId) override
     {
     }
 
-    void setControlValueMin([[maybe_unused]] uint16_t controlId, [[maybe_unused]] uint8_t handleId, [[maybe_unused]] int16_t newMin) override
+    void setControlValueMin([[maybe_unused]] uint16_t controlId,
+                            [[maybe_unused]] uint8_t handleId,
+                            [[maybe_unused]] int16_t newMin) override
     {
     }
 
-    void setControlValueMax([[maybe_unused]] uint16_t controlId, [[maybe_unused]] uint8_t handleId, [[maybe_unused]] int16_t newMax) override
+    void setControlValueMax([[maybe_unused]] uint16_t controlId,
+                            [[maybe_unused]] uint8_t handleId,
+                            [[maybe_unused]] int16_t newMax) override
     {
     }
 
-    void setControlValueRange([[maybe_unused]] uint16_t controlId, [[maybe_unused]] uint8_t handleId, [[maybe_unused]] int16_t newMin, [[maybe_unused]] int16_t newMax, [[maybe_unused]] int16_t newDefault, [[maybe_unused]] bool updateMesage) override
+    void setControlValueRange([[maybe_unused]] uint16_t controlId,
+                              [[maybe_unused]] uint8_t handleId,
+                              [[maybe_unused]] int16_t newMin,
+                              [[maybe_unused]] int16_t newMax,
+                              [[maybe_unused]] int16_t newDefault,
+                              [[maybe_unused]] bool updateMesage) override
     {
     }
 
-    void setPageName([[maybe_unused]] uint8_t pageId, [[maybe_unused]] const char *newName) override
+    void setPageName([[maybe_unused]] uint8_t pageId,
+                     [[maybe_unused]] const char *newName) override
     {
     }
 
@@ -197,7 +224,7 @@ public:
     {
     }
 
-    const char * getInfoText(void) const override
+    const char *getInfoText(void) const override
     {
         return ("");
     }
@@ -206,43 +233,57 @@ public:
     {
     }
 
-    void setGroupLabel([[maybe_unused]] uint16_t groupId, [[maybe_unused]] const char *newLabel) override
+    void setGroupLabel([[maybe_unused]] uint16_t groupId,
+                       [[maybe_unused]] const char *newLabel) override
     {
     }
 
-    void setGroupColour([[maybe_unused]] uint16_t groupId, [[maybe_unused]] uint32_t newColour) override
+    void setGroupColour([[maybe_unused]] uint16_t groupId,
+                        [[maybe_unused]] uint32_t newColour) override
     {
     }
 
-    void setGroupVisible([[maybe_unused]] uint16_t groupId, [[maybe_unused]] bool shouldBeVisible) override
+    void setGroupVisible([[maybe_unused]] uint16_t groupId,
+                         [[maybe_unused]] bool shouldBeVisible) override
     {
     }
 
-    void setGroupBounds([[maybe_unused]] uint16_t groupId, [[maybe_unused]] const Rectangle &bounds) override
+    void setGroupBounds([[maybe_unused]] uint16_t groupId,
+                        [[maybe_unused]] const Rectangle &bounds) override
     {
     }
 
-    void setGroupSlot([[maybe_unused]] uint16_t groupId, [[maybe_unused]] uint8_t newSlot, [[maybe_unused]] uint8_t newWidth, [[maybe_unused]] uint8_t newHeight) override
+    void setGroupSlot([[maybe_unused]] uint16_t groupId,
+                      [[maybe_unused]] uint8_t newSlot,
+                      [[maybe_unused]] uint8_t newWidth,
+                      [[maybe_unused]] uint8_t newHeight) override
     {
     }
 
-    void setGroupHorizontalSpan([[maybe_unused]] uint16_t groupId, [[maybe_unused]] uint8_t newWidth) override
+    void setGroupHorizontalSpan([[maybe_unused]] uint16_t groupId,
+                                [[maybe_unused]] uint8_t newWidth) override
     {
     }
 
-    void setGroupVerticalSpan([[maybe_unused]] uint16_t groupId, [[maybe_unused]] uint8_t newHeight) override
+    void setGroupVerticalSpan([[maybe_unused]] uint16_t groupId,
+                              [[maybe_unused]] uint8_t newHeight) override
     {
     }
 
-    void setGroupVariant([[maybe_unused]] uint16_t groupId, [[maybe_unused]] uint8_t newVariant) override
+    void setGroupVariant([[maybe_unused]] uint16_t groupId,
+                         [[maybe_unused]] uint8_t newVariant) override
     {
     }
 
-    void sendSnapshotList([[maybe_unused]] uint8_t port, [[maybe_unused]] const char *projectId) override
+    void sendSnapshotList([[maybe_unused]] uint8_t port,
+                          [[maybe_unused]] const char *projectId) override
     {
     }
 
-    void sendSnapshot([[maybe_unused]] uint8_t port, [[maybe_unused]] const char *projectId, [[maybe_unused]] uint8_t bankNumber, [[maybe_unused]] uint8_t slot) override
+    void sendSnapshot([[maybe_unused]] uint8_t port,
+                      [[maybe_unused]] const char *projectId,
+                      [[maybe_unused]] uint8_t bankNumber,
+                      [[maybe_unused]] uint8_t slot) override
     {
     }
 
@@ -250,7 +291,9 @@ public:
     {
     }
 
-    void sendPresetSlotInfo([[maybe_unused]] uint8_t port, [[maybe_unused]] uint8_t bankNumber, [[maybe_unused]] uint8_t slot) override
+    void sendPresetSlotInfo([[maybe_unused]] uint8_t port,
+                            [[maybe_unused]] uint8_t bankNumber,
+                            [[maybe_unused]] uint8_t slot) override
     {
     }
 
@@ -266,11 +309,13 @@ public:
     {
     }
 
-    void scheduleSwitchPreset([[maybe_unused]] uint8_t bankNumber, [[maybe_unused]] uint8_t slot) override
+    void scheduleSwitchPreset([[maybe_unused]] uint8_t bankNumber,
+                              [[maybe_unused]] uint8_t slot) override
     {
     }
 
-    void switchPreset([[maybe_unused]] uint8_t bankNumber, [[maybe_unused]] uint8_t slot) override
+    void switchPreset([[maybe_unused]] uint8_t bankNumber,
+                      [[maybe_unused]] uint8_t slot) override
     {
     }
 
@@ -286,36 +331,57 @@ public:
     {
     }
 
-    void setSnapshotSlot([[maybe_unused]] const char *projectId, [[maybe_unused]] uint8_t bankNumber, [[maybe_unused]] uint8_t slot) override
+    void setSnapshotSlot([[maybe_unused]] const char *projectId,
+                         [[maybe_unused]] uint8_t bankNumber,
+                         [[maybe_unused]] uint8_t slot) override
     {
     }
 
-    void setPresetSlot([[maybe_unused]] uint8_t bankNumber, [[maybe_unused]] uint8_t slot) override
+    void setPresetSlot([[maybe_unused]] uint8_t bankNumber,
+                       [[maybe_unused]] uint8_t slot) override
     {
     }
 
-    bool updatePresetSlot([[maybe_unused]] uint8_t bankNumber, [[maybe_unused]] uint8_t slot, [[maybe_unused]] const char *presetPath) override
+    bool updatePresetSlot([[maybe_unused]] uint8_t bankNumber,
+                          [[maybe_unused]] uint8_t slot,
+                          [[maybe_unused]] const char *presetPath) override
     {
         return (false);
     }
 
-    void loadSnapshot([[maybe_unused]] const char *projectId, [[maybe_unused]] uint8_t bankNumber, [[maybe_unused]] uint8_t slot) override
+    void loadSnapshot([[maybe_unused]] const char *projectId,
+                      [[maybe_unused]] uint8_t bankNumber,
+                      [[maybe_unused]] uint8_t slot) override
     {
     }
 
-    void saveSnapshot([[maybe_unused]] const char *projectId, [[maybe_unused]] uint8_t bankNumber, [[maybe_unused]] uint8_t slot, [[maybe_unused]] const char *newName, [[maybe_unused]] uint32_t newColour) override
+    void saveSnapshot([[maybe_unused]] const char *projectId,
+                      [[maybe_unused]] uint8_t bankNumber,
+                      [[maybe_unused]] uint8_t slot,
+                      [[maybe_unused]] const char *newName,
+                      [[maybe_unused]] uint32_t newColour) override
     {
     }
 
-    void updateSnapshot([[maybe_unused]] const char *projectId, [[maybe_unused]] uint8_t bankNumber, [[maybe_unused]] uint8_t slot, [[maybe_unused]] const char *name, [[maybe_unused]] uint32_t colour) override
+    void updateSnapshot([[maybe_unused]] const char *projectId,
+                        [[maybe_unused]] uint8_t bankNumber,
+                        [[maybe_unused]] uint8_t slot,
+                        [[maybe_unused]] const char *name,
+                        [[maybe_unused]] uint32_t colour) override
     {
     }
 
-    void removeSnapshot([[maybe_unused]] const char *projectId, [[maybe_unused]] uint8_t bankNumber, [[maybe_unused]] uint8_t slot) override
+    void removeSnapshot([[maybe_unused]] const char *projectId,
+                        [[maybe_unused]] uint8_t bankNumber,
+                        [[maybe_unused]] uint8_t slot) override
     {
     }
 
-    void swapSnapshots([[maybe_unused]] const char *projectId, [[maybe_unused]] uint8_t sourceBankNumber, [[maybe_unused]] uint8_t sourceSlot, [[maybe_unused]] uint8_t destBankNumber, [[maybe_unused]] uint8_t destSlot) override
+    void swapSnapshots([[maybe_unused]] const char *projectId,
+                       [[maybe_unused]] uint8_t sourceBankNumber,
+                       [[maybe_unused]] uint8_t sourceSlot,
+                       [[maybe_unused]] uint8_t destBankNumber,
+                       [[maybe_unused]] uint8_t destSlot) override
     {
     }
 
@@ -361,7 +427,9 @@ public:
         return (0);
     }
 
-    void sendPotTouchEvent([[maybe_unused]] uint8_t potId, [[maybe_unused]] uint16_t controlId, [[maybe_unused]] bool touched) override
+    void sendPotTouchEvent([[maybe_unused]] uint8_t potId,
+                           [[maybe_unused]] uint16_t controlId,
+                           [[maybe_unused]] bool touched) override
     {
     }
 
@@ -373,15 +441,19 @@ public:
     {
     }
 
-    void assignComponentToControl([[maybe_unused]] uint16_t controlId, [[maybe_unused]] Component *component) override
+    void
+        assignComponentToControl([[maybe_unused]] uint16_t controlId,
+                                 [[maybe_unused]] Component *component) override
     {
     }
 
-    void removeComponentFromControl([[maybe_unused]] uint16_t controlId) override
+    void
+        removeComponentFromControl([[maybe_unused]] uint16_t controlId) override
     {
     }
 
-    void assignComponentToGroup([[maybe_unused]] uint16_t groupId, [[maybe_unused]] Component *component) override
+    void assignComponentToGroup([[maybe_unused]] uint16_t groupId,
+                                [[maybe_unused]] Component *component) override
     {
     }
 
@@ -389,7 +461,8 @@ public:
     {
     }
 
-    void setActivePotTouch([[maybe_unused]] uint8_t potId, [[maybe_unused]] Component *component) override
+    void setActivePotTouch([[maybe_unused]] uint8_t potId,
+                           [[maybe_unused]] Component *component) override
     {
     }
 
@@ -397,7 +470,8 @@ public:
     {
     }
 
-    void setDefaultValue([[maybe_unused]] uint16_t controlId, [[maybe_unused]] uint8_t handle) override
+    void setDefaultValue([[maybe_unused]] uint16_t controlId,
+                         [[maybe_unused]] uint8_t handle) override
     {
     }
 
@@ -409,7 +483,8 @@ public:
     {
     }
 
-    void setActiveControlSetType([[maybe_unused]] ActiveControlSetType activeControlSetType) override
+    void setActiveControlSetType(
+        [[maybe_unused]] ActiveControlSetType activeControlSetType) override
     {
     }
 
@@ -437,7 +512,7 @@ public:
         return (0);
     }
 
-    const char * getCurrentProjectId(void) const override
+    const char *getCurrentProjectId(void) const override
     {
         return ("");
     }
@@ -455,5 +530,4 @@ public:
     void initialiseEmpty(void) override
     {
     }
-
 };

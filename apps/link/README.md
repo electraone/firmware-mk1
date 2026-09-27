@@ -7,8 +7,8 @@ holds no preset, no parameter values of its own, no Lua state and no router,
 and decides nothing - every pixel on it is something the mk2 asked for, and
 every knob turn is a request the mk2 grants.
 
-It is the mk2's satellite program (`satellite/` in firmware-mk2, protocol in
-`developers/satellitelink.md` there) on this hardware, and the two are
+It is the mk2's Electra Link program (`electralink/` in firmware-mk2, protocol in
+`developers/electralink.md` there) on this hardware, and the two are
 functionally the same thing: the same protocol, the same shared sources
 (`src/Link/` is byte for byte the mk2's), the same rules about who decides
 what. What differs is only what the machine underneath is.
@@ -34,7 +34,7 @@ link that looks alive can be told from one that is.
 | Where | What |
 | --- | --- |
 | `LinkApp` | the application: enables the inbox, raises the USB read budget, runs the program from a 1 ms task, answers a bench's screenshot and file requests |
-| `LinkProgram` | being a satellite: hello until answered, take what arrived, draw a view when one is complete, keep the status line true. A port of the mk2's `SatelliteProgram` |
+| `LinkProgram` | being an Electra Link: hello until answered, take what arrived, draw a view when one is complete, keep the status line true. A port of the mk2's `ElectraLinkProgram` |
 | `LinkPageView` | the page, built from the controller's own control components inside an empty `Preset` whose pools hold the values - so the second screen is the same picture by construction |
 | `LinkSurface` | the knobs: which element a knob drives (the one in the active control set first), and what a turn or a touch of it sends |
 | `LinkNavigation` | the mk1's own buttons: pages, presets and control sets, and nothing else |
@@ -74,8 +74,8 @@ The controller assembles every SysEx on its CTRL cable into the pool in the
 display's SDRAM, on the far side of the SPI bus, from the MIDI interrupt - and
 skips reading altogether while the main loop is drawing, because two owners of
 that bus at once corrupt the picture. That stalls the whole port for as long
-as a page takes to draw, which a computer forgives and a primary driving a
-satellite does not: its host port fills, the sends behind it wait, and what
+as a page takes to draw, which a computer forgives and a primary driving an
+Electra Link does not: its host port fills, the sends behind it wait, and what
 could not be sent is gone - an element that never arrives is a view that never
 completes.
 

@@ -22,12 +22,12 @@
 /**
  * @file LinkProgram.h
  *
- * @brief Being a satellite: everything that is true of one wherever it runs.
+ * @brief Being an Electra Link: everything that is true of one wherever it runs.
  *
  * The program says hello until somebody answers, draws the view it is sent,
  * moves the controls its knobs are under, opens the choosers on the panel's
  * own buttons, and says on the screen what the link is doing. It is the
- * mk2's SatelliteProgram with the machine underneath swapped: one thread
+ * mk2's ElectraLinkProgram with the machine underneath swapped: one thread
  * instead of several, so nothing is queued between them, and an inbox in
  * main memory instead of the SysEx pool.
  *
@@ -83,7 +83,8 @@ public:
     void buttonUp(uint8_t buttonId);
 
     /** @brief A touch on a custom control, raw. */
-    void touchGesture(uint16_t elementId, const TouchEvent &touchEvent) override;
+    void touchGesture(uint16_t elementId,
+                      const TouchEvent &touchEvent) override;
 
     LinkClient &getLink(void);
     const LinkClient &getLink(void) const;
@@ -114,7 +115,7 @@ private:
      * @brief A value moved here first: a finger on the screen.
      *
      * The controller's components apply a touch to their own value before
-     * anything else hears of it. On a satellite the value is the primary's,
+     * anything else hears of it. On an Electra Link the value is the primary's,
      * so what moved here is sent there, and the two agree again a message
      * later.
      */

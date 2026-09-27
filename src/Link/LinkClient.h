@@ -22,7 +22,7 @@
 /**
  * @file LinkClient.h
  *
- * @brief The satellite's half of the Electra Satellite Link.
+ * @brief The Electra Link's half of the link.
  *
  * Says hello, holds the view it is sent, and reports what the user did. It
  * decides nothing: a page the user picks is a request, and what is drawn does
@@ -66,7 +66,7 @@ public:
      * @brief Called when the primary's preset list has changed.
      *
      * Which presets are running, which are pinned and which one is on the
-     * screen all change while a satellite is attached - somebody pins one on
+     * screen all change while an Electra Link is attached - somebody pins one on
      * the controller - and a chooser showing the old answer is showing
      * something that is no longer true. The list arrives one preset per
      * message, so this fires when the last of them lands and not before.
@@ -88,9 +88,9 @@ public:
     void setCustomFrameChanged(CustomFrameChanged callback);
 
     /**
-     * @brief Describe this satellite, and offer the session.
+     * @brief Describe this Electra Link, and offer the session.
      *
-     * The caller composes the record, because what a satellite is - its
+     * The caller composes the record, because what an Electra Link is - its
      * screen, its knobs, the element types it can draw - is a fact about the
      * program holding this client and not about the link. The protocol
      * version is filled in here, being the one field this file owns.
@@ -147,7 +147,7 @@ public:
     /** @brief Ask for everything again. */
     void requestResync();
 
-    /** @brief Ask to be shown the controls this satellite subscribed to. */
+    /** @brief Ask to be shown the controls this Electra Link subscribed to. */
     void requestMasterPerformance();
 
     /**
@@ -165,9 +165,9 @@ public:
     /**
      * @brief Say the session is over.
      *
-     * Worth saying rather than just closing the port: while a satellite is
+     * Worth saying rather than just closing the port: while an Electra Link is
      * attached the controller keeps the parameter map of whatever is being
-     * watched switched on, and a satellite that vanishes without a word would
+     * watched switched on, and an Electra Link that vanishes without a word would
      * leave that costing something for nothing.
      */
     void sayGoodbye();
@@ -181,7 +181,7 @@ public:
      * @brief Notice a primary that has gone away.
      *
      * A session has no other end to it: a primary that reboots, is unplugged
-     * or simply stops does not say goodbye, and a satellite that took silence
+     * or simply stops does not say goodbye, and an Electra Link that took silence
      * for a working link would sit showing a page nobody is updating - which
      * is worse than showing nothing, because it looks right.
      *
@@ -323,7 +323,7 @@ private:
     /** Pings sent since the primary was last heard from. */
     uint8_t unanswered;
 
-    /** Everything the primary has ever sent. On the satellite's screen, so
+    /** Everything the primary has ever sent. On the Electra Link's screen, so
      *  that a link which looks alive can be told from one that is. */
     uint32_t messagesReceived;
     std::string primaryName;

@@ -25,7 +25,7 @@
  * @brief The drawing vocabulary of a captured custom control paint.
  *
  * A custom control is painted by its preset's Lua, and the script runs only
- * on the primary - so what travels to a satellite is not the control but the
+ * on the primary - so what travels to an Electra Link is not the control but the
  * drawing: one op per graphics.* call the paint callback made, arguments
  * verbatim, in the control-relative coordinates the callback drew in. The
  * vocabulary is exactly the Lua graphics library's sixteen functions, which
@@ -39,7 +39,7 @@
  * Lua already lives.
  *
  * In src/Link beside the records, because both ends read these bytes: the
- * primary writes them and a satellite - or a computer speaking the protocol -
+ * primary writes them and an Electra Link - or a computer speaking the protocol -
  * replays them. Depends on the codec only, never on the display.
  */
 
@@ -74,7 +74,7 @@ namespace Link
      * @brief Records drawing calls into a caller-owned buffer.
      *
      * A thin dialect of the codec's Writer: every op is an opcode byte and
-     * its arguments, little endian, so the satellite reads frames with the
+     * its arguments, little endian, so the Electra Link reads frames with the
      * same Reader it reads everything else with. A frame that outgrows the
      * buffer is truncated at a whole op - the overflow flag says so, and the
      * sender logs it rather than sending half an op.
@@ -134,7 +134,7 @@ namespace Link
          *
          * Checked before the opcode goes in, so a frame never ends mid-op:
          * the writer would take the bytes that fit and refuse the rest, and
-         * the satellite would replay a rectangle with half its geometry.
+         * the Electra Link would replay a rectangle with half its geometry.
          */
         bool fits(size_t opBytes);
 

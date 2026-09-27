@@ -31,7 +31,7 @@
  * every pixel on it is something the primary asked for.
  *
  * It is a separate image rather than a mode of the controller because that
- * is what makes the claim above checkable: what a satellite cannot do, it
+ * is what makes the claim above checkable: what an Electra Link cannot do, it
  * cannot do because the code is not running, not because a flag says not to.
  *
  * The boot path is shared. main.cpp brings up the hardware, the display and
@@ -83,14 +83,14 @@ private:
     /**
      * @brief An Electra SysEx request the base firmware left to the app.
      *
-     * A satellite answers what a host on a bench needs of it - a picture of
+     * An Electra Link answers what a host on a bench needs of it - a picture of
      * the screen and the files that holds it - and refuses the rest with a
      * NACK rather than silence, so a host's queue never stalls on it.
      */
     void handleElectraSysex(uint8_t port,
                             const SysexBlock &sysexBlock) override;
 
-    /** @brief Plain MIDI. A satellite has no preset to play it into. */
+    /** @brief Plain MIDI. An Electra Link has no preset to play it into. */
     void handleIncomingMidiMessage(const MidiInput &midiInput,
                                    const MidiMessage &midiMessage) override;
 

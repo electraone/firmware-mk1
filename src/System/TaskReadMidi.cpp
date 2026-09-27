@@ -32,7 +32,7 @@ CircularBuffer<MidiMessageTransport, 100> incomingQueueL2;
 
 /* How many messages each tick may take from the USB device port. Four is
  * the controller's figure, chosen against what the queue holds between two
- * runs of processMidi(). The link program raises it: a satellite's whole
+ * runs of processMidi(). The link program raises it: an Electra Link's whole
  * conversation arrives on this one port, a view is a burst of forty SysEx
  * messages, and SysEx never reaches the queue at all - the reads go to the
  * inbox and cost the interrupt a copy each. */
@@ -59,7 +59,7 @@ void readMidi(void)
     /*
      * Not while a big SysEx is being streamed out, either - the main loop is
      * in that for as long as the file takes, and the controller has nothing
-     * to gain from reading meanwhile. A satellite has: the primary keeps
+     * to gain from reading meanwhile. An Electra Link has: the primary keeps
      * talking to it the whole time, and a port that is not read is a port
      * the primary cannot write to. Reading costs the transfer nothing.
      */
@@ -72,7 +72,7 @@ void readMidi(void)
      * assembled here goes into the pool on the far side of that bus - so
      * nothing used to be read while one was on. That was the whole input
      * stalling for as long as a page took to draw, which a computer forgives
-     * and a primary driving a satellite does not: its host port fills, and
+     * and a primary driving an Electra Link does not: its host port fills, and
      * what it could not send is gone. With the link inbox up, the USB device
      * port is read through a repaint - a link message lands in main memory
      * and never near the bus, and the SysEx handlers refuse anything else

@@ -329,7 +329,7 @@ void LinkClient::handleWelcome(Link::Reader &reader)
     heard = true;
     unanswered = 0;
 
-    /* A new session's primary has sent this satellite nothing yet, whatever
+    /* A new session's primary has sent this Electra Link nothing yet, whatever
      * the last session left behind. */
     overlayStore.clear();
 
@@ -649,7 +649,7 @@ void LinkClient::handlePresets(Link::Reader &reader)
      * The list is a set, not a stream of additions. It arrives one preset per
      * message and index zero says a new one has started, so the old contents
      * go then - otherwise a preset that stopped running would linger, and the
-     * satellite would offer something the controller no longer has.
+     * Electra Link would offer something the controller no longer has.
      */
     if (record.index == 0) {
         presets.clear();
@@ -860,7 +860,7 @@ void LinkClient::handleSubscriptionUpdate(Link::Reader &reader)
     /*
      * A subscribed control is often also one of the elements of the view
      * being shown, and then the feed is what moves it there: a knob on the
-     * satellite drives the subscription and never touches the view, so
+     * Electra Link drives the subscription and never touches the view, so
      * without this the displayed control would sit still until the whole
      * view was sent again.
      *
