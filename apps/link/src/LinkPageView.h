@@ -117,6 +117,17 @@ private:
     void addElement(const Link::ViewElement &element, Component &parent);
 
     /**
+     * @brief Build one group and its component.
+     *
+     * The primary sends a group as an element like any other - on that model
+     * a group is a control - and this turns it back into what this model
+     * keeps groups as.
+     */
+    void addGroup(const Link::ViewElement &element,
+                  const Rectangle &bounds,
+                  Component &parent);
+
+    /**
      * @brief The MIDI value that stands for a display value in this store.
      *
      * The component translates a MIDI value back through its message, so the

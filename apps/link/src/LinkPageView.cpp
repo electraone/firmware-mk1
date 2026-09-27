@@ -21,6 +21,7 @@
 
 #include "LinkPageView.h"
 #include "LinkCustomControl.h"
+#include "GroupControl.h"
 #include "Window.h"
 #include "Colours.h"
 #include "Base64.h"
@@ -48,6 +49,24 @@ namespace
             g.fillAll(Colours565::black);
         }
     };
+    /*
+     * What the primary calls a group.
+     *
+     * On the mk2 a group is a control like any other - Control::Type::Group,
+     * kept in the preset's controls so that ids cannot collide - and it is
+     * sent as an element with that native type. This model keeps its groups
+     * apart from its controls and draws them with a component of their own,
+     * so the number is what says which of the two to build. It is the mk2's
+     * enumerator and not one of this model's, which is why it is spelled
+     * here rather than taken from Control::Type: this firmware has no such
+     * control and must not gain one for the sake of reading a message.
+     */
+    constexpr uint8_t primaryGroupType = 16;
+
+    bool isGroup(const Link::ViewElement &element)
+    {
+        return (element.nativeType == primaryGroupType);
+    }
 } // namespace
 
 LinkPageView::LinkPageView(MainDelegate &newDelegate,
@@ -227,8 +246,22 @@ bool LinkPageView::rebuild(const Link::View &view, Component &parent)
         }
     }
 
+    /*
+     * Groups first, then everything else. A child is painted in the order it
+     * was added, and a group is the box drawn behind a set of controls - one
+     * added after them would paint over them. The primary sends them mixed
+     * in with the controls, because there they are controls.
+     */
     for (const Link::ViewElement &element : view.getElements()) {
-        addElement(element, *frame);
+        if (isGroup(element)) {
+            addElement(element, *frame);
+        }
+    }
+
+    for (const Link::ViewElement &element : view.getElements()) {
+        if (!isGroup(element)) {
+            addElement(element, *frame);
+        }
     }
 
     /* Frames that arrived while the view was still assembling waited inside
@@ -405,6 +438,45 @@ void LinkPageView::updateValue(Link::ElementId elementId,
 #endif
 }
 
+/*
+ * A group the primary sent, as this model holds one.
+ *
+ * It goes into the preset's own groups - a map, so the entry keeps its
+ * address for as long as the component that refers to it lives - and is
+ * drawn by the controller's own GroupControl, which is what makes a group
+ * on this screen the same box, label and variant as the one on the
+ * primary's. The variants are numbered alike on both models, so the native
+ * variant crosses unchanged.
+ *
+ * A group takes no knob, holds no value and transmits nothing, so none of
+ * the parameter-map work a control needs applies to it.
+ */
+void LinkPageView::addGroup(const Link::ViewElement &element,
+                            const Rectangle &bounds,
+                            Component &parent)
+{
+    Group &group = preset.groups[element.id];
+
+    group = Group(element.id,
+                  1,
+                  bounds,
+                  element.name.c_str(),
+                  element.colour,
+                  (Group::Variant)element.nativeVariant);
+    group.setVisible(element.visible);
+
+    GroupControl *component = new GroupControl(group);
+
+    if (component == nullptr) {
+        return;
+    }
+
+    parent.addChildComponent(component);
+    group.setComponent(component);
+
+    count++;
+}
+
 void LinkPageView::addElement(const Link::ViewElement &element,
                               Component &parent)
 {
@@ -412,6 +484,11 @@ void LinkPageView::addElement(const Link::ViewElement &element,
                            element.bounds.y,
                            element.bounds.width,
                            element.bounds.height);
+
+    if (isGroup(element)) {
+        addGroup(element, bounds, parent);
+        return;
+    }
 
     /* The native fields, which is what this program exists to use: the
      * control as the controller holds it, not a shape resembling one. */
