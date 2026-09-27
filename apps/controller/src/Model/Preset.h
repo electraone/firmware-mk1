@@ -13,7 +13,6 @@
 #include "Controls.h"
 #include "Pool.h"
 
-
 #include "Rule.h"
 #include "Checksum.h"
 
@@ -76,9 +75,8 @@ public:
 
     void resetComponents(void);
 
-        /** Give back what the indexes grew into, once the preset is read. */
+    /** Give back what the indexes grew into, once the preset is read. */
     void compactControls(void);
-
 
 public:
     static constexpr uint8_t MaxNameLength = 20;
@@ -143,8 +141,8 @@ private:
     // Controls
     Control parseControl(JsonObject jControl);
 
-        // Inputs: placed in controlInputs and handed to the control
-        void parseInputs(File &file,
+    // Inputs: placed in controlInputs and handed to the control
+    void parseInputs(File &file,
                      size_t startPosition,
                      size_t endPosition,
                      Control &control);
@@ -152,11 +150,11 @@ private:
         parseInput(File &file, size_t startPosition, Control::Type controlType);
     Input parseInput(Control::Type controlType, JsonObject jInput);
 
-        // Values: placed in controlValues and handed to the control
+    // Values: placed in controlValues and handed to the control
     void parseValues(File &file,
-                                          size_t startPosition,
-                                          size_t endPosition,
-                                          Control *control);
+                     size_t startPosition,
+                     size_t endPosition,
+                     Control *control);
     /** @param ordinal the value's position in the array, which is a Custom
      *         control's only way of numbering its values. */
     ControlValue parseValue(File &file,
@@ -239,7 +237,7 @@ private:
     char projectId[MaxProjectIdLength + 1];
     bool valid;
 
-            /* Every incoming channel message asks which device listens on its port
+    /* Every incoming channel message asks which device listens on its port
      * and channel. This answers in one lookup instead of a walk through the
      * devices; rebuilt whenever a device is added. */
     const Device *devicesByPortChannel[2][17];
@@ -249,10 +247,9 @@ private:
     Pool<ControlValue, 2048> controlValues;
     Pool<Input, 512> controlInputs;
 
-
 public: // Public on the purpose
     Pages pages;
-        Devices devices;
+    Devices devices;
 
     /** Rebuild the port/channel index after devices were added. */
     void indexDevices(void);
