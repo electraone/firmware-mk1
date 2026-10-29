@@ -274,6 +274,10 @@ Control::Mode Control::translateControlMode(const char *modeText)
             return (Control::Mode::Toggle);
         } else if (strcmp(modeText, "unipolar") == 0) {
             return (Control::Mode::Unipolar);
+        } else if (strcmp(modeText, "cycle") == 0) {
+            return (Control::Mode::Cycle);
+        } else if (strcmp(modeText, "bipolar") == 0) {
+            return (Control::Mode::Bipolar);
         }
     }
     return (Control::Mode::Default);

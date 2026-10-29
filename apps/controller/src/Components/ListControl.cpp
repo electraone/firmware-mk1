@@ -32,6 +32,26 @@ ListControl::ListControl(const Control &control, MainDelegate &newDelegate)
     enableEncoderMode(true);
 }
 
+/*
+ * Where a step from the current entry lands. A list in cycle mode goes round,
+ * from the last entry to the first and back; any other stops at its ends.
+ */
+int16_t ListControl::stepIndex(int16_t delta)
+{
+    const auto list = getList();
+    const int16_t maxIndex = list ? list->getMaxIndex() : 0;
+    const int16_t candidate = index + delta;
+
+    if (control.getMode() == Control::Mode::Cycle) {
+        const int16_t numItems = maxIndex + 1;
+        const int16_t wrapped = candidate % numItems;
+
+        return ((wrapped < 0) ? (int16_t)(wrapped + numItems) : wrapped);
+    }
+
+    return (constrain(candidate, 0, maxIndex));
+}
+
 void ListControl::syncComponentProperties(void)
 {
     const auto &controlValue = control.getValue(0);
@@ -42,14 +62,13 @@ void ListControl::syncComponentProperties(void)
 
 void ListControl::onTouchUp(const TouchEvent &touchEvent)
 {
-    if (auto list = getList()) {
+    if (getList()) {
         int16_t delta = touchEvent.getTouchDownX() - touchEvent.getX();
 
         if (abs(delta) > thresholdSwipeDistance) {
             int8_t step = ControlValue::invertedSign(delta);
-            uint16_t newIndex = constrain(index + step, 0, list->getMaxIndex());
 
-            emitValueChange(newIndex, control.getValue(0));
+            emitValueChange(stepIndex(step), control.getValue(0));
         }
     }
 }
@@ -61,7 +80,7 @@ void ListControl::onPotTouchDown(const PotEvent &potEvent)
 
 void ListControl::onPotChange(const PotEvent &potEvent)
 {
-    if (auto list = getList()) {
+    if (getList()) {
         if (int16_t delta = potEvent.getAcceleratedChange()) {
             const auto &cv = control.getValue(0);
 
@@ -69,9 +88,7 @@ void ListControl::onPotChange(const PotEvent &potEvent)
                 ControlComponent::emitValueChange(ControlValue::sign(delta),
                                                   cv);
             } else {
-                int16_t newIndex =
-                    constrain(index + delta, 0, list->getMaxIndex());
-                emitValueChange(newIndex, cv);
+                emitValueChange(stepIndex(delta), cv);
             }
         }
     }

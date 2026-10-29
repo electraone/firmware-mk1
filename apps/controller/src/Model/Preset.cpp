@@ -1230,9 +1230,15 @@ Control Preset::parseControl(JsonObject jControl)
     bool visible = jControl["visible"] | true;
     Control::Font font = parseFont(jControl["font"]);
 
+    /* The mk2's defaults, so the two read one preset the same way: a fader
+     * with no mode fills from zero, and a list drawn as a button steps round
+     * from its last entry to its first, which is what a button can do. */
     if ((controlType == Control::Type::Fader)
         && (controlMode == Control::Mode::Default)) {
         controlMode = Control::Mode::Bipolar;
+    } else if ((controlType == Control::Type::List)
+               && (variantType == Control::Variant::ValueOnly)) {
+        controlMode = Control::Mode::Cycle;
     }
     return (Control(id,
                     pageId,

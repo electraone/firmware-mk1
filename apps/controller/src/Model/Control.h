@@ -76,7 +76,8 @@ public:
         Momentary = 1,
         Toggle = 2,
         Unipolar = 3,
-        Bipolar = 4
+        Bipolar = 4,
+        Cycle = 5
     };
 
     /* Numbered as the mk2 numbers them, gaps and all, so that the two read

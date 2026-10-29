@@ -52,6 +52,9 @@ public:
 
     void emitValueChange(int16_t newIndex, const ControlValue &cv);
 
+protected:
+    int16_t stepIndex(int16_t delta);
+
 private:
     void paintList(Graphics &g,
                    const Rectangle &bounds,
