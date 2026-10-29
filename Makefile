@@ -120,6 +120,7 @@ CC = $(abspath $(COMPILERPATH))/arm-none-eabi-gcc
 CXX = $(abspath $(COMPILERPATH))/arm-none-eabi-g++
 OBJCOPY = $(abspath $(COMPILERPATH))/arm-none-eabi-objcopy
 SIZE = $(abspath $(COMPILERPATH))/arm-none-eabi-size
+OBJDUMP = $(abspath $(COMPILERPATH))/arm-none-eabi-objdump
 
 # automatically create lists of the sources and objects
 LC_FILES := $(wildcard $(LIBRARYPATH)/*/*.c)
@@ -273,6 +274,7 @@ $(BUILDDIR)/%.o: %.cpp $(BUILDDIR)/.buildflags
 $(BUILDDIR)/$(TARGET).elf: $(OBJS) $(LDSCRIPT)
 	@echo -e "[LD]\t$@"
 	@$(CC) $(LDFLAGS) -o "$@" $(OBJS) $(LIBS)
+	@python3 tools/check-sram-boundary.py $(OBJDUMP) "$@" || { rm -f "$@"; exit 1; }
 
 $(BUILDDIR)/%.hex:	$(BUILDDIR)/%.elf
 	@echo -e "[HEX]\t$@"

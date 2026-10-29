@@ -22,7 +22,13 @@
 #include "MidiIo.h"
 
 // \todo move to the MidiIo class.
-MIDI_CREATE_INSTANCE(Uart, Serial1, MIDI1);
-MIDI_CREATE_INSTANCE(Uart, Serial2, MIDI2);
+/* Spelled out rather than through MIDI_CREATE_INSTANCE, to put them below the
+ * SRAM bank boundary at 0x20000000: each carries a SysEx buffer that is copied
+ * from, and a copy spanning SRAM_L and SRAM_U hard faults. See the linker
+ * script's .bss.lowram. */
+__attribute__((section(".bss.lowram")))
+midi::MidiInterface<Uart> MIDI1((Uart &)Serial1);
+__attribute__((section(".bss.lowram")))
+midi::MidiInterface<Uart> MIDI2((Uart &)Serial2);
 
 constexpr midi::MidiInterface<Uart> *MidiIo::midiDINInterfaces[2];

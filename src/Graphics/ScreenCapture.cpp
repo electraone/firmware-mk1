@@ -88,7 +88,8 @@ namespace
 
 bool ScreenCapture::save(const char *filename)
 {
-    static uint8_t row[bytesPerRow];
+    /* Below the SRAM bank boundary, as everything in .bss.lowram is. */
+    __attribute__((section(".bss.lowram"))) static uint8_t row[bytesPerRow];
 
     Hardware::sdcard.createDirectory(ScreenCapture::directory);
 

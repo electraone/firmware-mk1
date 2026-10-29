@@ -21,11 +21,16 @@
 
 #include "MidiUsbHost.h"
 
+/* Below the SRAM bank boundary at 0x20000000: the host controller transfers
+ * into these devices' buffers, and an access spanning SRAM_L and SRAM_U hard
+ * faults. See the linker script's .bss.lowram. */
+#define LOWRAM __attribute__((section(".bss.lowram")))
+
 // \todo needs to be moved to the MidiUsbHost class
-USBHost usbHost;
-USBHub hub1(usbHost);
-MIDIDevice midiDevice1(usbHost);
-MIDIDevice midiDevice2(usbHost);
+LOWRAM USBHost usbHost;
+LOWRAM USBHub hub1(usbHost);
+LOWRAM MIDIDevice midiDevice1(usbHost);
+LOWRAM MIDIDevice midiDevice2(usbHost);
 
 USBDriver *drivers[] = { &hub1, &midiDevice1, &midiDevice2 };
 

@@ -672,7 +672,9 @@ void MidiOutput::sendFileListing(MidiInterface::Type interface,
                                  uint8_t port,
                                  const JsonDocument &listing)
 {
-    static uint8_t data[2304];
+    /* Below the SRAM bank boundary at 0x20000000, where a copy spanning
+     * SRAM_L and SRAM_U hard faults. See the linker script's .bss.lowram. */
+    __attribute__((section(".bss.lowram"))) static uint8_t data[2304];
 
     data[0] = 0xF0;
     data[1] = 0x00;
@@ -1163,5 +1165,8 @@ void MidiOutput::indicate(MidiInterface::Type interface,
     App::get()->statusBar.indicate(interface, port, direction, msgType);
 }
 
+/* Below the SRAM bank boundary at 0x20000000, as the incoming queue is: a
+ * message copied across SRAM_L and SRAM_U hard faults. */
+__attribute__((section(".bss.lowram")))
 CircularBuffer<MidiMessageTransport, MidiOutput::queueSize>
     MidiOutput::outgoingQueue;

@@ -37,11 +37,12 @@ static_assert(TextAtlas::maskAddress + ((uint32_t)fontMaskRows * fontMaskWidth)
 
 namespace
 {
-    /** One row of the atlas, built in RAM and sent over in a single transfer. */
-    uint16_t atlasRow[fontAtlasWidth];
+    /** One row of the atlas, built in RAM and sent over in a single transfer.
+     *  Below the SRAM bank boundary, as everything in .bss.lowram is. */
+    __attribute__((section(".bss.lowram"))) uint16_t atlasRow[fontAtlasWidth];
 
     /** The same for the mask atlas, whose row is bytes rather than pixels. */
-    uint8_t maskRow[fontMaskWidth];
+    __attribute__((section(".bss.lowram"))) uint8_t maskRow[fontMaskWidth];
 
     /**
  * @brief Blends ink towards field by the coverage, in 16 bit colour.

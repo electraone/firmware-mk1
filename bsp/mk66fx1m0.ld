@@ -94,10 +94,29 @@ SECTIONS
 		*(.noinit*)
 	} > RAM
 
+	/* 0x20000000 is where SRAM_L ends and SRAM_U begins, and an access
+	 * spanning the two hard faults - a memcpy or a struct copy into an object
+	 * laid across it. Laid out in one run, which object landed on it depended
+	 * only on how much static data preceded it, so any change anywhere could
+	 * move a buffer there.
+	 *
+	 * So SRAM_L takes .data and the buffers named .bss.lowram, chosen to
+	 * nearly fill it, and the rest of .bss starts at the boundary, where
+	 * nothing can straddle it. Only the .bss.lowram list can, by outgrowing
+	 * SRAM_L, and tools/check-sram-boundary.py fails the link if it does.
+	 * What the list leaves of SRAM_L is a gap below the boundary that holds
+	 * nothing; keep it small. The startup code zeroes _sbss to _ebss, gap
+	 * included. */
 	.bss : {
 		. = ALIGN(4);
 		_sbss = .;
 		__bss_start__ = .;
+		*(.bss.lowram*)
+		. = ALIGN(4);
+		_slowram_end = .;
+	} > RAM
+
+	.bss.upper MAX(., 0x20000000) (NOLOAD) : {
 		*(.bss*)
 		*(COMMON)
 		. = ALIGN(4);

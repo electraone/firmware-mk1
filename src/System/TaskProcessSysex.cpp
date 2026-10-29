@@ -33,6 +33,9 @@
 #include "SysexCallbacks.h"
 #include "App.h"
 
+/* Below the SRAM bank boundary at 0x20000000, beside the MIDI queues: a
+ * block copied across SRAM_L and SRAM_U hard faults. */
+__attribute__((section(".bss.lowram")))
 CircularBuffer<SysexTransport, SYSEX_QUEUE_SIZE> sysexQueue;
 
 void processSysex(void)

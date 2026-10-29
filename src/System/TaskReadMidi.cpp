@@ -28,6 +28,11 @@
 
 #define USB_MIDI_PORT_CTRL 2
 
+/* In SRAM_L, below the bank boundary at 0x20000000: eleven kilobytes laid
+ * wherever the static data before them happened to end crossed it, and a
+ * message copied out of the queue across it hard faults. See the linker
+ * script's .bss.lowram and tools/check-sram-boundary.py. */
+__attribute__((section(".bss.lowram")))
 CircularBuffer<MidiMessageTransport, 100> incomingQueueL2;
 
 /* How many messages each tick may take from the USB device port. Four is

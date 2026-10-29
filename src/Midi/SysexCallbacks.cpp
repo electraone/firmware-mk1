@@ -23,12 +23,18 @@
 #include "SysexHandler.h"
 #include "SysexHandlerCtrl.h"
 
-static SysexHandler handlerMidiIo1(MidiInterface::Type::MidiIo, 0);
-static SysexHandler handlerMidiIo2(MidiInterface::Type::MidiIo, 1);
-static SysexHandler handlerMidiUsbDev1(MidiInterface::Type::MidiUsbDev, 0);
-static SysexHandler handlerMidiUsbDev2(MidiInterface::Type::MidiUsbDev, 1);
-static SysexHandler handlerMidiUsbHost1(MidiInterface::Type::MidiUsbHost, 0);
-static SysexHandler handlerMidiUsbHost2(MidiInterface::Type::MidiUsbHost, 1);
+/* The handlers fill and copy SysEx buffers from the MIDI interrupt, so they
+ * are kept below the SRAM bank boundary at 0x20000000, where an access
+ * spanning SRAM_L and SRAM_U hard faults. See the linker script's
+ * .bss.lowram. */
+#define LOWRAM __attribute__((section(".bss.lowram")))
+
+static LOWRAM SysexHandler handlerMidiIo1(MidiInterface::Type::MidiIo, 0);
+static LOWRAM SysexHandler handlerMidiIo2(MidiInterface::Type::MidiIo, 1);
+static LOWRAM SysexHandler handlerMidiUsbDev1(MidiInterface::Type::MidiUsbDev, 0);
+static LOWRAM SysexHandler handlerMidiUsbDev2(MidiInterface::Type::MidiUsbDev, 1);
+static LOWRAM SysexHandler handlerMidiUsbHost1(MidiInterface::Type::MidiUsbHost, 0);
+static LOWRAM SysexHandler handlerMidiUsbHost2(MidiInterface::Type::MidiUsbHost, 1);
 /*
  * One Electra command handler per USB device cable, not one for all three.
  * An Electra message arriving on Port 1 or Port 2 used to be handed to the
@@ -39,13 +45,13 @@ static SysexHandler handlerMidiUsbHost2(MidiInterface::Type::MidiUsbHost, 1);
  * those packets was appended to the link message and lost, and the link
  * message with it. Each cable now keeps its own message and its own flag.
  */
-static SysexHandlerCtrl handlerMidiUsbDevCtrl0(MidiInterface::Type::MidiUsbDev,
+static LOWRAM SysexHandlerCtrl handlerMidiUsbDevCtrl0(MidiInterface::Type::MidiUsbDev,
                                                0);
-static SysexHandlerCtrl handlerMidiUsbDevCtrl1(MidiInterface::Type::MidiUsbDev,
+static LOWRAM SysexHandlerCtrl handlerMidiUsbDevCtrl1(MidiInterface::Type::MidiUsbDev,
                                                1);
-static SysexHandlerCtrl handlerMidiUsbDevCtrl(MidiInterface::Type::MidiUsbDev,
+static LOWRAM SysexHandlerCtrl handlerMidiUsbDevCtrl(MidiInterface::Type::MidiUsbDev,
                                               2);
-static SysexHandlerCtrl handlerMidiUsbHostCtrl(MidiInterface::Type::MidiUsbHost,
+static LOWRAM SysexHandlerCtrl handlerMidiUsbHostCtrl(MidiInterface::Type::MidiUsbHost,
                                                2);
 
 /* From the main loop: messages the CTRL handlers kept back during a repaint.

@@ -87,12 +87,18 @@ void Hardware::reset(void)
     CPU_RESTART;
 }
 
-Pots Hardware::pots;
+/* Below the SRAM bank boundary at 0x20000000, like the card below: the
+ * compiler may read and write two words of a Pot at once, and such an access
+ * spanning SRAM_L and SRAM_U hard faults. */
+__attribute__((section(".bss.lowram"))) Pots Hardware::pots;
 PotTouch Hardware::potTouch;
 Buttons Hardware::buttons;
 ADC Hardware::adc;
 Touch Hardware::touch;
 Graphics Hardware::screen(RA8876_CS, RA8876_RESET);
-PersistentStorage Hardware::sdcard;
+/* Below the SRAM bank boundary at 0x20000000: it holds the card's sector
+ * cache, which is copied in and out, and a copy spanning SRAM_L and SRAM_U
+ * hard faults. See the linker script's .bss.lowram. */
+__attribute__((section(".bss.lowram"))) PersistentStorage Hardware::sdcard;
 RamMonitor Hardware::ram;
 Memory Hardware::memory;
