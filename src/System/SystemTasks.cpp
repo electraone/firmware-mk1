@@ -183,8 +183,8 @@ void SystemTasks::clearRepaintGraphics(void)
 
 void SystemTasks::doNotUsePotTouch(void)
 {
+    /* Only the touch sensor: every knob is read whatever it says. */
     taskReadPotTouch.disable();
-    taskReadPots.setInterval(2500);
 }
 
 void SystemTasks::enableUserTask(void)
