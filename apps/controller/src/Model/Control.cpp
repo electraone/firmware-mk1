@@ -21,6 +21,8 @@
 
 #include "Control.h"
 #include "ParameterMap.h"
+#include "ComponentTable.h"
+#include "Hardware.h"
 
 const char *valueIdsAdsr[] = { "attack", "decay", "sustain", "release" };
 
@@ -50,11 +52,14 @@ const char *valueIdsDx7Env[] = {
  * paid for that many times. The face cost nothing: it went into padding the
  * bitfield was already leaving behind. Adding a field that grows this is a
  * decision, and it should be made on purpose rather than noticed later. */
-static_assert(sizeof(Control) == 56,
+static_assert(sizeof(Control) == 32,
               "sizeof(Control) has changed - every preset pays for it once "
               "per control, so check that it was meant");
 
-Control::Control() : id(0), pageId(0), controlSetId(0), component(nullptr)
+char Control::nameBuffer[Control::MaxNameLength + 1];
+
+Control::Control()
+    : id(0), pageId(0), controlSetId(0), nameHandle(VramStore::invalidHandle)
 {
     type = (uint8_t)Control::Type::None;
     colour = Colours565::white;
@@ -63,7 +68,6 @@ Control::Control() : id(0), pageId(0), controlSetId(0), component(nullptr)
     variant = (uint8_t)Control::Variant::Default;
     visible = (uint8_t)false;
     setFont(Font());
-    name[0] = '\0';
 }
 
 Control::Control(uint16_t id,
@@ -81,9 +85,9 @@ Control::Control(uint16_t id,
       pageId(newPageId),
       bounds(newBounds),
       controlSetId(newControlSetId),
-      component(nullptr)
+      nameHandle(VramStore::invalidHandle)
 {
-    copyString(name, newName, MaxNameLength);
+    setName(newName);
     type = (uint8_t)newType;
     colour = newColour;
     mode = (uint8_t)newMode;
@@ -149,12 +153,40 @@ uint16_t Control::getColour565(void) const
 
 void Control::setName(const char *newName)
 {
-    copyString(name, newName, MaxNameLength);
+    if ((newName == nullptr) || (newName[0] == '\0')) {
+        /* A control without a name takes nothing in the store; one that had
+         * a name keeps its record and the record is emptied. */
+        if (nameHandle != VramStore::invalidHandle) {
+            Hardware::memory.stringPool.updateString(nameHandle, "");
+        }
+        return;
+    }
+
+    /* Room for the longest name is taken the first time, so that a script
+     * renaming the control later always fits in place. */
+    if (nameHandle == VramStore::invalidHandle) {
+        nameHandle = Hardware::memory.stringPool.reserve(MaxNameLength + 1);
+
+        if (nameHandle == VramStore::invalidHandle) {
+            return;
+        }
+    }
+
+    char text[MaxNameLength + 1];
+
+    copyString(text, newName, MaxNameLength);
+    Hardware::memory.stringPool.updateString(nameHandle, text);
 }
 
 const char *Control::getName(void) const
 {
-    return (name);
+    if (nameHandle == VramStore::invalidHandle) {
+        nameBuffer[0] = '\0';
+        return (nameBuffer);
+    }
+
+    return (Hardware::memory.stringPool.loadString(
+        nameHandle, nameBuffer, sizeof(nameBuffer)));
 }
 
 void Control::setControlSetId(uint8_t newControlSetId)
@@ -506,17 +538,17 @@ uint8_t Control::translateValueId(const char *handle) const
 
 void Control::setComponent(Component *newComponent)
 {
-    component = newComponent;
+    ComponentTable::set(this, newComponent);
 }
 
 void Control::resetComponent(void)
 {
-    component = nullptr;
+    ComponentTable::set(this, nullptr);
 }
 
 Component *Control::getComponent(void) const
 {
-    return (component);
+    return (ComponentTable::get(this));
 }
 
 void Control::addToParameterMap(ControlValue &value)

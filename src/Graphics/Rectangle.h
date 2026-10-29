@@ -49,8 +49,10 @@ public:
 
     Rectangle &operator=(const Rectangle &rect) = default;
 
-    /** Destructor. */
-    virtual ~Rectangle() = default;
+    /* No virtual destructor: nothing is deleted through a Rectangle pointer,
+     * and the vtable it brought cost four bytes in every control and group
+     * of every preset, and in every component on the screen. */
+    ~Rectangle() = default;
 
     /**
      * Checks if the rectangle is empty.

@@ -45,7 +45,9 @@ public:
 
     static constexpr uint8_t MaxSetLabelLength = 40;
     uint32_t colour;
-    const char *label;
+    /* A copy, not a pointer: the group fetches its label from the display's
+     * memory into a buffer that the next fetch overwrites. */
+    char label[MaxSetLabelLength + 1];
     const Group &group;
     bool useAltBackground;
 };

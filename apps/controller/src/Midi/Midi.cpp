@@ -20,7 +20,7 @@ Midi::Midi(const Preset &preset) : model(preset)
 /** Send Electra message to Midi outputs.
  *
  */
-void Midi::sendMessage(const Message &message)
+void Midi::sendMessage(const Message &message, uint16_t midiValue)
 {
     /* A reference, not a copy. A Device carries every SysEx template of the
      * preset, so copying one here cost a heap allocation per template on
@@ -35,7 +35,6 @@ void Midi::sendMessage(const Message &message)
 
     uint8_t channel = device.getChannel();
     uint8_t port = device.getPort();
-    uint16_t midiValue = message.getValue();
 
     // Set the timestamp of device last message to current time
     device.setTsLastMessage();
@@ -85,7 +84,10 @@ void Midi::sendMessage(const Message &message)
     } else if (message.getType() == Message::Type::tune) {
         sendTuneRequest(port);
     } else if (message.getType() == Message::Type::sysex) {
-        sendTemplatedSysex(device, message.getParameterNumber(), *message.data);
+        sendTemplatedSysex(device,
+                           message.getParameterNumber(),
+                           device.templateBytes(message.getDataOffset()),
+                           message.getDataLength());
     } else if (message.getType() == Message::Type::atchannel) {
         sendAfterTouchChannel(port, channel, midiValue);
     } else if (message.getType() == Message::Type::atpoly) {
@@ -104,17 +106,22 @@ void Midi::sendMessage(const Message &message)
  */
 void Midi::sendTemplatedSysex(const Device &device,
                               uint16_t parameterNumber,
-                              const DataBytes &data)
+                              const uint8_t *data,
+                              uint16_t length)
 {
     const int maxSysexSize = 512;
 
+    if ((data == nullptr) || (length == 0)) {
+        return;
+    }
+
     SysexBlock sysexBlock = SysexBlock(App::get()->sysexPool.openMemoryBlock());
 
-    if (data.size() < maxSysexSize) {
+    if (length < maxSysexSize) {
         uint8_t sysexData[maxSysexSize];
         uint16_t sysexDataLength = 0;
         sysexDataLength =
-            transformMessage(parameterNumber, device, data, sysexData);
+            transformMessage(parameterNumber, device, data, length, sysexData);
         sysexBlock.writeBytes(sysexData, sysexDataLength);
         sysexBlock.close();
 
@@ -132,12 +139,13 @@ void Midi::sendTemplatedSysex(const Device &device,
  */
 uint8_t Midi::transformMessage(uint16_t parameterNumber,
                                const Device &device,
-                               const DataBytes &data,
+                               const uint8_t *data,
+                               uint16_t length,
                                uint8_t *dataOut)
 {
     uint16_t j = 0;
 
-    for (uint16_t i = 0; i < data.size(); i++) {
+    for (uint16_t i = 0; i < length; i++) {
         if (data[i] == VARIABLE_DATA) {
             runVariable(parameterNumber, i, j, data, dataOut, device);
         } else if (data[i] == VARIABLE_PARAMETER) {
@@ -156,7 +164,7 @@ uint8_t Midi::transformMessage(uint16_t parameterNumber,
 void Midi::runVariable(uint16_t parameterNumber,
                        uint16_t &i,
                        uint16_t &j,
-                       const DataBytes &data,
+                       const uint8_t *data,
                        uint8_t *dataOut,
                        const Device &device)
 {
@@ -208,7 +216,7 @@ void Midi::runVariable(uint16_t parameterNumber,
 void Midi::runParameter(uint16_t parameterNumber,
                         uint16_t &i,
                         uint16_t &j,
-                        const DataBytes &data,
+                        const uint8_t *data,
                         uint8_t *dataOut,
                         const Device &device)
 {
@@ -239,7 +247,7 @@ void Midi::runParameter(uint16_t parameterNumber,
 
 void Midi::runChecksum(uint16_t &i,
                        uint16_t &j,
-                       const DataBytes &data,
+                       const uint8_t *data,
                        uint8_t *dataOut,
                        const Device &device)
 {
@@ -276,7 +284,7 @@ void Midi::runChecksum(uint16_t &i,
 void Midi::runLuaFunction(uint16_t parameterNumber,
                           uint16_t &i,
                           uint16_t &j,
-                          const DataBytes &data,
+                          const uint8_t *data,
                           uint8_t *dataOut,
                           const Device &device)
 {
@@ -306,7 +314,7 @@ void Midi::runLuaFunction(uint16_t parameterNumber,
 
 void Midi::runConstant(uint16_t &i,
                        uint16_t &j,
-                       const DataBytes &data,
+                       const uint8_t *data,
                        uint8_t *dataOut,
                        const Device &device)
 {
@@ -522,11 +530,13 @@ void Midi::processSysex(const MidiMessage &midiMessage)
     PROFILE_BEGIN(SysexMatch);
 
     for (const auto &[id, device] : model.devices) {
-        for (const auto &sysexMessage : device.sysexTemplates) {
-            if (processSysexData(sysexMessage, device, sysexBlock)) {
-                break;
+        bool matched = false;
+
+        device.forEachTemplate([&](const uint8_t *bytes, uint8_t length) {
+            if (!matched) {
+                matched = processSysexData(bytes, length, device, sysexBlock);
             }
-        }
+        });
 
         for (const auto &response : device.responses) {
             if (processResponse(response, device, sysexBlock)) {
@@ -537,7 +547,8 @@ void Midi::processSysex(const MidiMessage &midiMessage)
     PROFILE_END(SysexMatch);
 }
 
-bool Midi::processSysexData(const DataBytes &sysexMessage,
+bool Midi::processSysexData(const uint8_t *sysexMessage,
+                            uint8_t sysexMessageLength,
                             const Device &device,
                             SysexBlock &sysexBlock)
 {
@@ -560,14 +571,14 @@ bool Midi::processSysexData(const DataBytes &sysexMessage,
         /* The template is walked alongside the message and can be stepped by
          * up to seven at a time, so it runs out first on a message longer
          * than the pattern it is matched against. */
-        if (j >= sysexMessage.size()) {
+        if (j >= sysexMessageLength) {
             return (false);
         }
 
         uint8_t receivedByte = sysexBlock.peek(i);
 
         if (sysexMessage[j] == VARIABLE_PARAMETER) {
-            if ((j + 3) >= sysexMessage.size()) {
+            if ((j + 3) >= sysexMessageLength) {
                 return (false);
             }
             pPos = sysexMessage[j + 1];
@@ -583,7 +594,7 @@ bool Midi::processSysexData(const DataBytes &sysexMessage,
             parameterNumber |= (((receivedByte & mask) >> bPos) << pPos);
             j += 4;
         } else if (sysexMessage[j] == VARIABLE_DATA) {
-            if ((j + 6) >= sysexMessage.size()) {
+            if ((j + 6) >= sysexMessageLength) {
                 return (false);
             }
             pPos = sysexMessage[j + 4];
@@ -631,7 +642,8 @@ bool Midi::processResponse(const Response &response,
     uint8_t header[64];
     uint8_t headerLength = 0;
     // \todo the parameterNumber 0 does not belong here
-    headerLength = transformMessage(0, device, response.headers, header);
+    headerLength = transformMessage(
+        0, device, response.headers.data(), response.headers.size(), header);
 
     if (doesHeaderMatch(sysexBlock, header, headerLength) == true) {
         System::logger.write(

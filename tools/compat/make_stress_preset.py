@@ -14,6 +14,10 @@ Two profiles:
           long overlays, and envelopes, spread over all twelve pages.
   max     every control an envelope, which is the declared ceiling of values
           a preset can hold: 432 controls, four values each.
+  sysex   what a synth editor looks like: every control a fader whose value
+          goes out as a SysEx message with a template of its own, the way
+          the Access Virus preset does it. 432 controls, 432 values, 432
+          templates. It is the SysEx templates this one is there to weigh.
 
 Both fill twelve pages with thirty-six controls each by default, which is the
 declared maximum of 432. The difference between them is how many ControlValues
@@ -110,6 +114,38 @@ def value(
     return entry
 
 
+def sysex_value(control_id: int, device_id: int, parameter_number: int) -> dict:
+    """A value sent as SysEx, with a template of the shape the Access Virus
+    preset uses: a fixed header, the parameter's page and number as bytes of
+    the template itself, the value, and the end byte. Every control gets a
+    template that differs from every other one in those two bytes, so there
+    is nothing for the firmware to share between them - which is what a real
+    editor looks like, and what the template storage has to carry."""
+    return {
+        "id": "value",
+        "min": 0,
+        "max": 127,
+        "defaultValue": 0,
+        "message": {
+            "deviceId": device_id,
+            "type": "sysex",
+            "parameterNumber": parameter_number,
+            "min": 0,
+            "max": 127,
+            "data": [
+                "00",
+                "20",
+                "33",
+                "01",
+                "10",
+                f"{0x70 + (control_id >> 7):02X}",
+                f"{control_id & 0x7F:02X}",
+                {"type": "value"},
+            ],
+        },
+    }
+
+
 def control(
     control_id: int,
     page_id: int,
@@ -118,6 +154,7 @@ def control(
     device_id: int,
     parameter_base: int,
     overlay_id: int | None,
+    sysex: bool = False,
 ) -> dict:
     entry = {
         "id": control_id,
@@ -154,6 +191,10 @@ def control(
         entry["values"].append(
             value("value", device_id, parameter_base % 120 + 1, None, overlay_id)
         )
+    elif sysex:
+        # The parameter number is what the parameter map files the value
+        # under; distinct per control, so every value has an entry of its own.
+        entry["values"].append(sysex_value(control_id, device_id, control_id))
     else:
         entry["values"].append(
             value(
@@ -200,7 +241,9 @@ def make_preset(profile: str, overlay_items: int, pages: int) -> dict:
                     "id": group_id,
                     "pageId": page_id,
                     "bounds": [FIRST_X, FIRST_Y + row * STEP_Y - 22, 970, 20],
-                    "label": f"{GROUP_LABEL[:34]} P{page_id:02d}R{row}",
+                    # "name", which is what the firmware reads; a "label" key
+                    # is ignored, and the groups came out blank.
+                    "name": f"{GROUP_LABEL[:34]} P{page_id:02d}R{row}",
                     "color": COLOURS[row % len(COLOURS)],
                 }
             )
@@ -209,6 +252,9 @@ def make_preset(profile: str, overlay_items: int, pages: int) -> dict:
         for slot in range(CONTROLS_PER_PAGE):
             if profile == "max":
                 kind = "adsr"
+                overlay_id = None
+            elif profile == "sysex":
+                kind = "fader"
                 overlay_id = None
             else:
                 # Twelve of each per page, so every path the painters take is
@@ -226,6 +272,7 @@ def make_preset(profile: str, overlay_items: int, pages: int) -> dict:
                     ((control_id - 1) % 4) + 1,
                     control_id * 4,
                     overlay_id,
+                    sysex=(profile == "sysex"),
                 )
             )
             control_id += 1
@@ -256,7 +303,7 @@ end
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--profile", choices=["mixed", "max"], default="mixed"
+        "--profile", choices=["mixed", "max", "sysex"], default="mixed"
     )
     parser.add_argument(
         "--pages",

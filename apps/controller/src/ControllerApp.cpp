@@ -61,11 +61,7 @@ void Controller::initialise(void)
             if (origin != Origin::midi && origin != Origin::file) {
                 // @todo taking the first message destination might not be ok
                 // in some situations
-                // @todo would it make sense to update the value in the model
-                // and use a reference to send it out?
-                Message message = entry->getMessage();
-                message.setValue(entry->getMidiValue());
-                midi.sendMessage(message);
+                midi.sendMessage(entry->getMessage(), entry->getMidiValue());
             }
 
             // Execute only if Lua is loaded
@@ -237,7 +233,8 @@ void Controller::runUserTask(void)
             model.currentPreset.getDevice(request.deviceId);
 
         if (device.isValid()) {
-            midi.sendTemplatedSysex(device, 0, request.data);
+            midi.sendTemplatedSysex(
+                device, 0, request.data.data(), request.data.size());
         }
     }
 

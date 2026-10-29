@@ -72,8 +72,8 @@ public:
             uint16_t newParameterNumber,
             uint16_t newMidiMin,
             uint16_t newMidiMax,
-            uint16_t newValue,
-            std::vector<uint8_t> *newData,
+            uint16_t newDataOffset,
+            uint8_t newDataLength,
             bool newLsbFirst,
             bool newResetRpn,
             SignMode newSignMode,
@@ -181,37 +181,17 @@ public:
     uint16_t getParameterNumber(void) const;
 
     /**
-     * @brief  Sets the value.
-     * 
-     * @param newValue a new value to be assigned.
+     * @brief Where the SysEx template starts in its device's template store.
+     *
+     * A number rather than a pointer: two bytes instead of four, and there
+     * is a Message in every value of every preset. See Device::templateBytes().
      */
-    void setValue(uint16_t newValue);
+    uint16_t getDataOffset(void) const;
 
-    /**
-     * @brief  Marks value as empty / unset.
-     */
-    void setEmptyValue(void);
+    /** @brief How many bytes the template has; zero when there is none. */
+    uint8_t getDataLength(void) const;
 
-    /**
-     * @brief  Returns true if the value is empty / unset.
-     * 
-     * @return true if the value is empty / unset.
-     */
-    bool hasEmptyValue(void) const;
-
-    /**
-     * @brief  Returns true if the value is not empty / unset.
-     * 
-     * @return true if the value is not empty / unset.
-     */
-    bool hasValidValue(void) const;
-
-    /**
-     * @brief  Returns the value.
-     * 
-     * @return the value.
-     */
-    uint16_t getValue(void) const;
+    bool hasData(void) const;
 
     /**
      * @brief  Sets the sign mode.
@@ -344,16 +324,11 @@ public:
     uint8_t isAccelerated(void) const;
 
     /**
-     * @brief Sets the ControlValue (parent) of the message.
-     * 
-     * @param newControlValue pointer to the ControlValue
-     */
-    void setControlValue(ControlValue *newControlValue);
-
-    /**
-     * @brief Returns the ControlValue (parent) of the message.
-     * 
-     * @return pointer to the ControlValue
+     * @brief The ControlValue this message belongs to.
+     *
+     * Every Message lives inside a ControlValue, so the owner is found from
+     * this object's own address rather than kept in a pointer that every
+     * value of every preset would pay four bytes for.
      */
     ControlValue *getControlValue(void) const;
 
@@ -378,25 +353,33 @@ public:
      */
     static const char *translateType(Type messageType);
 
-    std::vector<uint8_t> *data;
-
 private:
     uint16_t parameterNumber;
-    uint16_t value;
     uint16_t midiMin;
     uint16_t midiMax;
-    ControlValue *controlValue;
+    uint16_t dataOffset;
+    uint8_t dataLength;
 
+    /* Twenty-four bits, laid out to fill three bytes exactly: a field that
+     * would not fit the rest of its byte starts a new one, so the order
+     * decides whether this is three bytes or four. The value this message
+     * sends used to be kept here too, and so did a pointer back to the
+     * owning value; the first is passed to the sender now, the second is
+     * computed, and a Message is twelve bytes rather than twenty. */
     struct {
         uint8_t deviceId : 6;
+        uint8_t lsbFirst : 1;
+        uint8_t resetRpn : 1;
         uint8_t type : 5;
-        bool lsbFirst : 1;
-        bool resetRpn : 1;
         uint8_t signMode : 3;
         uint8_t bitWidth : 4;
-        bool relative : 1;
+        uint8_t relative : 1;
         uint8_t relativeMode : 2;
-        bool accelerated : 1;
+        uint8_t accelerated : 1;
     };
 };
+
+static_assert(sizeof(Message) == 12,
+              "sizeof(Message) has changed - there is one in every value of "
+              "every preset, so check that it was meant");
 

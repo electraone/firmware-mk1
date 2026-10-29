@@ -149,7 +149,30 @@ def main() -> int:
     jlink.reset_and_run()
     electra_midi.wait_for_port(electra_midi.PORT_CTRL, timeout=90)
 
-    loaded = wait_for_stage(jlink, address, "preset-loaded", arguments.timeout)
+    # The unit boots into whichever slot it last saved, not the one being
+    # measured, so the slot is selected once the boot has settled and the
+    # reading is the one the switch produces. Without this every slot came
+    # back with the boot slot's figures.
+    booted = wait_for_stage(jlink, address, "preset-loaded", arguments.timeout)
+
+    if booted is None:
+        print("the unit never reported a preset loaded after the restart.")
+        return 1
+
+    electra_preset.select_slot(arguments.slot)
+
+    loaded = None
+    deadline = time.monotonic() + arguments.timeout
+    while time.monotonic() < deadline:
+        time.sleep(5.0)
+        try:
+            snapshot = read_snapshot(jlink, address)
+        except jlink_module.JLinkError:
+            continue
+        if (snapshot.updates != booted.updates
+                and snapshot.stage == "preset-loaded"):
+            loaded = snapshot
+            break
 
     if loaded is None:
         print("the preset never reported as loaded after the restart. ")

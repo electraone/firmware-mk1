@@ -48,6 +48,12 @@ _CLI_CANDIDATES = [
 # file to the card before it does.
 _CLI_TIMEOUT_MS = 60000
 
+# The CLI refuses to send a message longer than this, on the grounds that the
+# controller would drop it. The mk1 keeps an incoming message in the display's
+# memory and takes a 200 KB preset, so a body over this limit goes through
+# sendmidi instead - slow, but it arrives.
+_CLI_MAX_BODY = 131072 - 16
+
 
 def find_cli() -> str | None:
     """The electraone CLI, if this machine has one."""
@@ -148,7 +154,7 @@ def upload_preset(preset_json: str, port: str = PORT_CTRL) -> int:
     """
     body = preset_json.encode("ascii")
 
-    if find_cli():
+    if find_cli() and (len(body) <= _CLI_MAX_BODY):
         _upload_through_cli(["preset", "upload"], body, ".epr")
         return len(body)
 

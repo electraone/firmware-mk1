@@ -29,7 +29,6 @@ GroupControl::GroupControl(const Group &groupToAssign)
     setBounds(bounds);
 
     setLabel(group.getLabel());
-    setName(group.getLabel());
     setColour(group.getColour565());
     setVisible(group.isVisible());
 }
@@ -42,7 +41,8 @@ void GroupControl::setColour(uint32_t newColour)
 
 void GroupControl::setLabel(const char *newLabel)
 {
-    label = newLabel;
+    copyString(label, newLabel ? newLabel : "", MaxSetLabelLength);
+    setName(label);
     repaint();
 }
 

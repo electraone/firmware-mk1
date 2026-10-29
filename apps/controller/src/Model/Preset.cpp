@@ -1,4 +1,6 @@
 #include "Preset.h"
+#include "ComponentTable.h"
+#include <utility>
 #include <algorithm>
 #include <cstring>
 #include <exception>
@@ -76,6 +78,8 @@ void Preset::reset(void)
 {
     resetRoot();
     resetControls();
+    /* The controls and groups are gone, so nothing may answer for them. */
+    ComponentTable::clear();
 
     groups.clear();
     devices.clear();
@@ -343,7 +347,6 @@ Control &Preset::addControl(const Control &control,
         for (size_t i = 0; i < values.size(); i++) {
             valueRun[i] = values[i];
             valueRun[i].setControl(&stored);
-            valueRun[i].message.setControlValue(&valueRun[i]);
         }
         stored.values = Span<ControlValue>(valueRun, values.size());
     }
@@ -628,7 +631,8 @@ bool Preset::parseDevices(File &file)
                 return (false);
             }
 
-            devices[device.getId()] = device;
+            /* Moved, not copied: the device's template store goes with it. */
+            devices[device.getId()] = std::move(device);
             numDevices++;
 
             if (numDevices >= MaxNumDevices) {
@@ -1389,7 +1393,6 @@ void Preset::parseValues(File &file,
     for (size_t i = 0; i < values.size(); i++) {
         run[i] = values[i];
         run[i].setControl(control);
-        run[i].message.setControlValue(&run[i]);
     }
     control->values = Span<ControlValue>(run, values.size());
 }
@@ -1588,7 +1591,6 @@ Message Preset::parseMessage(JsonObject jMessage, Control::Type controlType)
     int16_t parameterNumber = jMessage["parameterNumber"];
     int16_t min = jMessage["min"] | 0;
     int16_t max = jMessage["max"] | 0;
-    int16_t value = MIDI_VALUE_DO_NOT_SEND; // jMessage["value"];
     int16_t offValue = jMessage["offValue"] | MIDI_VALUE_DO_NOT_SEND;
     int16_t onValue = jMessage["onValue"] | MIDI_VALUE_DO_NOT_SEND;
     bool lsbFirst = jMessage["lsbFirst"];
@@ -1601,7 +1603,8 @@ Message Preset::parseMessage(JsonObject jMessage, Control::Type controlType)
 
     Message::Type messageType = Message::translateType(type);
 
-    DataBytes *data = devices[deviceId].registerData(jMessage["data"], this);
+    const Device::Template data =
+        devices[deviceId].registerData(jMessage["data"], this);
 
     SignMode signMode = translateSignMode(signModeInput);
     RelativeMode relativeMode = translateRelativeMode(relativeModeInput);
@@ -1645,7 +1648,6 @@ Message Preset::parseMessage(JsonObject jMessage, Control::Type controlType)
         }
     } else {
         if (messageType == Message::Type::program) {
-            value = 0;
             parameterNumber = 0;
         } else if (messageType == Message::Type::atchannel) {
             parameterNumber = 0;
@@ -1659,7 +1661,7 @@ Message Preset::parseMessage(JsonObject jMessage, Control::Type controlType)
     System::logger.write(
         LOG_TRACE,
         "parseMessage: device=%d, id=%d, msgType=%s (%d), parameterId=%d, "
-        "min=%d, max=%d, value=%d, lsbFirst=%d, resetRpn=%d, signMode=%d, "
+        "min=%d, max=%d, lsbFirst=%d, resetRpn=%d, signMode=%d, "
         "bitWidth=%d, relative=%d, relativeMode=%d, accelerated=%d",
         deviceId,
         messageId,
@@ -1668,7 +1670,6 @@ Message Preset::parseMessage(JsonObject jMessage, Control::Type controlType)
         parameterNumber,
         (min == MIDI_VALUE_DO_NOT_SEND) ? -1 : min,
         (max == MIDI_VALUE_DO_NOT_SEND) ? -1 : max,
-        value,
         lsbFirst,
         resetRpn,
         signMode,
@@ -1682,8 +1683,8 @@ Message Preset::parseMessage(JsonObject jMessage, Control::Type controlType)
                     parameterNumber,
                     min,
                     max,
-                    value,
-                    data,
+                    data.offset,
+                    data.length,
                     lsbFirst,
                     resetRpn,
                     signMode,

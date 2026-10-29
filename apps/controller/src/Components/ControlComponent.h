@@ -163,7 +163,16 @@ public:
         createDetailControlComponent(const Control &control,
                                      MainDelegate &newDelegate);
 
+public:
+    /** Takes the control's name again, after the control was renamed. */
+    void syncName(void);
+
 private:
+    /* The control fetches its name from the display's memory into a buffer
+     * that the next fetch overwrites, so the component keeps a copy of its
+     * own and points Component::name at that. */
+    char nameCopy[Control::MaxNameLength + 1];
+
     uint16_t calculateRelativeMidiValue(int16_t delta, const ControlValue &cv);
     uint16_t calculateAbsoluteMidiValue(int16_t newDisplayValue,
                                         const ControlValue &cv);

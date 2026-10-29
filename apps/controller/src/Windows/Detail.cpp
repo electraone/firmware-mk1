@@ -76,13 +76,11 @@ ControlComponent *
     knob.control.setName(name);
     knob.control.setColour(control.getColour565());
 
-        knob.values.push_back(control.getValue(handle));
+    knob.values.push_back(control.getValue(handle));
     knob.values[0].setControl(&knob.control);
-    /* A copied value still names the original as its message's owner, and
-     * that is what the parameter map links when a script re-targets the
-     * message. It has to be this copy, or the link lands on the value the
-     * knob is standing in for. */
-    knob.values[0].message.setControlValue(&knob.values[0]);
+    /* The copy's message belongs to the copy: a message finds its owner by
+     * its own address, so the parameter map links this value, not the one
+     * the knob is standing in for. */
     knob.values[0].setNextDestination(nullptr);
     knob.control.setValues(knob.values);
 
@@ -120,6 +118,9 @@ void Detail::tearDownKnobs(void)
         if (knob.component) {
             knob.control.removeFromParameterMap(knob.control.values[0]);
             knob.component->releasePot();
+            /* Or the table would keep answering for a Control whose
+             * address the next knob may be given. */
+            knob.control.resetComponent();
         }
     }
 }

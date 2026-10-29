@@ -142,7 +142,6 @@ int message_setValue(lua_State *L)
     int midiValue = luaL_checkinteger(L, 2);
 
     if (message) {
-        message->setValue(midiValue);
         parameterMap.setValue(message->getDeviceId(),
                               message->getType(),
                               message->getParameterNumber(),

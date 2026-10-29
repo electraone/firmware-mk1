@@ -31,8 +31,11 @@
 
 #include "Colours.h"
 #include "Component.h"
+#include "ComponentTable.h"
+#include "Hardware.h"
 #include "System.h"
 #include "TextBase.h"
+#include "VramStore.h"
 
 class Group
 {
@@ -52,9 +55,8 @@ public:
           pageId(0),
           colour(Colours565::white),
           visible(true),
-          component(nullptr)
+          labelHandle(VramStore::invalidHandle)
     {
-        setLabel(nullptr);
         variant = (uint8_t)Variant::Default;
         setFont(Font());
     }
@@ -68,16 +70,16 @@ public:
         : id(newId),
           pageId(newPageId),
           colour(newColour),
+          labelHandle(VramStore::invalidHandle),
           bounds(newBounds),
-          visible(true),
-          component(nullptr)
+          visible(true)
     {
         setLabel(newLabel);
         variant = (uint8_t)newVariant;
         setFont(Font());
     }
 
-    virtual ~Group() = default;
+    ~Group() = default;
 
     bool isValid(void) const
     {
@@ -94,18 +96,49 @@ public:
         return (id);
     }
 
+    /* The label lives in the display's memory, as a control's name does.
+     * Forty-one bytes of label in every group of every preset was most of
+     * what a group cost, and the Access Virus preset's sixty groups carry
+     * no label at all. */
     void setLabel(const char *newLabel)
     {
-        if (newLabel) {
-            copyString(label, newLabel, maxLabelLength);
-        } else {
-            *label = '\0';
+        if ((newLabel == nullptr) || (newLabel[0] == '\0')) {
+            if (labelHandle != VramStore::invalidHandle) {
+                Hardware::memory.stringPool.updateString(labelHandle, "");
+            }
+            return;
         }
+
+        if (labelHandle == VramStore::invalidHandle) {
+            labelHandle =
+                Hardware::memory.stringPool.reserve(maxLabelLength + 1);
+
+            if (labelHandle == VramStore::invalidHandle) {
+                return;
+            }
+        }
+
+        char text[maxLabelLength + 1];
+
+        copyString(text, newLabel, maxLabelLength);
+        Hardware::memory.stringPool.updateString(labelHandle, text);
     }
 
+    /**
+     * @brief The label, fetched from the display's memory.
+     *
+     * @attention the returned pointer is a shared buffer that the next call
+     * overwrites; a caller that keeps a label copies it.
+     */
     const char *getLabel(void) const
     {
-        return (label);
+        if (labelHandle == VramStore::invalidHandle) {
+            labelBuffer[0] = '\0';
+            return (labelBuffer);
+        }
+
+        return (Hardware::memory.stringPool.loadString(
+            labelHandle, labelBuffer, sizeof(labelBuffer)));
     }
 
     void setPageId(uint8_t newPageId)
@@ -181,17 +214,17 @@ public:
 
     void setComponent(Component *newComponent)
     {
-        component = newComponent;
+        ComponentTable::set(this, newComponent);
     }
 
     void resetComponent(void)
     {
-        component = nullptr;
+        ComponentTable::set(this, nullptr);
     }
 
     Component *getComponent(void) const
     {
-        return (component);
+        return (ComponentTable::get(this));
     }
 
     void print(uint8_t logLevel = LOG_TRACE) const
@@ -233,13 +266,14 @@ private:
         uint8_t fontSpacing : 1;
     };
 
-    char label[maxLabelLength + 1];
+    VramStore::Handle labelHandle;
     Rectangle bounds;
 
-    Component *component;
+    /** Shared scratch the label is handed out through. See getLabel(). */
+    static inline char labelBuffer[maxLabelLength + 1];
 };
 
-static_assert(sizeof(Group) == 72,
+static_assert(sizeof(Group) == 20,
               "sizeof(Group) has changed - every preset pays for it once per "
               "group, so check that it was meant");
 

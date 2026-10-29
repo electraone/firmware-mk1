@@ -3,7 +3,9 @@
 void MidiLearn::process(const MidiInput &midiInput,
                         const MidiMessage &midiMessage)
 {
-    Device device =
+    /* A reference: a Device carries every SysEx template of the preset,
+     * and this used to copy them all for every message it looked at. */
+    const Device &device =
         preset.getDevice(midiInput.getPort(), midiMessage.getChannel());
 
     MidiMessage::Type midiType = midiMessage.getType();

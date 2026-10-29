@@ -171,7 +171,13 @@ on a traced build. The snapshot exists in every build.
 `make_stress_preset.py` builds the preset for this: twelve pages of
 thirty-six controls, the declared maximum, with long labels and long
 overlays. `--pages` brings it back under the ceiling if the image under test
-refuses it.
+refuses it. `--profile sysex` makes every control a fader with a SysEx
+template of its own, the shape of a synth editor, which is what weighs the
+template storage.
+
+To compare two images on presets already on the card, `compare_memory.py`
+flashes each in turn and selects every slot named, so both see the same data
+in the same order.
 
 ## Caveats
 

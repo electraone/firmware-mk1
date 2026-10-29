@@ -35,6 +35,7 @@
 #include "Colours.h"
 #include "TextBase.h"
 #include "Component.h"
+#include "VramStore.h"
 
 extern const char *valueIdsAdsr[];
 extern const char *valueIdsAdr[];
@@ -136,6 +137,14 @@ public:
     uint32_t getColour(void) const;
     uint16_t getColour565(void) const;
     void setName(const char *newName);
+
+    /**
+     * @brief The name, fetched from the display's memory.
+     *
+     * @attention the returned pointer is a shared buffer that the next call
+     * overwrites. A caller that keeps a name copies it; a component keeps
+     * its own copy for that reason.
+     */
     const char *getName(void) const;
     void setControlSetId(uint8_t newControlSetId);
     uint8_t getControlSetId(void) const;
@@ -203,9 +212,16 @@ private:
     void printInputs(uint8_t logLevel = LOG_TRACE) const;
 
     Rectangle bounds;
-    char name[MaxNameLength + 1];
 
-    Component *component;
+    /* The name lives in the display's memory, as a value's label does; this
+     * is the handle to it, and getName() fetches it into a shared buffer.
+     * Sixteen bytes of name in every control of every preset was the
+     * largest single thing a control carried. No component pointer either:
+     * the few controls on the screen are found in ComponentTable. */
+    VramStore::Handle nameHandle;
+
+    /** Shared scratch the name is handed out through. See getName(). */
+    static char nameBuffer[MaxNameLength + 1];
 
 /* A control does not own its values and inputs. The preset keeps all of
  * them in one pool each, and these are views into those pools - see Span.h

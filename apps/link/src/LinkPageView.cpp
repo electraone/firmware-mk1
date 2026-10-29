@@ -20,6 +20,7 @@
 */
 
 #include "LinkPageView.h"
+#include "Hardware.h"
 #include "LinkCustomControl.h"
 #include "GroupControl.h"
 #include "Window.h"
@@ -109,6 +110,11 @@ void LinkPageView::clear(void)
      * whichever control inherited its key. */
     parameterMap.clear();
     preset.reset();
+
+    /* Names, labels and list items live in the display's memory, which is
+     * a bump store with no per-record free: everything in it belonged to
+     * the layout that just went, so the store starts over with it. */
+    Hardware::memory.stringPool.reset();
 }
 
 uint32_t LinkPageView::structureHash(const Link::View &view)
@@ -524,8 +530,8 @@ void LinkPageView::addElement(const Link::ViewElement &element,
                         nextParameterNumber++,
                         0,
                         midiMax,
+                        0, /* no SysEx template: offset and length */
                         0,
-                        nullptr,
                         false,
                         false,
                         SignMode::noSign,

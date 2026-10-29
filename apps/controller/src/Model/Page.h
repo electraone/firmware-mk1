@@ -38,7 +38,7 @@ public:
          uint8_t newDefaultControlSetId,
          bool shouldBeHidden);
 
-    virtual ~Page() = default;
+    ~Page() = default;
 
     /**
      * @brief Checks if the Page is valid.

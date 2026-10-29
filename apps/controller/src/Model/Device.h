@@ -30,11 +30,11 @@
 #include <cstdint>
 #include <vector>
 #include <map>
-#include <deque>
 #include "Response.h"
 #include "Message.h"
 #include "MidiOutput.h"
 #include "Data.h"
+#include "Pool.h"
 
 class Preset;
 
@@ -48,19 +48,76 @@ public:
            uint8_t newChannel,
            uint16_t newRate);
 
-    virtual ~Device() = default;
+    /* No virtual destructor, and none needed: a Device is only ever held
+     * by value in the preset's map. Declaring one would also have cost the
+     * implicit move operations that put a Device into that map without
+     * copying its template store. */
+
+    /**
+     * @brief Where a SysEx template is in this device's template store.
+     *
+     * Three bytes, which is what a Message keeps in place of a pointer to a
+     * vector. A length of zero is no template at all.
+     */
+    struct Template {
+        uint16_t offset;
+        uint8_t length;
+    };
+
+    static constexpr Template noTemplate = { 0, 0 };
 
     bool isValid(void) const;
     uint8_t getId(void) const;
     void setName(const char *newName);
     const char *getName(void) const;
     uint8_t getResponseIndex(uint8_t id) const;
-    DataBytes *registerData(JsonVariant jData, Preset *preset);
+    Template registerData(JsonVariant jData, Preset *preset);
 
     /** A template the preset gave an id, from the device's patch messages,
      *  so a value's message may name it instead of carrying its own. */
     void setNamedTemplate(uint16_t id, const DataBytes &bytes);
-    DataBytes *getNamedTemplate(uint16_t id);
+    Template getNamedTemplate(uint16_t id) const;
+
+    /** Puts a template into the store and says where it landed. */
+    Template storeTemplate(const DataBytes &bytes);
+
+    /** The bytes of a template, by the offset a Template carries. */
+    const uint8_t *templateBytes(uint16_t offset) const;
+
+    /**
+     * @brief Every template in the store, in the order they were stored.
+     *
+     * Each template sits behind a byte giving its length, which is what
+     * makes a walk through the store possible; a run never crosses a page,
+     * so the walk skips the unused tail of each page.
+     *
+     * @param f called as f(const uint8_t *bytes, uint8_t length) for each
+     */
+    template <typename F>
+    void forEachTemplate(F f) const
+    {
+        constexpr size_t perPage = decltype(templates)::perPage;
+        size_t index = 0;
+
+        while (true) {
+            const uint8_t *prefix = templates.at(index);
+
+            if (prefix == nullptr) {
+                const size_t nextPage = (index / perPage) + 1;
+
+                if (nextPage >= templates.pageCount()) {
+                    break;
+                }
+                index = nextPage * perPage;
+                continue;
+            }
+            f(prefix + 1, *prefix);
+            index += 1 + *prefix;
+        }
+    }
+
+    /** How many templates the store holds, for the record. */
+    size_t getNumTemplates(void) const;
     void print(uint8_t logLevel = LOG_TRACE) const;
 
 private:
@@ -71,21 +128,27 @@ private:
     };
     char name[MaxNameLength + 1];
 
-    /* The ids the preset wrote, and which template each names. A message
-     * carrying its own data has no id and needs none - it keeps a pointer
-     * straight to its template. */
-    std::vector<std::pair<uint16_t, uint16_t>> namedTemplates;
+    /* The ids the preset wrote, and the template each names. A message
+     * carrying its own data has no id and needs none. */
+    struct NamedTemplate {
+        uint16_t id;
+        Template bytes;
+    };
+    std::vector<NamedTemplate> namedTemplates;
+
+    /* Every SysEx template of this device, back to back in pages of two
+     * kilobytes, each behind a byte of length. A template is a dozen bytes, and keeping each in a vector
+     * of its own cost twelve bytes of vector and a sixteen-byte heap block
+     * for every one - more than twice the bytes themselves, three hundred
+     * times over on a synth editor. The store never moves a byte once it is
+     * in, and a Template names a run by number, so a Message needs three
+     * bytes to find its template rather than a four-byte pointer. */
+    Pool<uint8_t, 2048> templates;
+    size_t numTemplates;
 
 public:
     std::vector<std::vector<uint8_t>> requests;
     std::vector<Response> responses;
-    /* Every SysEx template of this device, in the order they were met. A
-     * deque, not a vector: messages point at their template, and a deque
-     * does not move what it holds when it grows. Not a map: this used to be
-     * one, keyed by an eight-bit id that was also handed out by counting,
-     * so a preset with more than 255 SysEx controls had its later templates
-     * overwrite its first ones, and every node cost 40 bytes besides. */
-    std::deque<DataBytes> sysexTemplates;
 };
 
 typedef std::map<uint8_t, Device> Devices;

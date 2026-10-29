@@ -25,10 +25,10 @@
 
 Message::Message()
     : parameterNumber(0),
-      value(NOT_SET),
       midiMin(0),
       midiMax(NOT_SET),
-      controlValue(nullptr),
+      dataOffset(0),
+      dataLength(0),
       deviceId(0),
       type((uint8_t)Message::Type::none),
       lsbFirst(false),
@@ -46,8 +46,8 @@ Message::Message(uint8_t newDeviceId,
                  uint16_t newParameterNumber,
                  uint16_t newMidiMin,
                  uint16_t newMidiMax,
-                 uint16_t newValue,
-                 std::vector<uint8_t> *newData,
+                 uint16_t newDataOffset,
+                 uint8_t newDataLength,
                  bool newLsbFirst,
                  bool newResetRpn,
                  SignMode newSignMode,
@@ -55,11 +55,11 @@ Message::Message(uint8_t newDeviceId,
                  bool newRelative,
                  RelativeMode newRelativeMode,
                  bool newAccelerated)
-    : data(newData),
-      parameterNumber(newParameterNumber),
-      value(newValue),
+    : parameterNumber(newParameterNumber),
       midiMin(newMidiMin),
       midiMax(newMidiMax),
+      dataOffset(newDataOffset),
+      dataLength(newDataLength),
       deviceId(newDeviceId),
       type((uint8_t)newType),
       lsbFirst(newLsbFirst),
@@ -142,29 +142,19 @@ uint16_t Message::getParameterNumber(void) const
     return (parameterNumber);
 }
 
-void Message::setValue(uint16_t newValue)
+uint16_t Message::getDataOffset(void) const
 {
-    value = newValue;
+    return (dataOffset);
 }
 
-void Message::setEmptyValue(void)
+uint8_t Message::getDataLength(void) const
 {
-    value = MIDI_VALUE_DO_NOT_SEND;
+    return (dataLength);
 }
 
-bool Message::hasEmptyValue(void) const
+bool Message::hasData(void) const
 {
-    return (value == MIDI_VALUE_DO_NOT_SEND);
-}
-
-bool Message::hasValidValue(void) const
-{
-    return (value != MIDI_VALUE_DO_NOT_SEND);
-}
-
-uint16_t Message::getValue(void) const
-{
-    return (value);
+    return (dataLength > 0);
 }
 
 void Message::setSignMode(SignMode newSignMode)
@@ -257,14 +247,9 @@ uint8_t Message::isAccelerated(void) const
     return (accelerated);
 }
 
-void Message::setControlValue(ControlValue *newControlValue)
-{
-    controlValue = newControlValue;
-}
-
 ControlValue *Message::getControlValue(void) const
 {
-    return (controlValue);
+    return (ControlValue::owning(const_cast<Message *>(this)));
 }
 
 void Message::print(uint8_t logLevel) const
@@ -281,7 +266,7 @@ void Message::print(uint8_t logLevel) const
         logLevel, "            parameterNumber: %d", getParameterNumber());
     System::logger.write(logLevel, "            min: %d", getMidiMin());
     System::logger.write(logLevel, "            max: %d", getMidiMax());
-    System::logger.write(logLevel, "            value: %d", getValue());
+    System::logger.write(logLevel, "            data: %d bytes", getDataLength());
     System::logger.write(logLevel, "            signMode: %d", getSignMode());
     System::logger.write(logLevel, "            lsbFirst: %d", getLsbFirst());
     System::logger.write(logLevel, "            bitWidth: %d", getBitWidth());

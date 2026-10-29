@@ -52,6 +52,8 @@ ControlComponent::ControlComponent(const Control &controlToAssign,
       useAltBackground(false),
       active(false)
 {
+    nameCopy[0] = '\0';
+    setName(nameCopy);
 }
 
 void ControlComponent::paint(Graphics &g)
@@ -67,9 +69,15 @@ void ControlComponent::syncComponentProperties(void)
     auto bounds = control.getBounds();
     setBounds(bounds);
 
-    setName(control.getName());
+    syncName();
     setId(control.getId());
     setVisible(control.isVisible());
+}
+
+void ControlComponent::syncName(void)
+{
+    copyString(nameCopy, control.getName(), Control::MaxNameLength);
+    setName(nameCopy);
 }
 
 void ControlComponent::onTouchLongHold(
@@ -407,7 +415,7 @@ ControlComponent *
     }
 
     if (c) {
-        c->setName(control.getName());
+        c->syncName();
         c->setId(control.getId());
     }
 

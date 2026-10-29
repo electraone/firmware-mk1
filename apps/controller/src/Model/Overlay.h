@@ -14,7 +14,7 @@ public:
     {
     }
 
-    virtual ~Overlay() = default;
+    ~Overlay() = default;
 };
 
 typedef std::map<uint8_t, Overlay> Overlays;

@@ -41,15 +41,26 @@
 #include <cstddef>
 #include <cstdint>
 
+/*
+ * Five bytes, packed: a pointer and a byte of count. A control carries two
+ * of these, and a Span with a word-aligned pointer and a two-byte count was
+ * padded to eight each - sixteen bytes a control, for runs that never exceed
+ * sixteen values or twelve inputs. The Cortex-M4 reads an unaligned word in
+ * one instruction, so the packing costs nothing on the path that uses it.
+ */
 template <typename T>
-class Span
+class __attribute__((packed)) Span
 {
 public:
+    /** The longest run a Span can describe. */
+    static constexpr size_t maxCount = 255;
+
     Span() : ptr(nullptr), count(0)
     {
     }
 
-    Span(T *newPtr, size_t newCount) : ptr(newPtr), count(newCount)
+    Span(T *newPtr, size_t newCount)
+        : ptr(newPtr), count(newCount > maxCount ? maxCount : newCount)
     {
     }
 
@@ -100,5 +111,7 @@ public:
 
 private:
     T *ptr;
-    uint16_t count;
+    uint8_t count;
 };
+
+static_assert(sizeof(Span<int>) == 5, "Span is meant to be five bytes");

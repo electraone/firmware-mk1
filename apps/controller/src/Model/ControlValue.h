@@ -70,6 +70,16 @@ public:
 
     void setControl(Control *newControl);
     Control *getControl(void) const;
+
+    /**
+     * @brief The value a Message is embedded in.
+     *
+     * Every Message is the `message` member of some ControlValue - the
+     * preset's pool, a detail window's copy, wherever - so its owner is at a
+     * fixed distance before it. This is what Message::getControlValue()
+     * answers with, in place of a back pointer in every value.
+     */
+    static ControlValue *owning(Message *message);
     /** The next value listening to the same parameter - see LookupEntry. */
     ControlValue *getNextDestination(void) const;
     void setNextDestination(ControlValue *newNext);

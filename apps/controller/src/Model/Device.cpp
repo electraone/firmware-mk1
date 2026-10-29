@@ -27,10 +27,12 @@
 
 #include "Device.h"
 #include "Data.h"
+#include <algorithm>
 
 Device::Device()
     : MidiOutput(MidiInterface::Type::MidiAll, 0, 0, 0),
-      id(0)
+      id(0),
+      numTemplates(0)
 {
     *name = '\0';
 }
@@ -41,7 +43,8 @@ Device::Device(uint8_t newId,
                uint8_t newChannel,
                uint16_t newRate)
     : MidiOutput(MidiInterface::Type::MidiAll, newPort, newChannel, newRate),
-      id(newId)
+      id(newId),
+      numTemplates(0)
 {
     setName(newName);
 }
@@ -86,36 +89,96 @@ uint8_t Device::getResponseIndex(uint8_t id) const
 /** Create new data or assign existing
  *
  */
-std::vector<uint8_t> *Device::registerData(JsonVariant jData, Preset *preset)
+Device::Template Device::registerData(JsonVariant jData, Preset *preset)
 {
     if (jData.is<JsonArray>()) {
         Data data(jData.as<JsonArray>(), preset);
         data.makeSysexData();
-        sysexTemplates.push_back(data.get());
-        return (&sysexTemplates.back());
+        return (storeTemplate(data.get()));
     }
     return (getNamedTemplate(jData.as<uint16_t>()));
 }
 
-void Device::setNamedTemplate(uint16_t id, const DataBytes &bytes)
+Device::Template Device::storeTemplate(const DataBytes &bytes)
 {
-    *getNamedTemplate(id) = bytes;
+    /* A Template counts its length in a byte, and a run has to fit a page
+     * of the store. Anything longer could not be sent either: the sender
+     * stops at 512. */
+    if (bytes.empty()) {
+        return (noTemplate);
+    }
+    if ((bytes.size() > 255)
+        || (1 + bytes.size() > decltype(templates)::perPage)) {
+        System::logger.write(
+            LOG_ERROR,
+            "Device::storeTemplate: template of %d bytes is too long, the "
+            "limit is 255: device=%d",
+            bytes.size(),
+            getId());
+        return (noTemplate);
+    }
+
+    /* The length goes in front of the bytes, so that the store can be
+     * walked - the incoming SysEx matcher tries every template. */
+    uint8_t *run = templates.allocate(1 + bytes.size());
+
+    if (run == nullptr) {
+        return (noTemplate);
+    }
+
+    run[0] = (uint8_t)bytes.size();
+    std::copy(bytes.begin(), bytes.end(), run + 1);
+
+    const size_t index = templates.indexOf(run + 1);
+
+    if (index > 0xFFFF) {
+        /* Sixty-four kilobytes of templates on one device. The bytes stay
+         * in the store, where the incoming matcher will still see them. */
+        System::logger.write(
+            LOG_ERROR,
+            "Device::storeTemplate: template store is full: device=%d",
+            getId());
+        return (noTemplate);
+    }
+    numTemplates++;
+    return (Template{ (uint16_t)index, (uint8_t)bytes.size() });
 }
 
-DataBytes *Device::getNamedTemplate(uint16_t id)
+const uint8_t *Device::templateBytes(uint16_t offset) const
 {
-    for (const auto &[templateId, index] : namedTemplates) {
-        if (templateId == id) {
-            return (&sysexTemplates[index]);
+    return (templates.at(offset));
+}
+
+size_t Device::getNumTemplates(void) const
+{
+    return (numTemplates);
+}
+
+void Device::setNamedTemplate(uint16_t id, const DataBytes &bytes)
+{
+    const Template stored = storeTemplate(bytes);
+
+    for (auto &named : namedTemplates) {
+        if (named.id == id) {
+            named.bytes = stored;
+            return;
+        }
+    }
+    namedTemplates.push_back(NamedTemplate{ id, stored });
+}
+
+Device::Template Device::getNamedTemplate(uint16_t id) const
+{
+    for (const auto &named : namedTemplates) {
+        if (named.id == id) {
+            return (named.bytes);
         }
     }
 
-    /* Named before it was defined, or never defined: an empty template, as
-     * the map used to create on the same lookup, so a message that names a
-     * missing id sends nothing rather than something else's bytes. */
-    namedTemplates.emplace_back(id, sysexTemplates.size());
-    sysexTemplates.emplace_back();
-    return (&sysexTemplates.back());
+    /* Never defined - the device's patch messages, where ids are given,
+     * are read before any control names one - so the message sends
+     * nothing rather than something else's bytes. */
+    return (noTemplate);
 }
 
 void Device::print(uint8_t logLevel) const
@@ -127,6 +190,5 @@ void Device::print(uint8_t logLevel) const
     System::logger.write(logLevel, "rate: %d", getRate());
     System::logger.write(logLevel, "requests: %d", requests.size());
     System::logger.write(logLevel, "responses: %d", responses.size());
-    System::logger.write(
-        logLevel, "sysex templates: %d", sysexTemplates.size());
+    System::logger.write(logLevel, "sysex templates: %d", getNumTemplates());
 }

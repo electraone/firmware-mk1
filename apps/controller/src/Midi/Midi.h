@@ -35,44 +35,50 @@ public:
     explicit Midi(const Preset &preset);
     virtual ~Midi() = default;
 
-    void sendMessage(const Message &message);
+    /** Sends @p message carrying @p midiValue. The value is an argument
+     *  rather than a field of the message, so that the message - of which
+     *  there is one in every value of every preset - does not keep two
+     *  bytes of scratch for it. */
+    void sendMessage(const Message &message, uint16_t midiValue);
     void sendTemplatedSysex(const Device &device,
                             uint16_t parameterNumber,
-                            const DataBytes &data);
+                            const uint8_t *data,
+                            uint16_t length);
     void process(const MidiInput &midiInput, const MidiMessage &midiMessage);
     void requestAllPatches(void);
 
 private:
     uint8_t transformMessage(uint16_t parameterNumber,
                              const Device &device,
-                             const DataBytes &data,
+                             const uint8_t *data,
+                             uint16_t length,
                              uint8_t *dataOut);
     void runVariable(uint16_t parameterNumber,
                      uint16_t &i,
                      uint16_t &j,
-                     const DataBytes &data,
+                     const uint8_t *data,
                      uint8_t *dataOut,
                      const Device &device);
     void runParameter(uint16_t parameterNumber,
                       uint16_t &i,
                       uint16_t &j,
-                      const DataBytes &data,
+                      const uint8_t *data,
                       uint8_t *dataOut,
                       const Device &device);
     void runChecksum(uint16_t &i,
                      uint16_t &j,
-                     const DataBytes &data,
+                     const uint8_t *data,
                      uint8_t *dataOut,
                      const Device &device);
     void runLuaFunction(uint16_t parameterNumber,
                         uint16_t &i,
                         uint16_t &j,
-                        const DataBytes &data,
+                        const uint8_t *data,
                         uint8_t *dataOut,
                         const Device &device);
     void runConstant(uint16_t &i,
                      uint16_t &j,
-                     const DataBytes &data,
+                     const uint8_t *data,
                      uint8_t *dataOut,
                      const Device &device);
     void processStart(void);
@@ -95,7 +101,8 @@ private:
     void processSongPosition(uint8_t valueFine, uint8_t valueCoarse);
     void processSysex(const MidiMessage &midiMessage);
 
-    bool processSysexData(const DataBytes &sysexMessage,
+    bool processSysexData(const uint8_t *sysexMessage,
+                          uint8_t sysexMessageLength,
                           const Device &device,
                           SysexBlock &sysexBlock);
     bool processResponse(const Response &response,

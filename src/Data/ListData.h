@@ -44,7 +44,7 @@ public:
     {
     }
 
-    virtual ~ListData() = default;
+    ~ListData() = default;
 
     uint16_t getId(void) const
     {

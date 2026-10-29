@@ -577,7 +577,10 @@ void MainWindow::setGroupLabel(uint16_t groupId, const char *newLabel)
             if (Component *component = group.getComponent()) {
                 if (GroupControl *gc =
                         dynamic_cast<GroupControl *>(component)) {
-                    gc->repaint();
+                    /* The component keeps its own copy of the label - the
+                     * group's lives in the display's memory - so it is told
+                     * the new text rather than merely repainted. */
+                    gc->setLabel(newLabel);
                 }
             }
         }
@@ -1297,11 +1300,11 @@ void MainWindow::sendAllControls(void)
 {
     for (auto &control : preset.controls) {
         for (auto &value : control.values) {
-            value.message.setValue(
+            midi.sendMessage(
+                value.message,
                 parameterMap.getValue(value.message.getDeviceId(),
                                       value.message.getType(),
                                       value.message.getParameterNumber()));
-            midi.sendMessage(value.message);
         }
     }
 }

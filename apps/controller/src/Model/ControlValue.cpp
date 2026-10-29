@@ -111,6 +111,19 @@ void ControlValue::setControl(Control *newControl)
     control = newControl;
 }
 
+/* offsetof on a class with private members and bitfields is only
+ * conditionally supported by the standard; GCC supports it and says so with
+ * a warning, which is silenced here because the layout is exactly what is
+ * being relied on. */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Winvalid-offsetof"
+ControlValue *ControlValue::owning(Message *message)
+{
+    return (reinterpret_cast<ControlValue *>(
+        reinterpret_cast<char *>(message) - offsetof(ControlValue, message)));
+}
+#pragma GCC diagnostic pop
+
 ControlValue *ControlValue::getNextDestination(void) const
 {
     return (nextDestination);
