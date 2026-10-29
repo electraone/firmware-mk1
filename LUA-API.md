@@ -291,8 +291,7 @@ The five callbacks are each handed the control as their first argument.
 * pot touch: `fn(control, event)` - the same table, with `delta` zero
 * switch: `fn(control, potId, pressed)`
 
-`setPotTouchCallback` and `setSwitchCallback` are this model's own; the other
-three are the mk2's.
+All five exist on the mk2 as well.
 
 Variant numbers are the mk2's, gaps and all: `0` default, `2` thin, `3` value
 only, `4` dial, `5` checkbox, `7` baseline.
