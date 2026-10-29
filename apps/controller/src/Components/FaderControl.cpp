@@ -39,7 +39,7 @@ void FaderControl::syncComponentProperties(void)
     setMinimum(controlValue.getMin());
     setMaximum(controlValue.getMax());
     list.assignListData(controlValue.getOverlay());
-    setNumValues(controlValue.getNumSteps());
+    setNumValues(controlValue.getPotSteps());
     ControlComponent::syncComponentProperties();
 }
 
@@ -89,7 +89,7 @@ void FaderControl::onPotChange(const PotEvent &potEvent)
         const auto &cv = control.getValue(0);
         int16_t newDisplayValue = cv.isRelative()
                                       ? cv.calculateRelativeDelta(delta)
-                                      : getValue() + delta;
+                                      : cv.turnedValue(getValue(), delta);
         emitValueChange(newDisplayValue, cv);
     }
 }

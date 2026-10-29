@@ -25,7 +25,7 @@ FaderDetailControl::FaderDetailControl(const Control &control,
                                        MainDelegate &newDelegate)
     : FaderControl(control, newDelegate), previousScreenX(0)
 {
-    assignPot(control.inputs[0].getPotId(), control.values[0].getNumSteps());
+    assignPot(control.inputs[0].getPotId(), control.values[0].getPotSteps());
     setColour(control.getColour565());
 }
 

@@ -118,7 +118,7 @@ uint16_t ControlComponent::numValuesForPot(void) const
         return (Component::numValuesForPot());
     }
 
-    return (control.getValue(handle).getNumSteps());
+    return (control.getValue(handle).getPotSteps());
 }
 
 float ControlComponent::sensitivityForPot(void) const

@@ -109,6 +109,21 @@ partial turn is lost when the finger leaves, so such a control was dead to its
 knob. No value is worth more travel than a detent: below 300 / 45, about seven
 values, the detent rule takes over, and the two rules agree where they meet.
 
+**A range is counted in the steps it really has.** A value lives in the
+parameter map as its MIDI value, so one shown as 100 to 8000 Hz but sent as a
+7-bit CC has 128 positions, not 7901. The sweep is divided by the smaller of the
+two ranges - `ControlValue::getPotSteps()` - and a turn moves the MIDI value by
+that many steps (`ControlValue::turnedValue()`). Dividing by the display range
+instead added a few hertz per reading, which the round trip through a 62 Hz MIDI
+step rounded straight back: such a control did not move under a slow turn at
+all. Signed encodings map one to one and are left alone.
+
+**A turn starts from the parameter map, not from the screen.** A component's
+copy of its value is refreshed by the repaint pass, up to 25 ms after the map
+changes, and readings now come every one or two milliseconds. Starting from the
+copy made every turn in between write the same result; on the bench that lost
+45 % of the travel.
+
 Nothing is multiplied by speed. The tables that used to do that reached 512 times
 at the top, so the same gesture could move a parameter by a hundredth of its
 range or by half of it depending on how quickly a finger happened to be moving.

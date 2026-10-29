@@ -338,7 +338,7 @@ void MainWindow::setControlVisible(uint16_t controlId, bool shouldBeVisible)
                 if (currentControlSetId == control.getControlSetId()) {
                     if (shouldBeVisible) {
                         component->assignPot(control.inputs[0].getPotId(),
-                                             control.values[0].getNumSteps());
+                                             control.values[0].getPotSteps());
                     } else {
                         component->releasePot();
                     }

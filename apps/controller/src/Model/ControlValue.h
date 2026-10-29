@@ -91,6 +91,28 @@ public:
     void setOverlay(Overlay *newOverlay);
     Overlay *getOverlay(void) const;
     uint16_t getNumSteps(void) const;
+
+    /**
+     * @brief How many distinct positions this value really has.
+     *
+     * A value lives in the parameter map as its MIDI value, so a display range
+     * wider than the MIDI range - 100 to 8000 sent as a 7-bit CC - has only as
+     * many positions as the MIDI range: 128 there, not 7901. A knob has to be
+     * scaled to these, or it adds a fraction of a MIDI step per reading and the
+     * round trip through the map rounds every one of them away.
+     */
+    uint16_t getPotSteps(void) const;
+
+    /**
+     * @brief Where a turn of @p steps takes a value, in the positions it has.
+     *
+     * @param displayValue the value as the component last drew it, used only
+     *        while the parameter map holds none
+     * @param steps the change, in the units getPotSteps() counts
+     *
+     * @return the new display value, not yet constrained to the range
+     */
+    int16_t turnedValue(int16_t displayValue, int16_t steps) const;
     bool isFunctionAssigned(void) const;
     bool isFormatterAssigned(void) const;
     bool hasLua(void) const;

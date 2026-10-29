@@ -97,7 +97,7 @@ ControlComponent *
     knob.control.setComponent(knob.component);
     knob.control.addToParameterMap(knob.control.values[0]);
     knob.component->updateValueFromParameterMap();
-    knob.component->assignPot(potId, knob.control.values[0].getNumSteps());
+    knob.component->assignPot(potId, knob.control.values[0].getPotSteps());
     addAndMakeVisible(knob.component);
 
     return (knob.component);

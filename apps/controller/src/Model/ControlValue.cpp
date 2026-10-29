@@ -20,6 +20,7 @@
 */
 
 #include "ControlValue.h"
+#include "ParameterMap.h"
 #include "Control.h"
 #include "luaExtension.h"
 #include "Hardware.h"
@@ -197,6 +198,79 @@ Overlay *ControlValue::getOverlay(void) const
 uint16_t ControlValue::getNumSteps(void) const
 {
     return (max - min);
+}
+
+/* The MIDI span when it is narrower than the display range, which is the case
+ * the round trip through the parameter map loses. Only for unsigned encodings:
+ * the signed ones map a display value one to one onto a MIDI value, so they
+ * have no narrower grid to step on, and their MIDI values are not ordered like
+ * the display values - -1 in two's complement is the largest of them. */
+static uint16_t coarseMidiSpan(const ControlValue &cv)
+{
+    const SignMode signMode = cv.message.getSignMode();
+
+    if ((signMode == SignMode::twosComplement)
+        || (signMode == SignMode::signBit)) {
+        return (0);
+    }
+
+    const int32_t midiMin = cv.message.getMidiMin();
+    const int32_t midiMax = cv.message.getMidiMax();
+    const uint16_t midiSpan =
+        (uint16_t)((midiMax > midiMin) ? (midiMax - midiMin)
+                                       : (midiMin - midiMax));
+
+    return ((midiSpan > 0) && (midiSpan < cv.getNumSteps()) ? midiSpan : 0);
+}
+
+uint16_t ControlValue::getPotSteps(void) const
+{
+    const uint16_t midiSpan = coarseMidiSpan(*this);
+
+    return ((midiSpan > 0) ? midiSpan : getNumSteps());
+}
+
+int16_t ControlValue::turnedValue(int16_t displayValue, int16_t steps) const
+{
+    /* Start from the value the parameter map holds, not from the component's
+     * copy of it. The copy is refreshed by the repaint pass, up to 25 ms after
+     * the map changed, and a knob in a hand reports every millisecond or two:
+     * every turn in between started from the same stale value and wrote the
+     * same result, and on the bench nearly half of each turn was lost that
+     * way. */
+    const uint16_t liveMidiValue = parameterMap.getValue(
+        message.getDeviceId(), message.getType(), message.getParameterNumber());
+    const bool isLive = (liveMidiValue != MIDI_VALUE_DO_NOT_SEND);
+
+    if (coarseMidiSpan(*this) == 0) {
+        return ((isLive ? translateMidiValue(liveMidiValue) : displayValue)
+                + steps);
+    }
+
+    /* Step the MIDI value and come back to the display value it stands for.
+     * Both directions of the translation round to the nearest, and the display
+     * range is the wider one, so the value emitted translates back to exactly
+     * this MIDI value. */
+    const int32_t midiMin = message.getMidiMin();
+    const int32_t midiMax = message.getMidiMax();
+    const int32_t direction = (midiMax >= midiMin) ? 1 : -1;
+    const int32_t low = (midiMax >= midiMin) ? midiMin : midiMax;
+    const int32_t high = (midiMax >= midiMin) ? midiMax : midiMin;
+
+    int32_t midiValue =
+        isLive ? liveMidiValue
+               : translateValueToMidiValue(
+                   message.getSignMode(),
+                   message.getBitWidth(),
+                   constrain(displayValue, getMin(), getMax()),
+                   getMin(),
+                   getMax(),
+                   message.getMidiMin(),
+                   message.getMidiMax());
+
+    midiValue = constrain(midiValue + (direction * steps), low, high);
+
+    return (translateMidiValue((uint16_t)midiValue));
 }
 
 bool ControlValue::isFunctionAssigned(void) const

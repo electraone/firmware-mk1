@@ -51,7 +51,7 @@ void KnobControl::onPotChange(const PotEvent &potEvent)
         const auto &cv = control.getValue(0);
         int16_t newDisplayValue = cv.isRelative()
                                       ? cv.calculateRelativeDelta(delta)
-                                      : getValue() + delta;
+                                      : cv.turnedValue(getValue(), delta);
         emitValueChange(newDisplayValue, cv);
     }
 }

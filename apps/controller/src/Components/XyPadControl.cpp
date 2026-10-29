@@ -75,9 +75,9 @@ void XyPadControl::onPotChange(const PotEvent &potEvent)
     if (int16_t delta = potEvent.getAcceleratedChange()) {
         const uint8_t activeHandle = getActiveSegment();
         const auto &cv = control.getValue(activeHandle);
-        const int16_t newDisplayValue = cv.isRelative()
-                                            ? cv.calculateRelativeDelta(delta)
-                                            : getValue(activeHandle) + delta;
+        const int16_t newDisplayValue =
+            cv.isRelative() ? cv.calculateRelativeDelta(delta)
+                            : cv.turnedValue(getValue(activeHandle), delta);
 
         emitValueChange(newDisplayValue, cv);
     }

@@ -134,7 +134,7 @@ void PageView::reassignComponent(const Control &control)
             if (uiFeatures.activeControlSetType == ActiveControlSetType::dim) {
                 c->setDimmed(false);
             }
-            c->assignPot(newPotId, control.values[0].getNumSteps());
+            c->assignPot(newPotId, control.values[0].getPotSteps());
             usedPots[originalPotId] = false;
             usedPots[newPotId] = true;
         }
@@ -299,7 +299,7 @@ void PageView::configureControl(ControlComponent *cc, const Control &control)
     if (control.isVisible() && control.getControlSetId() == controlSetId) {
         cc->releasePot();
         cc->assignPot(control.inputs[0].getPotId(),
-                      control.values[0].getNumSteps());
+                      control.values[0].getPotSteps());
         usedPots[control.inputs[0].getPotId()] = true;
     } else {
         cc->releasePot();
