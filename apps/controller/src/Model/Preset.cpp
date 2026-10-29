@@ -1185,16 +1185,18 @@ Group Preset::parseGroup(JsonObject jGroup)
     Group::Variant variantType = Group::translateVariant(jGroup["variant"]);
     Group group(groupId, pageId, bounds, name, colour, variantType);
 
-    group.setFont(parseFont(jGroup["font"]));
+    /* Starting from the group's own default - a small face - rather than
+     * a control's, so a group that names no font keeps it. */
+    group.setFont(parseFont(jGroup["font"], group.getFont()));
 
     return (group);
 }
 
 /*--------------------------------------------------------------------------*/
 
-Control::Font Preset::parseFont(JsonObject jFont)
+Control::Font Preset::parseFont(JsonObject jFont, const Control::Font &base)
 {
-    Control::Font font;
+    Control::Font font = base;
 
     if (!jFont) {
         return (font);

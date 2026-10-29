@@ -187,7 +187,8 @@ private:
      * gets the regular proportional face at that size rather than a face
      * assembled out of nothing.
      */
-    Control::Font parseFont(JsonObject jFont);
+    Control::Font parseFont(JsonObject jFont,
+                            const Control::Font &base = Control::Font());
 
     // Static functions
     static uint8_t translateValueId(Control::Type type, const char *valueId);

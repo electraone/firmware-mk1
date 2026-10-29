@@ -50,6 +50,15 @@ public:
     /** The face a group draws its label in. */
     using Font = TextFont;
 
+    /** The face a group's label has unless the preset names one: small, as
+     *  v3.5.4 drew every group label, where a control's text is medium. */
+    static constexpr Font defaultFont(void)
+    {
+        return (Font{ TextSize::small,
+                      TextFace::regular,
+                      TextSpacing::proportional });
+    }
+
     Group()
         : id(0),
           pageId(0),
@@ -58,7 +67,7 @@ public:
           labelHandle(VramStore::invalidHandle)
     {
         variant = (uint8_t)Variant::Default;
-        setFont(Font());
+        setFont(defaultFont());
     }
 
     Group(uint16_t newId,
@@ -76,7 +85,7 @@ public:
     {
         setLabel(newLabel);
         variant = (uint8_t)newVariant;
-        setFont(Font());
+        setFont(defaultFont());
     }
 
     ~Group() = default;

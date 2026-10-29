@@ -84,7 +84,10 @@ struct ControlMetrics {
      */
 
     /** The track's height, and how far its top sits above the bottom of the
-     *  control, for the thin variant and for the full-size one. */
+     *  control, for the thin variant and for the full-size one. The thin
+     *  track is the nine rows at 36 from the bottom that v3.5.4 drew: it
+     *  ends on the same row as the full-size track, two rows taller than
+     *  the strip a list draws. */
     uint16_t faderThinBarHeight;
     uint16_t faderThinInset;
     uint16_t faderBarHeight;
@@ -193,8 +196,8 @@ inline constexpr ControlMetrics controlMetrics = {
     /* boxBottomInset     */ 27,
     /* textBoxBottomInset */ 24,
     /* stripHeight         */ 7,
-    /* faderThinBarHeight  */ 7,
-    /* faderThinInset      */ 34,
+    /* faderThinBarHeight  */ 9,
+    /* faderThinInset      */ 36,
     /* faderBarHeight      */ 29,
     /* faderInset          */ 56,
     /* faderListForcesThin */ true,
