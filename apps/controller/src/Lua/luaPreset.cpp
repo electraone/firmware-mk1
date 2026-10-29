@@ -21,6 +21,26 @@
 
 #include "luaPreset.h"
 
+/* Whether the running script has been told onEnter. A preset switched away
+ * from before its first repaint pass never reached onReady and onEnter, and
+ * must not be told it is leaving a preset it was never told it entered. */
+static bool entered = false;
+
+static void runLifecycleFunction(const char *function)
+{
+    luaLE_getModuleFunction("preset", function);
+
+    if (lua_isfunction(L, -1)) {
+        if (lua_pcall(L, 0, 0, 0) != 0) {
+            System::logger.write(LOG_LUA,
+                                 "error running function '%s': %s",
+                                 function,
+                                 lua_tostring(L, -1));
+        }
+    }
+    luaLE_postFunctionCleanUp(L);
+}
+
 int luaopen_preset(lua_State *L)
 {
     luaL_newlib(L, preset_functions);
@@ -61,8 +81,34 @@ void preset_onReady(void)
     luaLE_postFunctionCleanUp(L);
 }
 
+/*
+ * The rest of the lifecycle, as the mk2 calls it for a preset that is not
+ * kept in memory. This model only ever has the one preset, and switching to
+ * another destroys it, so leaving and exiting come together and every entry
+ * is a fresh load:
+ *
+ *     load    main chunk, onLoad, initial values, onReady, onEnter
+ *     switch  onLeave, onExit
+ *     script  onExit, then the new script's load (as the mk2: no onLeave)
+ */
+void preset_onEnter(void)
+{
+    runLifecycleFunction("onEnter");
+    entered = true;
+}
+
+void preset_onLeave(void)
+{
+    if (entered) {
+        runLifecycleFunction("onLeave");
+        entered = false;
+    }
+}
+
 void preset_onExit(void)
 {
+    entered = false;
+
     const char *function = "onExit";
 
     luaLE_getModuleFunction("preset", function);

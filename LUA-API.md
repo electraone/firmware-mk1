@@ -158,9 +158,22 @@ Callback: `parameterMap.onChange(controlValues, origin, midiValue)`. `origin` is
 
 ### `preset` — `apps/controller/src/Lua/luaPreset.cpp`
 
-No functions; three callbacks. `preset.onLoad()` when the script has been read,
-`preset.onReady()` when the parameter map has been brought up to date, and
-`preset.onExit()` when the preset is being unloaded.
+No functions; five callbacks, the mk2's, called as the mk2 calls them for a
+preset it does not keep in memory. This model only ever holds one preset, so
+switching to another destroys it - leaving and exiting come together - and
+every entry to a preset is a fresh load.
+
+| When | Called, in order |
+| --- | --- |
+| A preset is loaded: switched to, reloaded, uploaded into the current slot, at power-on | the script's main chunk, `preset.onLoad()`, the initial values, `preset.onReady()`, `preset.onEnter()` |
+| It is left: another preset is loaded, it is reloaded or removed, or its files are replaced | `preset.onLeave()`, `preset.onExit()` |
+| Only its Lua script is replaced, by an upload | the old script's `preset.onExit()`, then the new script's main chunk, `preset.onLoad()`, `preset.onReady()`, `preset.onEnter()` |
+
+`onReady` and `onEnter` come on the first repaint pass after the load, once the
+parameter map has been brought up to date. A preset left before that pass never
+had `onEnter`, and gets no `onLeave` either - only `onExit`. Replacing the
+script calls `onExit` without `onLeave`, as the mk2 does: the preset stays on
+the screen. Sleep, power-off and a reboot call nothing, on either model.
 
 `preset.userFunctions` is a table the script writes rather than a function it
 calls: what the preset offers under FUNCTIONS, one entry per knob.
@@ -474,8 +487,3 @@ than a binding:
 
 * **Data pipes** (`pipe.acquire`, `pipe.send`, `pipe.release`) and the capture
   API. Out of scope for this firmware.
-* **`preset.onEnter` / `preset.onLeave`**. On the mk2 a preset can be entered
-  and left without being unloaded. Here loading a preset is entering it, so
-  `preset.onLoad` and `preset.onExit` already mark both edges; adding the pair
-  would mean a separate preset-residency lifecycle.
-

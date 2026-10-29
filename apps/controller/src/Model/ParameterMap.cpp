@@ -695,7 +695,10 @@ void ParameterMap::repaintParameterMap(void)
 
     if (onReadyPending) {
         if (L) {
+            /* onEnter straight after, as the mk2 calls it at the end of a
+             * load: on this model every entry to a preset is a load. */
             preset_onReady();
+            preset_onEnter();
         }
         onReadyPending = false;
     }

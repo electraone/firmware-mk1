@@ -236,8 +236,10 @@ void Presets::reset(void)
         parameterMap.keep();
     }
 
-    // trigger Lua onExit function
+    /* The preset is left and destroyed in one step: this model keeps no
+     * preset in memory to come back to. Both while it is still whole. */
     if (L) {
+        preset_onLeave();
         preset_onExit();
     }
 
@@ -356,6 +358,13 @@ void Presets::runUploadedLuaScript(void)
  */
 void Presets::runPresetLuaScript(void)
 {
+    /* A script replaced under a running preset is told it is ending, as the
+     * mk2 tells it - onExit, without onLeave, since the preset stays. On a
+     * load reset() has already closed the state and there is none here. */
+    if (L) {
+        preset_onExit();
+    }
+
     clearControlCallbacks(L);
     schedule_reset(L);
     closeLua();
