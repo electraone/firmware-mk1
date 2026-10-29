@@ -252,6 +252,10 @@ void Presets::reset(void)
      * or the next preset's control number one inherits this one's. */
     clearControlCallbacks(L);
 
+    /* What schedule.after(), every() and whenNotes() are holding, in the
+     * registry of the state that is about to close. */
+    schedule_reset(L);
+
     // Reset Lua
     closeLua();
 
@@ -353,6 +357,7 @@ void Presets::runUploadedLuaScript(void)
 void Presets::runPresetLuaScript(void)
 {
     clearControlCallbacks(L);
+    schedule_reset(L);
     closeLua();
 
     luaPreset = &preset;

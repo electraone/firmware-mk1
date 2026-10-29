@@ -61,6 +61,7 @@ private:
 
     // Patch requests
     void runUserTask(void);
+    void runScheduled(void) override;
 
     // Config handling
     bool applyChangesToConfig(LocalFile file);

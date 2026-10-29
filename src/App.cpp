@@ -95,6 +95,10 @@ void App::runUserTask(void)
 {
 }
 
+void App::runScheduled(void)
+{
+}
+
 void App::yield(void)
 {
 }

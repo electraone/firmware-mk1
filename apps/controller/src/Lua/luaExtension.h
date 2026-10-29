@@ -47,6 +47,7 @@
 #include "luaParameterMap.h"
 #include "luaPatch.h"
 #include "luaPreset.h"
+#include "luaSchedule.h"
 #include "luaValue.h"
 
 extern Presets *luaPresets;

@@ -32,6 +32,7 @@
 #include "InstanceCallback.h"
 
 #include "TaskReadButtons.h"
+#include "TaskRunScheduled.h"
 #include "TaskReadPots.h"
 #include "TaskReadPotTouch.h"
 #include "TaskReadLCDTouch.h"
@@ -91,6 +92,7 @@ private:
     Task taskRefreshMidiIndicators;
     Task taskRepaintGraphics;
     Task taskUserTask;
+    Task taskRunScheduled;
     Task taskRunTimer;
     Task taskSendMidi;
     Task taskProcessMidi;

@@ -64,6 +64,17 @@ public:
     static void (*onMidiContinueCallback)(MidiInput midiInput);
     static void (*onMidiActiveSensingCallback)(MidiInput midiInput);
     static void (*onMidiSystemResetCallback)(MidiInput midiInput);
+
+    /**
+     * Every message processMidi() hands over, after everything else has seen
+     * it. Set by the app once and left alone across presets - unlike the Lua
+     * callbacks around it, which a preset load clears.
+     */
+    static void (*onAnyMessageCallback)(MidiInput midiInput,
+                                        uint8_t channel,
+                                        MidiMessage::Type type,
+                                        uint8_t data1,
+                                        uint8_t data2);
     static void (*onMidiTuneRequestCallback)(MidiInput midiInput);
     static void (*onMidiProgramChangeCallback)(MidiInput midiInput,
                                                uint8_t channel,

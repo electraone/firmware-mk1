@@ -245,6 +245,54 @@ commands.run("switchPage", 3)
 
 `setText(text)`, `getText()`. Twenty characters, in the bottom bar.
 
+### `schedule` — `apps/controller/src/Lua/luaSchedule.cpp`
+
+Functions run later, or when a combination of notes is held. The mk2's module,
+with its names, arguments and answers. `timer.onTick` is unchanged; this is for
+what a preset used to multiplex into it by hand.
+
+| Function | |
+| --- | --- |
+| `after(ms, fn, ...)` | runs `fn(...)` once, `ms` from now; answers a handle |
+| `every(ms, fn, ...)` | runs `fn(...)` every `ms` (at least 1), the first `ms` from now; answers a handle |
+| `cancel(handle)` | `true` when it was still waiting; works for `whenNotes` handles too |
+| `now()` | `millis()` |
+| `stats()` | `pending`, `ran`, `errors`, `worstOverrun` (ms), `capacity`, `whenNotes` |
+| `whenNotes(notes, fn [, options])` | runs `fn(device, held, match)` when the notes are held; answers a handle |
+
+Thirty-two functions may wait at once, and thirty-two `whenNotes` triggers. A
+repeating function is re-armed from when it ran, not from when it was due, so
+one that fell behind does not fire a burst to catch up. One that raises is
+dropped and counted in `errors`. Everything waiting is dropped when the preset
+is loaded again or another is.
+
+They run from a task in the main loop every millisecond, so a due function can
+wait a few milliseconds behind a repaint or a SysEx message. Nothing stops one
+that never returns - as nothing stops a `timer.onTick` that never returns.
+
+`notes` is a note number or a list of them. A trigger fires on the change that
+makes a device's held notes match, and not again until a change has made them
+stop matching: a chord held down fires once. `match` has `notes` (the held notes
+that made it), `root`, `transpose`, `velocity` (their average) and `spread`
+(ms between the first and last press). Options:
+
+| Option | |
+| --- | --- |
+| `device` | a `Device` or a device id; every device of the preset when left out |
+| `exact` | nothing else may be held |
+| `anyOctave` | notes by name: C is C in every octave |
+| `anyKey` | the same shape on any root |
+| `minVelocity`, `maxVelocity` | every matching note within 0..127 |
+| `within` | the notes pressed within this many ms of each other, 0..60000 |
+| `once` | the trigger is removed when it fires |
+| `onRelease` | `fn(device, held)` when the notes stop matching |
+
+A note belongs to the device the preset hands that port and channel to. The held
+notes are followed from power-on, preset or none, so a trigger set while a chord
+is already down sees it. A Note Off, a Note On of velocity 0, All Sound Off,
+All Notes Off, the mode messages and a System Reset release notes; the sustain
+pedal does not.
+
 ### `helpers` — `apps/controller/src/Lua/luaHelpers.cpp`
 
 `slotToBounds(slot)`, `boundsToSlot({x, y, width, height})`, `delay(millis)`

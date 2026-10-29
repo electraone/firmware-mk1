@@ -41,6 +41,7 @@ SystemTasks::SystemTasks()
       taskRefreshMidiIndicators(100000, TASK_FOREVER, &refreshMidiIndicators),
       taskRepaintGraphics(25000, TASK_FOREVER, &repaintGraphics),
       taskUserTask(250000, TASK_FOREVER, &userTask),
+      taskRunScheduled(1000, TASK_FOREVER, &runScheduled),
       taskRunTimer(500000, TASK_FOREVER, &runTimer),
       taskSendMidi(2000, TASK_FOREVER, &sendMidi),
       taskProcessMidi(2000, TASK_FOREVER, &processMidi),
@@ -57,6 +58,7 @@ SystemTasks::SystemTasks()
     addTask(taskReadPotTouch);
     addTask(taskRepaintGraphics);
     addTask(taskUserTask);
+    addTask(taskRunScheduled);
     addTask(taskRunTimer);
     addTask(taskSendMidi);
     addTask(taskProcessMidi);
@@ -88,6 +90,7 @@ void SystemTasks::enableAll()
 
     taskRepaintGraphics.enable();
     taskUserTask.enable();
+    taskRunScheduled.enable();
     taskRunTimer.disable();
     taskSendMidi.enable();
     taskProcessMidi.enable();
@@ -108,6 +111,7 @@ void SystemTasks::enableSleepMode()
     taskReadPotTouch.disable();
     taskRepaintGraphics.disable();
     taskUserTask.disable();
+    taskRunScheduled.disable();
     taskRunTimer.disable();
     taskSendMidi.disable();
     taskProcessMidi.disable();
@@ -190,11 +194,13 @@ void SystemTasks::doNotUsePotTouch(void)
 void SystemTasks::enableUserTask(void)
 {
     taskUserTask.enable();
+    taskRunScheduled.enable();
 }
 
 void SystemTasks::disableUserTask(void)
 {
     taskUserTask.disable();
+    taskRunScheduled.disable();
 }
 
 void SystemTasks::enableSpinner(void)

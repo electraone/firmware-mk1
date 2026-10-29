@@ -232,6 +232,14 @@ void processMidi(void)
                                  message.getType(),
                                  message.getData1(),
                                  message.getData2());
+
+            if (MidiInputCallback::onAnyMessageCallback) {
+                MidiInputCallback::onAnyMessageCallback(midiInput,
+                                                        message.getChannel(),
+                                                        message.getType(),
+                                                        message.getData1(),
+                                                        message.getData2());
+            }
         }
         PROFILE_END(MidiIn);
     }

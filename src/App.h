@@ -87,6 +87,12 @@ public:
     virtual void runUserTask(void);
 
     /**
+     * @brief Called every millisecond from the main loop, for whatever the
+     *        app has to run to the millisecond. The base does nothing.
+     */
+    virtual void runScheduled(void);
+
+    /**
      * @brief A long operation on the main loop is giving the app a moment.
      *
      * A file streamed out over SysEx holds the main loop for seconds, and

@@ -17,6 +17,10 @@ void Controller::initialise(void)
     mainWindow.setCommandManager(&commandManager);
     luaCommandManager = &commandManager;
 
+    /* The held notes are followed from the start, preset or none, so a
+     * script that waits for a chord knows the keys already down. */
+    MidiInputCallback::onAnyMessageCallback = &schedule_onMidiMessage;
+
     // Get info about the last used preset
     uint8_t presetId = System::runtimeInfo.getLastActivePreset();
 
@@ -218,6 +222,11 @@ void Controller::handleElectraSysex(uint8_t port, const SysexBlock &sysexBlock)
 /** User configurable task
  * Currently misused for sending Patch request messages.
  */
+void Controller::runScheduled(void)
+{
+    schedule_run(L, millis());
+}
+
 void Controller::runUserTask(void)
 {
     PatchRequest request;

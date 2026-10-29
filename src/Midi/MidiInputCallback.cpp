@@ -50,6 +50,11 @@ void (*MidiInputCallback::onMidiSystemResetCallback)(MidiInput midiInput) =
     nullptr;
 void (*MidiInputCallback::onMidiTuneRequestCallback)(MidiInput midiInput) =
     nullptr;
+void (*MidiInputCallback::onAnyMessageCallback)(MidiInput midiInput,
+                                                uint8_t channel,
+                                                MidiMessage::Type type,
+                                                uint8_t data1,
+                                                uint8_t data2) = nullptr;
 void (*MidiInputCallback::onMidiProgramChangeCallback)(MidiInput midiInput,
                                                        uint8_t channel,
                                                        uint8_t programNumber) =
