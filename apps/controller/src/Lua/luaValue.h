@@ -47,6 +47,8 @@ int value_getMessage(lua_State *L);
 int value_getControl(lua_State *L);
 int value_overrideValue(lua_State *L);
 int value_cancelOverride(lua_State *L);
+int value_toMidi(lua_State *L);
+int value_fromMidi(lua_State *L);
 int value_print(lua_State *L);
 
 void value_register(lua_State *L);
@@ -68,6 +70,8 @@ static const luaL_Reg value_functions[] = {
     { "getControl", value_getControl },
     { "overrideValue", value_overrideValue },
     { "cancelOverride", value_cancelOverride },
+    { "toMidi", value_toMidi },
+    { "fromMidi", value_fromMidi },
     { "print", value_print },
     { NULL, NULL }
 };

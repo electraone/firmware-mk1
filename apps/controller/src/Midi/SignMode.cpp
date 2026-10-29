@@ -20,6 +20,25 @@ SignMode translateSignMode(const char *signModeText)
     return (SignMode::noSign);
 }
 
+/* Spelled the way a preset spells it, so a script compares against the same
+ * words it wrote. */
+const char *translateSignModeToText(SignMode signMode)
+{
+    switch (signMode) {
+        case SignMode::twosComplement:
+            return ("twosComplement");
+        case SignMode::signBit:
+            return ("signBit");
+        case SignMode::signBit2:
+            return ("signBit2");
+        case SignMode::binOffset:
+            return ("binOffset");
+        case SignMode::noSign:
+        default:
+            return ("noSign");
+    }
+}
+
 uint16_t getTwosComplementMidiValue(uint8_t bitWidth,
                                     int16_t value,
                                     int16_t minValue,
@@ -213,4 +232,14 @@ int16_t translateMidiValueToValue(SignMode signMode,
     value = constrain(value, minValue, maxValue);
 
     return (value);
+}
+
+int16_t getMaxSignedValue(uint8_t bitWidth)
+{
+    return ((1 << (bitWidth - 1)) - 1);
+}
+
+uint16_t getMaxUnsignedValue(uint8_t bitWidth)
+{
+    return ((1 << bitWidth) - 1);
 }

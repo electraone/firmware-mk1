@@ -48,6 +48,9 @@ int message_getMin(lua_State *L);
 int message_setMax(lua_State *L);
 int message_getMax(lua_State *L);
 int message_setRange(lua_State *L);
+int message_getBitWidth(lua_State *L);
+int message_isLsbFirst(lua_State *L);
+int message_getSignMode(lua_State *L);
 int message_print(lua_State *L);
 
 void message_register(lua_State *L);
@@ -70,6 +73,10 @@ static const luaL_Reg message_functions[] = {
     { "setMax", message_setMax },
     { "getMax", message_getMax },
     { "setRange", message_setRange },
+
+    { "getBitWidth", message_getBitWidth },
+    { "isLsbFirst", message_isLsbFirst },
+    { "getSignMode", message_getSignMode },
     { "print", message_print },
     { NULL, NULL }
 };

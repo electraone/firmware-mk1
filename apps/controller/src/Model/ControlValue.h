@@ -141,6 +141,18 @@ public:
     int16_t translateMidiValue(uint16_t midiValue) const;
 
     /**
+     * @brief The MIDI value a display value is sent as - the inverse of
+     *        translateMidiValue().
+     *
+     * A list's display value is the index of an item and goes out as that
+     * item's value; a pad's is on or off and goes out as the message's on or
+     * off value. Everything else maps the display range onto the MIDI range in
+     * the message's sign mode, clamped to the display range first, as a
+     * control does before it sends.
+     */
+    uint16_t translateValue(int16_t displayValue) const;
+
+    /**
      * @brief How far a knob turns to move this value.
      *
      * A factor on the usual rate, which is a whole range per POT_SWEEP_DEGREES

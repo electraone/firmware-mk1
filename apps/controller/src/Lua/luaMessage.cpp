@@ -285,6 +285,48 @@ int message_setRange(lua_State *L)
     return (0);
 }
 
+/** @brief How many bits the value takes on the wire: 7, 14, or a SysEx width. */
+int message_getBitWidth(lua_State *L)
+{
+    lua_settop(L, 1);
+
+    if (Message *message = getMessage(L, 1)) {
+        lua_pushinteger(L, message->getBitWidth());
+        return (1);
+    }
+    return (luaL_error(L, "failed: not a valid message"));
+}
+
+/** @brief True when the least significant byte goes first on the wire. */
+int message_isLsbFirst(lua_State *L)
+{
+    lua_settop(L, 1);
+
+    if (Message *message = getMessage(L, 1)) {
+        lua_pushboolean(L, message->getLsbFirst() ? 1 : 0);
+        return (1);
+    }
+    return (luaL_error(L, "failed: not a valid message"));
+}
+
+/**
+ * @brief How a negative value is encoded, as the preset format spells it.
+ *
+ * "twosComplement", "signBit", "signBit2", "binOffset" or "noSign". A string
+ * rather than a number, because the numbers are an internal enum and a script
+ * comparing against 3 would be comparing against nothing it can read.
+ */
+int message_getSignMode(lua_State *L)
+{
+    lua_settop(L, 1);
+
+    if (Message *message = getMessage(L, 1)) {
+        lua_pushstring(L, translateSignModeToText(message->getSignMode()));
+        return (1);
+    }
+    return (luaL_error(L, "failed: not a valid message"));
+}
+
 int message_print(lua_State *L)
 {
     lua_settop(L, 1);

@@ -251,6 +251,21 @@ commands.run("switchPage", 3)
 `slotToBounds(slot)`, `boundsToSlot({x, y, width, height})`, `delay(millis)`
 (1..5000).
 
+The arithmetic between a knob and what it drives, the same as the mk2's. All
+pure, so they work at load time too.
+
+| Function | Answers |
+| --- | --- |
+| `clamp(value, low, high)` | `value` held to the range; `low` and `high` may come either way round |
+| `map(value, inLow, inHigh, outLow, outHigh)` | `value` moved from one range to the other, held to the output range. An empty input range raises an error |
+| `scale(value, inLow, inHigh, outLow, outHigh [, curve])` | `map()` with the position raised to `curve` first: above 1 the low end gets more of the travel. `curve` defaults to 1 and must be above 0 |
+| `midiToSigned(midiValue [, bitWidth [, signMode]])` | a MIDI value read as a signed number: `midiToSigned(127)` is `-1` |
+| `signedToMidi(value [, bitWidth [, signMode]])` | a signed number as MIDI, clamped to what the width holds: `signedToMidi(-64)` is `64` |
+
+`bitWidth` is 1 to 14 and defaults to 7; `signMode` is `"twosComplement"` (the
+default) or `"signBit"`. A MIDI value wider than `bitWidth` raises an error
+rather than being masked.
+
 ---
 
 ## Objects
@@ -291,7 +306,15 @@ only, `4` dial, `5` checkbox, `7` baseline.
 `setRange(min, max, default, updateMessage)`,
 `getOverlayId()` / `setOverlayId(overlayId)`,
 `getSensitivity()` / `setSensitivity(factor)`,
-`overrideValue(text)`, `cancelOverride()`, `print()`.
+`overrideValue(text)`, `cancelOverride()`,
+`toMidi(displayValue)`, `fromMidi(midiValue)`, `print()`.
+
+`toMidi()` is the MIDI value a display value is sent as, and `fromMidi()` the
+display value a MIDI value is shown as - the same translation the control uses,
+sign mode included. A list's display value is an item index and its MIDI value
+that item's value; a pad's display value is `0` or `1` and its MIDI value the
+message's off or on value. Arguments outside the range are held to it: on a
+`100`..`8000` fader sent as a 7-bit CC, `toMidi(99999)` is `127`.
 
 `setSensitivity(factor)` is how far the knob turns to move this value, as a
 factor on the usual rate: `0.1` is a tenth of it, `10` ten times. The usual rate
@@ -311,7 +334,10 @@ ten - every round figure exactly, and `0.333` as `0.3`.
 `getValue()` / `setValue(midiValue)`,
 `getMin()` / `setMin(v)`, `getMax()` / `setMax(v)`, `setRange(min, max)`,
 `getOnValue()` / `setOnValue(v)`, `getOffValue()` / `setOffValue(v)`,
-`print()`.
+`getBitWidth()`, `isLsbFirst()`, `getSignMode()`, `print()`.
+
+`getSignMode()` answers the preset's own word for it: `"noSign"`,
+`"twosComplement"`, `"signBit"`, `"signBit2"` or `"binOffset"`.
 
 ### `Page` — from `pages.get()`
 

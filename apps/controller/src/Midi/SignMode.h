@@ -5,6 +5,7 @@
 enum class SignMode { noSign, twosComplement, signBit, signBit2, binOffset };
 
 SignMode translateSignMode(const char *signModeText);
+const char *translateSignModeToText(SignMode signMode);
 
 uint16_t getTwosComplementMidiValue(uint8_t bitWidth,
                                     int16_t value,
@@ -47,3 +48,9 @@ int16_t translateMidiValueToValue(SignMode signMode,
                                   uint16_t midiMax,
                                   int16_t minValue,
                                   int16_t maxValue);
+
+/** @brief The largest positive number a signed value of @p bitWidth holds. */
+int16_t getMaxSignedValue(uint8_t bitWidth);
+
+/** @brief The largest MIDI value @p bitWidth bits hold. */
+uint16_t getMaxUnsignedValue(uint8_t bitWidth);

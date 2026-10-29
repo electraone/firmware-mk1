@@ -468,6 +468,26 @@ int16_t ControlValue::translateMidiValue(uint16_t midiValue) const
                                       getMax()));
 }
 
+uint16_t ControlValue::translateValue(int16_t displayValue) const
+{
+    if (control->getType() == Control::Type::List) {
+        if (overlay) {
+            return ((uint16_t)overlay->getValueByIndex(
+                constrain(displayValue, 0, overlay->getMaxIndex())));
+        }
+        return (0);
+    } else if (control->getType() == Control::Type::Pad) {
+        return (displayValue ? message.getOnValue() : message.getOffValue());
+    }
+    return (translateValueToMidiValue(message.getSignMode(),
+                                      message.getBitWidth(),
+                                      constrain(displayValue, getMin(), getMax()),
+                                      getMin(),
+                                      getMax(),
+                                      message.getMidiMin(),
+                                      message.getMidiMax()));
+}
+
 void ControlValue::print(uint8_t logLevel) const
 {
     System::logger.write(

@@ -35,9 +35,38 @@ int helpers_slotToBounds(lua_State *L);
 int helpers_boundsToSlot(lua_State *L);
 int helpers_delay(lua_State *L);
 
+/**
+ * @brief The arithmetic every preset was writing by hand.
+ *
+ * clamp, map and scale are what a script does between a knob and whatever it
+ * is driving. They are pure: no display, no preset, no state, so they can be
+ * called from anywhere, including at load time. The same functions as the
+ * mk2's, so a script that uses them runs on both.
+ */
+int helpers_clamp(lua_State *L);
+int helpers_map(lua_State *L);
+int helpers_scale(lua_State *L);
+
+/**
+ * @brief A MIDI value read as a signed number, and a signed number as MIDI.
+ *
+ * Both go through the translation a control uses between its display value
+ * and its MIDI value. The sign mode is spelled the way a preset and
+ * <message>:getSignMode() spell it.
+ */
+int helpers_midiToSigned(lua_State *L);
+int helpers_signedToMidi(lua_State *L);
+
 static const luaL_Reg helpers_functions[] = {
     { "slotToBounds", helpers_slotToBounds },
     { "boundsToSlot", helpers_boundsToSlot },
     { "delay", helpers_delay },
+
+    { "clamp", helpers_clamp },
+    { "map", helpers_map },
+    { "scale", helpers_scale },
+
+    { "midiToSigned", helpers_midiToSigned },
+    { "signedToMidi", helpers_signedToMidi },
     { NULL, NULL }
 };

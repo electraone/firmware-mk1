@@ -320,6 +320,53 @@ int value_cancelOverride(lua_State *L)
     return (0);
 }
 
+/** @brief The display value as the MIDI value it is sent as. */
+int value_toMidi(lua_State *L)
+{
+    lua_settop(L, 2);
+
+    ControlValue *value = getControlValue(L, 1);
+    const lua_Integer displayValue = luaL_checkinteger(L, 2);
+
+    if (value == nullptr) {
+        return (luaL_error(L, "failed: not a valid value"));
+    }
+
+    /* Held to the display range here, before it is narrowed to the int16_t the
+     * translation takes. Narrowed first, 99999 wrapped to a negative number and
+     * came back as the minimum instead of the maximum. */
+    const lua_Integer held = (displayValue < value->getMin())   ? value->getMin()
+                             : (displayValue > value->getMax()) ? value->getMax()
+                                                                : displayValue;
+
+    lua_pushinteger(L, value->translateValue((int16_t)held));
+
+    return (1);
+}
+
+/** @brief The MIDI value as a display value, the inverse of toMidi(). */
+int value_fromMidi(lua_State *L)
+{
+    lua_settop(L, 2);
+
+    ControlValue *value = getControlValue(L, 1);
+    const lua_Integer midiValue = luaL_checkinteger(L, 2);
+
+    if (value == nullptr) {
+        return (luaL_error(L, "failed: not a valid value"));
+    }
+
+    /* A MIDI value is never negative and never wider than 14 bits; outside
+     * that it would wrap on the way into the uint16_t the translation takes. */
+    const lua_Integer held = (midiValue < 0)       ? 0
+                             : (midiValue > 16383) ? 16383
+                                                   : midiValue;
+
+    lua_pushinteger(L, value->translateMidiValue((uint16_t)held));
+
+    return (1);
+}
+
 int value_print(lua_State *L)
 {
     lua_settop(L, 1);
