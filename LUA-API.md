@@ -134,8 +134,7 @@ touch no framebuffer and may be called at load.
 | `dim(colour, factor)` | the panel's own darkening |
 | `blend(from, to, position)` | `position` 0..1 |
 
-`drawArc`, the three colour functions and the two measuring functions are this
-model's own; the rest is the mk2's set.
+The same functions as the mk2's, with the same arguments.
 
 ### `parameterMap` — `apps/controller/src/Lua/luaParameterMap.cpp`
 
