@@ -43,7 +43,7 @@ flowchart TB
   subgraph MAIN["Main loop - cooperative TaskScheduler"]
     PM["processMidi - 2 ms"] --> APP["Controller<br/>Midi::process"]
     PS["processSysex - 5 ms"] --> API["SysexApi<br/>uploads, API calls"]
-    RP["readPots - 5 ms"] --> COMP["ControlComponent"]
+    RP["readPots - 1 ms"] --> COMP["ControlComponent"]
     LUA["Lua<br/>parameterMap.set"] --> PMAP
     APP --> PMAP[("ParameterMap")]
     COMP --> PMAP
@@ -67,9 +67,9 @@ flowchart TB
 
 | Task | Period | What it does |
 |---|---|---|
-| `readPots` | 5 ms (2.5 ms with touch disabled) | Reads one pot through the ADC, emits a `PotEvent` if it moved. |
-| `readPotTouch` | 100 ms | Polls the capacitive sensor chip when it flags a change; emits touch down/up. |
-| `readButtons` | 15 ms | Six buttons. |
+| `readPots` | 1 ms | Reads the pot the multiplexer has rested on for a tick, emits a `PotEvent` if it moved, and reads the button sharing that address. Every pot is read in turn; one that moved in the last 250 ms gets every other tick. About 80 µs a reading. |
+| `readPotTouch` | 10 ms | Polls the capacitive sensor chip when it flags a change; emits touch down/up. Touch no longer decides which pots are read, only how wide their backlash gate is. |
+| `readButtons` | 15 ms | Six buttons, only while the controller sleeps; otherwise `readPots` reads them. |
 | `readLCDTouch` | 40 ms | Panel touch over I²C; dispatches touch events to components. |
 | `processMidi` | 2 ms | Drains the incoming queue (L2) into the application. |
 | `sendMidi` | 2 ms | Sends up to ten messages from the outgoing queue. |
@@ -262,7 +262,7 @@ Display updates are therefore batched at 40 Hz whatever the MIDI rate.
 
 ```mermaid
 flowchart TB
-  A["readPots task - every 5 ms<br/>Pot::process(): two ADC reads, quadrature phase, hysteresis"]
+  A["readPots task - every 1 ms<br/>Pot::process(): eight trimmed ADC pairs, quadrature phase, median of three, hysteresis"]
   A --> B["PotBroadcaster::potChange<br/>to the ControlComponent assigned to that pot"]
   B --> C["FaderControl::onPotChange<br/>ChangeAccumulator turns counts into value steps"]
   C --> D["ControlComponent::emitValueChange<br/>parameterMap.setValue(Origin::internal)"]
@@ -278,8 +278,8 @@ flowchart TB
 ```
 
 
-`readPots` (5 ms) → `Pot::process` (two ADC reads, quadrature phase,
-hysteresis) → `PotBroadcaster::potChange` → the listener registered for
+`readPots` (1 ms) → `Pot::process` (eight trimmed ADC pairs, quadrature
+phase, median of three, hysteresis) → `PotBroadcaster::potChange` → the listener registered for
 that pot (`ControlComponent`, via `assignPot`) → `FaderControl::onPotChange`
 → `ChangeAccumulator` turns raw counts into value steps →
 `emitValueChange` → `parameterMap.setValue(…, Origin::internal)` → the
@@ -291,8 +291,9 @@ alone is 11–13 µs for a CC and about the same for a templated SysEx.
 Before this round it copied the whole `Device` — 269 SysEx templates, a heap
 allocation each — on every step.
 
-The pot scan itself bounds the rate: one pot per 5 ms tick, so a single
-knob produces at most 200 events a second, and the message goes out on the
+The pot scan itself bounds the rate: one pot per 1 ms tick, and a knob that
+is moving gets every other tick, so a single knob produces at most 500
+events a second, and the message goes out on the
 next `sendMidi` tick, within 2 ms.
 
 ### 5.2 An incoming MIDI message

@@ -38,8 +38,6 @@ public:
     ~Pots() = default;
 
     Pot &operator[](const uint8_t id);
-    Pot *getNextActivePot(void);
-    Pot *getNextPot(void);
     void rescanAllPots(void);
     void initialise(void);
 

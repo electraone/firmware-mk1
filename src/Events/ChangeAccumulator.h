@@ -51,6 +51,16 @@
  * per @p DetentCounts of movement, so stepping through it feels the same
  * whatever its length.
  *
+ * A proportional control with a very short range reads as an encoder as well.
+ * Spanning the range in one sweep says nothing about how much movement a single
+ * value is worth, and for a range of two - a polarity, a one-of-two choice
+ * written as a fader because a switch looked wrong - it is the whole sweep, 300
+ * degrees of knob for one step, with every partial turn thrown away when the
+ * finger leaves the knob. That control was dead to its knob. No value is worth
+ * more movement than a detent: where the sweep rule would ask for more, the
+ * detent rule takes over. The two agree exactly where they meet, so nothing
+ * changes feel on the way past.
+ *
  * The two counts are template parameters rather than members because there is
  * one accumulator per Component, and there are a great many Components.
  * Carrying the constants per instance would cost eight bytes each to say the
@@ -89,9 +99,11 @@ public:
                     float sensitivity,
                     bool encoderMode)
     {
-        /* Discrete controls, and any listener that never declared a range,
-         * step. */
-        if (encoderMode || (numValues == 0)) {
+        /* Discrete controls, any listener that never declared a range, and
+         * any range short enough that one of its values would cost more than a
+         * detent, all step. */
+        if (encoderMode || (numValues == 0)
+            || (((uint32_t)numValues * DetentCounts) < SweepCounts)) {
             return (steps(rawChange, sensitivity));
         }
 
@@ -158,7 +170,7 @@ private:
     /* Movement banked towards the next step of a discrete control. A slow turn
      * arrives in pieces far smaller than a detent, so this has to hold a whole
      * detent's worth without overflowing - and a value asking for the finest
-     * sensitivity stretches a detent to half a million counts. */
+     * sensitivity stretches a detent to a million counts. */
     int32_t stepCount;
 
     /* Fraction of a value left over from the last report, carried so that

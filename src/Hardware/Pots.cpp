@@ -21,6 +21,7 @@
 
 #include "Hardware.h"
 #include "System.h"
+#include "pins_electra.h"
 
 Pots::Pots()
 {
@@ -31,49 +32,23 @@ Pot &Pots::operator[](const uint8_t id)
     return (pots[id]);
 }
 
-Pot *Pots::getNextActivePot(void)
-{
-    static uint8_t currentPotId = 0;
-    uint8_t indexToScan;
-
-    Pot *pot = NULL;
-
-    for (uint8_t i = 0; i < NR_OF_HW_POTS; i++) {
-        indexToScan = (currentPotId + i) % NR_OF_HW_POTS;
-        if (pots[indexToScan].active == true) {
-            pot = &pots[indexToScan];
-            break;
-        }
-    }
-    currentPotId = indexToScan + 1;
-
-    if (currentPotId > (MAX_POT_ID)) {
-        currentPotId = 0;
-    }
-
-    return (pot);
-}
-
-Pot *Pots::getNextPot(void)
-{
-    static uint8_t currentPotId = 0;
-
-    Pot *pot = &pots[currentPotId];
-
-    currentPotId++;
-
-    if (currentPotId >= (MAX_POT_ID)) {
-        currentPotId = 0;
-    }
-
-    return (pot);
-}
-
+/**
+ * @brief Take every knob's first reading, so each has a reference to move from.
+ *
+ * Each knob is given the same settling time the scan gives it before it is
+ * read - see POT_SCAN_TICK - since a reading taken straight after the
+ * multiplexer moves carries some of the knob read before it.
+ */
 void Pots::rescanAllPots(void)
 {
-    for (uint8_t i = 0; i < NR_OF_HW_POTS; i++) {
-        pots[i].initialise();
+    for (uint8_t address = 0; address < NR_OF_HW_POTS; address++) {
+        MUX_SET_ADDRESS(address);
+        MUX_ENABLE;
+        delayMicroseconds(POT_SCAN_TICK);
+        pots[address].initialise();
     }
+
+    MUX_DISABLE;
 }
 
 void Pots::initialise(void)

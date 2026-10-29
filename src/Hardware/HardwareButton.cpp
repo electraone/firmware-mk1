@@ -31,17 +31,65 @@
 #include "pins_electra.h"
 
 HardwareButton::HardwareButton(uint8_t newId)
-    : id(newId), pressed(false), pinState(1), longHold(false), pressStart(0)
+    : id(newId),
+      pressed(false),
+      pinState(1),
+      candidateState(1),
+      candidateSince(0),
+      longHold(false),
+      pressStart(0)
 {
+}
+
+bool HardwareButton::read(void)
+{
+    MUX_SET_ADDRESS(id);
+    MUX_ENABLE;
+    const uint8_t level = GET_BUTTON_STATE;
+    MUX_DISABLE;
+
+    /* Taken as settled, so that the scan neither reports this press again nor
+     * a release that never happened once it starts. */
+    pinState = level;
+    candidateState = level;
+    candidateSince = millis();
+    pressed = (level == 0);
+
+    if (pressed) {
+        longHold = false;
+        pressStart = millis();
+    }
+
+    return (pressed);
 }
 
 HardwareButton::Event HardwareButton::process(void)
 {
-    Event eventDetected = none;
-
     MUX_SET_ADDRESS(id);
     MUX_ENABLE;
-    pinState = GET_BUTTON_STATE;
+    Event eventDetected = sample();
+    MUX_DISABLE;
+
+    return (eventDetected);
+}
+
+HardwareButton::Event HardwareButton::sample(void)
+{
+    Event eventDetected = none;
+
+    /* Believe a level only once it has held still for debouncePeriod. A level
+     * that differs from the one being timed restarts the clock, so bounce
+     * never reaches the state machine below. */
+    const uint8_t rawState = GET_BUTTON_STATE;
+    const uint32_t now = millis();
+
+    if (rawState != candidateState) {
+        candidateState = rawState;
+        candidateSince = now;
+    } else if ((pinState != candidateState)
+               && ((now - candidateSince) >= debouncePeriod)) {
+        pinState = candidateState;
+    }
 
     if ((pinState == 0) && (pressed == false)) {
         eventDetected = press;
@@ -70,7 +118,6 @@ HardwareButton::Event HardwareButton::process(void)
             onRelease();
         }
     }
-    MUX_DISABLE;
 
     return (eventDetected);
 }

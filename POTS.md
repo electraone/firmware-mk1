@@ -16,44 +16,74 @@ Three stages, and each one only knows its own job:
 | Scaling | `src/Events/ChangeAccumulator.h` | what that travel is worth to this control |
 | Declaring | `ControlValue::getSensitivity()` | how fast this particular value wants to move |
 
-## Reading: phase counts, not thresholds
+## Reading: the mk2's decoder and the mk2's scan
 
 The knobs are dual-gang continuous-rotation potentiometers whose two gangs sit a
 quarter turn apart, so read against each other they trace a diamond: with `a` and
 `b` measured from each gang's mid-point, `|a| + |b|` is constant and one
 revolution walks once round the perimeter. That makes the pair an absolute angle
-sensor. `Pot::process()` recovers the angle as a phase, 4096 counts to the turn -
-what a ten bit converter can resolve of it - and reports the wrapped difference
-between consecutive readings.
+sensor. `Pot::process()` recovers the angle as a phase, 8192 counts to the turn -
+what a twelve bit converter can resolve of it - and reports the wrapped
+difference between consecutive readings.
 
-Two things about it are worth knowing.
+`Pot` is the mk2's decoder, line for line apart from where the conversions come
+from, and `readPots()` is the mk2's scan. The two models read a knob the same
+way, so what was measured on one holds for the other.
 
-**Nothing is rounded away.** What this replaced measured the larger of the two
-gangs' deltas, divided it by sixteen and dropped the remainder, which on the
-bench cost between half and three quarters of every turn - a full revolution of
-the knob arrived as the equivalent of about 1950 of its 4096 counts. The phase is
-tracked instead, so the only travel that is ever lost is the backlash, once, on a
-reversal.
+**Nothing is rounded away.** The phase is tracked, and the fraction of a step
+left over after each report is carried into the next, so the only travel ever
+lost is the backlash, once, on a reversal.
 
-**The backlash is eight counts**, three quarters of a degree. A stationary knob's
-recovered phase wanders by two counts peak to peak, measured, so eight leaves
-four times that in hand. It has to: a proportional control no longer scales small
-movements down, so a band the noise could cross even occasionally would show as a
-parameter creeping on its own. Against that it costs a fifth of one percent of a
-control's range on each reversal.
+**Every knob is read, all the time.** The multiplexer rests on one knob for a
+whole 1 ms tick (`POT_SCAN_TICK`) before it is read: switching it dumps charge
+onto the selected wiper, and a reading taken straight after carries a little of
+the knob read before. A background rota visits all twelve in turn; a knob that
+moved in the last 250 ms (`POT_ACTIVE_HOLD_MS`) also joins a fast rota that takes
+every other tick, so a knob in a hand is read 500 times a second. Nothing here
+asks the touch sensor which knob to read, so a knob turned by a hand the sensor
+missed still works, and there is no stale reference to throw away when a finger
+arrives - the reference never went stale.
 
-A knob is only read while a finger is on it, so one can be turned while nothing
-is watching - by a hand the capacitive sensor missed, or in a case. Touching a
-knob therefore calls `Pot::resync()`, which throws the stale reference away
-rather than reporting the whole gap as one movement.
+The six buttons sit on the same multiplexer, at addresses 0 to 5, so the scan
+reads the button at the parked address on its way past - background rota only,
+so their cadence does not change with whichever knob is being turned. Each button
+is visited every 12 to 24 ms, and debounces against the clock (6 ms, the mk2's
+figure) rather than relying on being read seldom. `readButtons` only runs while
+the controller sleeps, when the pot scan does not.
 
-Readings are 5 ms apart (`POT_SCAN_TICK`), and only touched knobs are read, so
-that is the cadence the knob in a hand gets: two hundred a second, where it used
-to be sixty-six. One reading costs 60 µs, measured, so a knob in a hand is a
-little over one percent of the processor and an untouched panel is none of it.
-This matters more than it used to - travel is no longer multiplied by how fast
-the knob is moving, so reading too seldom lands a quick sweep as a handful of
-jumps instead of a slide.
+**A reading is eight conversions of each gang, trimmed.** Both gangs are
+converted at once, one on each of the K66's two converters, at twelve bits with
+four averaged in hardware, as on the mk2. The two highest and two lowest of the
+eight are thrown away and the middle four averaged, which keeps a single bad
+conversion - the mk2 sees one 20 to 40 counts off every few thousand - out of the
+reading. Then the movement acted on is the median of the last three readings'
+distances from the reference, so a lone outlier is outvoted and costs a turn
+nothing but one scan slot.
+
+**The backlash is eight counts**, a third of a degree, for a knob under a finger
+with both gangs clear of the converter's rails. It widens to twenty-four for a
+knob with a gang within twelve counts of a rail, where a shift in the readings
+cannot cancel between the gangs, and for a knob the touch sensor does not see a
+finger on. A quick turn clears either on its first reading; a slow untouched turn
+gives up its first degree of travel. With knob touch turned off at boot only the
+rail rule applies. `Pot::gateFor()` decides it per reading.
+
+**The calibration is learned.** Each gang's extremes are tracked from what it
+reads, seeded at 2048 ± 1800 and widened as soon as a reading goes past them.
+They are pulled back in by a count every 512 readings of confirmed movement, so a
+one-off wide reading heals, and never on a knob nobody is turning.
+
+**What it costs.** One reading is 80 µs, measured with the `potRead` profile
+probe, so the scan is about 8 % of the processor whether or not anything is
+moving - it used to be one percent while a knob was in a hand and nothing
+otherwise. That bought the knob in a hand two and a half times the readings, and
+a panel whose knobs work without the touch sensor. The converter's default
+sampling speed made it 144 µs; the wiper sits on a large capacitor, so the
+in-spec high-speed setting reads it no worse - the noise of a knob at rest was
+1 to 5 counts peak to peak either way.
+
+**Measured on the bench**, 2026-10-29: in a two minute idle soak none of the
+eleven untouched knobs changed its tracked phase once.
 
 ## Scaling: three hundred degrees, whatever the range
 
@@ -72,6 +102,12 @@ A **discrete** control - a list, a pad - reads like an encoder: one step per
 `POT_ENCODER_DETENT_DEGREES`, which is 45, so eight steps to a turn whether the
 list holds four entries or forty. A control says it is one of these by calling
 `enableEncoderMode(true)`; so does a listener that never declared a range at all.
+
+A proportional control with **a very short range** reads as an encoder too. A
+range of two spanned in one sweep is 300 degrees of knob for one step, and every
+partial turn is lost when the finger leaves, so such a control was dead to its
+knob. No value is worth more travel than a detent: below 300 / 45, about seven
+values, the detent rule takes over, and the two rules agree where they meet.
 
 Nothing is multiplied by speed. The tables that used to do that reached 512 times
 at the top, so the same gesture could move a parameter by a hundredth of its
@@ -121,8 +157,8 @@ round trip to show up in.
 The rest of the change costs nothing either: `ChangeAccumulator` replaced the
 timestamp and step counter `PotListener` used to carry, and `sizeof(PotListener)`
 is 16 as it was, which matters because every Component on the screen is one.
-`Pot` lost the two previous converter readings and gained a tracked phase, so it
-went from 16 bytes to 12.
+`Pot` carries the mk2's learned calibration and the two readings the median
+needs, so it is 56 bytes - 672 for the panel, once.
 
 ## The constants
 
@@ -130,14 +166,15 @@ All in `src/settings.h`:
 
 | Name | Value | What it is |
 | --- | --- | --- |
-| `POT_COUNTS_PER_REVOLUTION` | 4096 | phase counts to a whole turn |
+| `POT_COUNTS_PER_REVOLUTION` | 8192 | phase counts to a whole turn |
 | `POT_SWEEP_DEGREES` | 300 | travel a proportional control spans in |
 | `POT_ENCODER_DETENT_DEGREES` | 45 | travel one step of a discrete control is worth |
-| `POT_SCAN_TICK` | 5000 µs | how often the knob under a finger is read |
-| `POT_SCAN_TICK_ALL` | 2500 µs | the same, for the boot that sweeps all twelve |
+| `POT_SCAN_TICK` | 1000 µs | how long the multiplexer rests on a knob before reading it |
+| `POT_ACTIVE_HOLD_MS` | 250 ms | how long a knob that moved stays in the fast rota |
 
-`Pot::hysteresis`, the backlash, is in `src/Hardware/Pot.h` because it is a
-property of the converter rather than of the feel.
+The backlash, the rail margin, the oversampling and the calibration seeds are in
+`src/Hardware/Pot.h`, because they are properties of the converter rather than of
+the feel.
 
 ## Not done here
 
@@ -147,3 +184,9 @@ reached there without the preset asking for anything. This model has no spare
 button binding for it, and `"sensitivity"` covers the case a preset knows about
 in advance. The factor it would apply is the only part missing: everything it
 would multiply already runs through one place.
+
+**Banking the movement.** The mk2's scan runs in its own thread and banks
+movement for the application thread to collect, holding it back while the DIN
+queue is nearly full. Here the scan and the delivery are the same cooperative
+loop, so there is nothing to hand across, and because the phase is absolute a
+reading that comes late still carries all the travel since the last one.

@@ -35,7 +35,7 @@ SystemTasks::SystemTasks()
       taskCollectGarbage(10000000, TASK_FOREVER, &collectGarbage),
       taskReadPots(POT_SCAN_TICK, TASK_FOREVER, &readPots),
       taskReadButtons(15000, TASK_FOREVER, &readButtons),
-      taskReadPotTouch(100000, TASK_FOREVER, &readPotTouch),
+      taskReadPotTouch(10000, TASK_FOREVER, &readPotTouch),
       taskReadLCDTouch(40000, TASK_FOREVER, &readLCDTouch),
       taskScanUSBHost(2000000, TASK_FOREVER, &scanUSBHost),
       taskRefreshMidiIndicators(100000, TASK_FOREVER, &refreshMidiIndicators),
@@ -73,7 +73,9 @@ void SystemTasks::enableAll()
 #endif
     taskCollectGarbage.enable();
     taskReadPots.enable();
-    taskReadButtons.enable();
+    /* The pot scan reads the buttons on its way past - they share its
+     * multiplexer, which it keeps parked on one knob between readings. */
+    taskReadButtons.disable();
     taskReadLCDTouch.enable();
     taskScanUSBHost.enable();
     taskRefreshMidiIndicators.enable();
@@ -82,10 +84,6 @@ void SystemTasks::enableAll()
 
     if (System::context.getTouchEnabled()) {
         taskReadPotTouch.enable();
-    } else {
-        /* Nothing says which knob is in a hand, so the whole panel is swept
-         * and a knob's own cadence is a twelfth of the tick. */
-        taskReadPots.setInterval(POT_SCAN_TICK_ALL);
     }
 
     taskRepaintGraphics.enable();

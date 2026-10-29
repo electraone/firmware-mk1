@@ -46,8 +46,9 @@
 /* Phase counts the pot reader reports for one whole turn of a knob. The two
  * gangs of a knob sit a quarter turn apart, so read against each other they
  * trace a diamond that is walked once per revolution; a quarter of that walk is
- * one converter range, and the converter here is ten bits. */
-#define POT_COUNTS_PER_REVOLUTION (4096)
+ * one converter range, and the converter is read at twelve bits, as on the
+ * mk2. */
+#define POT_COUNTS_PER_REVOLUTION (8192)
 
 /* How far a knob travels to take a proportional control from one end of its
  * range to the other. Three hundred degrees is about as far as a wrist reaches
@@ -65,25 +66,17 @@
 #define POT_ENCODER_DETENT_COUNTS                                              \
     ((POT_COUNTS_PER_REVOLUTION * POT_ENCODER_DETENT_DEGREES) / 360)
 
-/* How often one knob is read, in microseconds. Only the knobs under a finger
- * are read, so this is the cadence the knob being turned gets: two hundred
- * readings a second, where it used to be sixty-six. One reading costs sixty
- * microseconds, measured, so a knob in a hand is a bit over one percent of the
- * processor and an untouched panel is none of it.
- *
- * It matters more than it used to. Rotation is no longer multiplied by how fast
- * the knob is moving, so what reaches a control is however much travel arrived
- * since the last reading: read too seldom and a quick sweep lands as a handful
- * of jumps instead of a slide. */
-#define POT_SCAN_TICK (5000)
+/* Microseconds the multiplexer rests on one knob before that knob is read. One
+ * knob is read per tick, so this is also the sampling rate: every knob is read
+ * whether or not anything touches it, and one that has moved recently is read
+ * on every other tick - see TaskReadPots. Switching the multiplexer dumps the
+ * charge on its common node onto the selected wiper, which then needs tens of
+ * microseconds per time constant to recover; a whole tick is far more than
+ * that. The same figure as the mk2's. */
+#define POT_SCAN_TICK (1000)
 
-/* The same, for the special boot that does not use knob touch and so has to
- * sweep all twelve. Faster per reading, because each reading is a different
- * knob: twelve of these is one visit to each knob, which puts a knob's own
- * cadence at thirty a second rather than two hundred. That is what it has
- * always been, and this boot mode exists for a unit whose touch sensing does
- * not work rather than for turning knobs on. */
-#define POT_SCAN_TICK_ALL (2500)
+/* How long after its last movement a knob keeps its place in the fast rota. */
+#define POT_ACTIVE_HOLD_MS (250)
 
 #define MIDI_CTRL_PORT 2
 

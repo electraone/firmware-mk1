@@ -26,14 +26,14 @@ void Controller::initialise(void)
     }
 
     // Special boot - do not read the default preset
-    if (Hardware::buttons[BUTTON_LEFT_TOP]->process() == true) {
+    if (Hardware::buttons[BUTTON_LEFT_TOP]->read()) {
         System::logger.write(LOG_ERROR,
                              "Special boot mode: do not read preset");
         System::context.setLoadDefaultFiles(false);
-    } else if (Hardware::buttons[BUTTON_LEFT_MIDDLE]->process() == true) {
+    } else if (Hardware::buttons[BUTTON_LEFT_MIDDLE]->read()) {
         Hardware::sdcard.format();
         System::runtimeInfo.setLastActivePreset(0);
-    } else if (Hardware::buttons[BUTTON_LEFT_BOTTOM]->process() == true) {
+    } else if (Hardware::buttons[BUTTON_LEFT_BOTTOM]->read()) {
         System::logger.write(LOG_ERROR, "Special boot: do not use knob touch");
         System::context.setTouchEnabled(false);
         //systemTasks.doNotUsePotTouch();

@@ -39,11 +39,16 @@ void Hardware::initialise(void)
     MUX_DISABLE;
     System::logger.write(LOG_ERROR, "Multiplexer: initialised");
 
-    // Configure AD convertors
-    adc.adc0->setAveraging(8);
-    adc.adc1->setAveraging(8);
-    adc.adc0->setResolution(10);
-    adc.adc1->setResolution(10);
+    // Configure AD convertors. Twelve bits averaged by four, as on the mk2: the
+    // pot reader takes eight of these per gang and trims them, see Pot.h.
+    adc.adc0->setAveraging(4);
+    adc.adc1->setAveraging(4);
+    adc.adc0->setResolution(12);
+    adc.adc1->setResolution(12);
+    adc.adc0->setConversionSpeed(ADC_CONVERSION_SPEED::HIGH_SPEED);
+    adc.adc1->setConversionSpeed(ADC_CONVERSION_SPEED::HIGH_SPEED);
+    adc.adc0->setSamplingSpeed(ADC_SAMPLING_SPEED::HIGH_SPEED);
+    adc.adc1->setSamplingSpeed(ADC_SAMPLING_SPEED::HIGH_SPEED);
     System::logger.write(LOG_ERROR, "AD convertor: initialised");
 
     // Initialise RAM monitoring

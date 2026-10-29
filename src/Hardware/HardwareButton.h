@@ -67,6 +67,31 @@ public:
     Event process(void);
 
     /**
+     * Test state of the button where the multiplexer already is
+     *
+     * The same as process(), for a caller that has already selected this
+     * button's address and wants it left selected - the pot scan, which parks
+     * the multiplexer on one address for a whole tick and reads the button
+     * sharing it on the way past.
+     *
+     * @return the event, if there is any state change.
+     */
+    Event sample(void);
+
+    /**
+     * Read whether the button is down right now, without reporting an event
+     *
+     * For the boot, which asks once whether a button is held before anything
+     * scans. process() cannot answer that any more: it believes a level only
+     * once it has held for debouncePeriod, which a single call never sees. The
+     * level read is taken as settled, so the scan that follows does not report
+     * the same press again.
+     *
+     * @return true, when the button is down.
+     */
+    bool read(void);
+
+    /**
      * Get id of the button
      *
      * @return Identifier that was assigned when the button was created.
@@ -113,8 +138,19 @@ private:
     uint8_t id;
     bool pressed;
     uint8_t pinState;
+    uint8_t candidateState;
+    uint32_t candidateSince;
     bool longHold;
     uint32_t pressStart;
+
+    /* How long a raw level has to hold before it is believed, in milliseconds.
+     * The buttons used to rely on the scan's own pace for this: each was read
+     * once every ninety milliseconds, so contact bounce had always finished by
+     * the next read and a single raw sample could be trusted. They are now read
+     * by the pot scan, every twelve to twenty-four milliseconds, and debouncing
+     * against the clock keeps them independent of whatever pace that is. The
+     * mk2's figure. */
+    static constexpr uint32_t debouncePeriod = 6;
 
     static constexpr uint16_t longHoldPeriod = 1000;
 };

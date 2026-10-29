@@ -41,12 +41,6 @@ void readPotTouch(void)
 #endif /* DEBUG */
 
                 if (Hardware::pots[potId].active == false) {
-                    /* Where the knob is now is the reference, not where it was
-                     * when it was last let go of. Nothing reads a knob that is
-                     * not being touched, so anything that moved it in between -
-                     * a hand this sensor did not register, a case lid - would
-                     * otherwise arrive as one movement the size of the gap. */
-                    Hardware::pots[potId].resync();
                     Hardware::pots[potId].active = true;
                     PotListener::potBroadcaster.potTouchDown(potId);
                 }

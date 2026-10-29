@@ -57,6 +57,7 @@ namespace Profile
                 SysexMatch, // Midi::processSysex: one block against every template
         UsbSend, // MidiOutput::send: one channel message onto the wire
         SysexSend, // MidiOutput::send: one SysEx block onto the wire
+        PotRead, // readPots: one knob read and decoded, steps or not
         Count
     };
 

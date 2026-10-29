@@ -27,6 +27,8 @@
 
 #pragma once
 
+#include <ADC.h>
+
 #include "pins_electra.h"
 #include "Pots.h"
 #include "PotTouch.h"

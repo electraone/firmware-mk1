@@ -23,14 +23,9 @@
 #include "Hardware.h"
 #include "ButtonListener.h"
 
-/*
- * Read buttons
- */
-void readButtons(void)
+void dispatchButtonEvent(HardwareButton *button, HardwareButton::Event event)
 {
-    HardwareButton *button = Hardware::buttons.getNext();
-
-    switch (button->process()) {
+    switch (event) {
         case HardwareButton::Event::press:
             ButtonListener::buttonBroadcaster.buttonDown(button->getId());
             break;
@@ -47,4 +42,18 @@ void readButtons(void)
             // Ignored on purpose
             break;
     }
+}
+
+/*
+ * Read buttons
+ *
+ * Only while the controller sleeps. Otherwise the pot scan reads the buttons,
+ * because they share the multiplexer with the knobs and the scan keeps it
+ * parked on one knob for a whole tick - see readPots().
+ */
+void readButtons(void)
+{
+    HardwareButton *button = Hardware::buttons.getNext();
+
+    dispatchButtonEvent(button, button->process());
 }

@@ -17,6 +17,7 @@
 #define MUX_ENABLE      GPIOB_PCOR = 0x10; __NOP(20);
 #define MUX_DISABLE     GPIOB_PSOR = 0x10;
 #define MUX_SET_ADDRESS(X)  GPIOB_PDOR = (GPIOB_PDOR & ~0xF) | (X & 0xF);
+#define MUX_IS_PARKED_AT(X) ((GPIOB_PDOR & 0x1F) == ((X) & 0xF))
 
 #define GET_POT_TOUCH_INT ((GPIOA_PDIR & 0x4000000) ? 1 : 0)
 

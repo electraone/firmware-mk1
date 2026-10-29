@@ -27,4 +27,11 @@
 
 #pragma once
 
+#include "HardwareButton.h"
+
+/**
+ * @brief Hand one button event to the listeners.
+ */
+void dispatchButtonEvent(HardwareButton *button, HardwareButton::Event event);
+
 void readButtons(void);

@@ -32,7 +32,7 @@ namespace Profile
     const char *const names[Count] = { "potStep",    "midiIn",     "midiInIsr",
                                        "sendMessage", "pageSwitch",
                                        "repaint",    "presetLoad", "sysexMatch",
-                                       "usbSend",    "sysexSend" };
+                                       "usbSend",    "sysexSend",  "potRead" };
 
     void dump(void)
     {
