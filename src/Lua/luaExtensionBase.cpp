@@ -36,6 +36,8 @@ static const luaL_Reg eoslibs[] = { { "midi", luaopen_midi },
                                     { "controller", luaopen_controller },
                                     { "timer", luaopen_timer },
                                     { "transport", luaopen_transport },
+                                    { "logger", luaopen_logger },
+                                    { "bytes", luaopen_bytes },
                                     { NULL, NULL } };
 
 void luaLE_openEoslibs(lua_State *L, const luaL_Reg *libs)

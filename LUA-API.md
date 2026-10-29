@@ -99,6 +99,40 @@ Callback: `timer.onTick()`.
 string (`"3.5.4"`, `"v3.5"`, `"3"`) or the numeric sequence. Either argument may
 be omitted.
 
+### `logger` — `src/Lua/luaLogger.cpp`
+
+`write(format, ...)` writes one line to the log, as `print()` does and with its
+`lua: ` prefix, but formatted in one call: `print()` makes each argument a
+message of its own. The conversions are `string.format`'s - `%d %i %u %c %o %x
+%X`, `%a %A %e %E %f %F %g %G`, `%s` and `%%` - with flags `-+ #0`, a width and
+a precision of up to two digits each. `%s` takes any value, through
+`tostring()`. A missing argument or another conversion raises, as
+`string.format` does. A log message holds about 190 characters of text, and a
+longer line is cut there. The mk2's function.
+
+```lua
+logger.write("cutoff %d -> %5.1f Hz (%s)", value, hz, device:getName())
+```
+
+### `bytes` — `src/Lua/luaBytes.cpp`
+
+The byte handling a preset that talks to an instrument needs: hex, 7-bit
+packing, nibbles, checksums. Every function takes its data as a Lua string or
+an array of numbers 0..255, and answers an array - except `toHex` and
+`toString`, which answer a string. All pure, so they work at load time too. The
+mk2's functions.
+
+| Function | Answers |
+| --- | --- |
+| `toHex(data [, separator])` | `"F04110F7"`, or with a separator `"F0 41 10 F7"` |
+| `fromHex(text)` | the bytes; anything that is not a hex digit separates, and a `0x` prefix is skipped. Raises when the text ends on half a byte |
+| `pack7(data)` | seven bytes as eight, the first carrying their top bits, lowest first - the MIDI convention for 8-bit data in SysEx |
+| `unpack7(data)` | the reverse |
+| `toNibbles(data [, highFirst])` | each byte as two 4-bit values, high first unless `highFirst` is `false` |
+| `fromNibbles(data [, highFirst])` | the reverse; raises on an odd count |
+| `checksum(data [, kind])` | `"roland"` (the default: the 7-bit value that makes the sum a multiple of 128), `"sum"` or `"xor"`, all 7-bit |
+| `toString(data)` | the bytes as a Lua string, for `midi.sendSysex` or `string.find` |
+
 ### `window` — `src/Lua/luaWindow.cpp`
 
 `repaint()`, `clear()`, `stop()`, `resume()`,

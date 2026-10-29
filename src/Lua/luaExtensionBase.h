@@ -45,6 +45,8 @@ extern "C" {
 #include "luaWindow.h"
 #include "luaController.h"
 #include "luaTimer.h"
+#include "luaLogger.h"
+#include "luaBytes.h"
 #include "luaTransport.h"
 
 extern lua_State *L;
