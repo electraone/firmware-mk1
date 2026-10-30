@@ -54,6 +54,12 @@ namespace
     constexpr int numberOfBanks = 6;
     constexpr int slotsPerBank = 12;
 
+    /** What a slot's two files are called over the API: the names the mk2
+     *  stores them under. Only the names - on the card they stay the flat
+     *  p<NNN>.epr and p<NNN>.lua they have always been. */
+    constexpr const char *slotPresetName = "preset.json";
+    constexpr const char *slotLuaName = "main.lua";
+
     /** As much of a listing as is sent. A hundred or so names fit. */
     constexpr size_t listingCapacity = 2048;
 
@@ -89,6 +95,67 @@ namespace
 
         return (true);
     }
+
+    bool isSlotsLocation(const char *location)
+    {
+        return (location && (strcmp(location, slotsLocation) == 0));
+    }
+
+    /** The slot a descriptor names, as the number its files are called by. */
+    bool readSlot(JsonObjectConst descriptor, uint16_t &fileNumber)
+    {
+        const int bankNumber = descriptor["bankNumber"] | -1;
+        const int slot = descriptor["slot"] | -1;
+
+        if ((bankNumber < 0) || (bankNumber >= numberOfBanks) || (slot < 0)
+            || (slot >= slotsPerBank)) {
+            System::logger.write(LOG_ERROR,
+                                 "FileTransfer: no such slot: bank=%d, slot=%d",
+                                 bankNumber,
+                                 slot);
+            return (false);
+        }
+
+        fileNumber = (uint16_t)((bankNumber * slotsPerBank) + slot);
+
+        return (true);
+    }
+
+    /** One of a slot's two files, for reading, removing and writing alike. */
+    bool resolveSlotFile(char *path, size_t size, JsonObjectConst descriptor)
+    {
+        const char *type = descriptor["type"];
+        uint16_t fileNumber = 0;
+
+        if (!type || !readSlot(descriptor, fileNumber)) {
+            return (false);
+        }
+
+        /* A slot holds one script on this model, so the `path` a newer
+         * firmware uses to put several in one slot has nowhere to go. Refused
+         * rather than ignored: a host that asked for `modules/x.lua` and was
+         * given `the script` would not find what it wrote. */
+        if (descriptor["path"].is<const char *>()) {
+            System::logger.write(
+                LOG_ERROR,
+                "FileTransfer: a slot holds one script, so it takes no path");
+            return (false);
+        }
+
+        if (strcmp(type, presetType) == 0) {
+            System::context.formatPresetFilename(path, size, fileNumber);
+            return (true);
+        }
+
+        if (strcmp(type, luaType) == 0) {
+            System::context.formatLuaFilename(path, size, fileNumber);
+            return (true);
+        }
+
+        System::logger.write(
+            LOG_ERROR, "FileTransfer: a slot holds no %s", type);
+        return (false);
+    }
 } // namespace
 
 bool FileTransfer::resolveLocation(char *path,
@@ -123,6 +190,10 @@ bool FileTransfer::resolve(char *path, size_t size, MemoryBlock &descriptor)
 
     if (!readDescriptor(descriptor, doc)) {
         return (false);
+    }
+
+    if (isSlotsLocation(doc["location"])) {
+        return (resolveSlotFile(path, size, doc.as<JsonObjectConst>()));
     }
 
     const char *directory = directoryFor(doc["location"]);
@@ -199,6 +270,79 @@ void FileTransfer::sendListing(uint8_t port, const char *directory)
     MidiOutput::sendFileListing(MidiInterface::Type::MidiUsbDev, port, doc);
 }
 
+bool FileTransfer::namesASlot(MemoryBlock &descriptor)
+{
+    StaticJsonDocument<256> doc;
+
+    /* Reading the block moves it on, and whatever answers the request reads
+     * it again from where it was. */
+    const uint32_t position = descriptor.tell();
+    const bool slot =
+        readDescriptor(descriptor, doc) && isSlotsLocation(doc["location"]);
+
+    descriptor.seek(position);
+
+    return (slot);
+}
+
+bool FileTransfer::sendSlotListing(uint8_t port, MemoryBlock &descriptor)
+{
+    StaticJsonDocument<256> request;
+    uint16_t fileNumber = 0;
+
+    if (!readDescriptor(descriptor, request)
+        || !readSlot(request.as<JsonObjectConst>(), fileNumber)) {
+        return (false);
+    }
+
+    /* The path the mk2 answers with, which is what the editor matches a
+     * listing to its request by: it reads the bank and the slot off the end.
+     * It names no directory on this card. */
+    char directory[maxPathLength];
+
+    snprintf(directory,
+             sizeof(directory),
+             "/%s/slots/b%02d/p%02d",
+             System::context.getAppName(),
+             fileNumber / slotsPerBank,
+             fileNumber % slotsPerBank);
+
+    StaticJsonDocument<512> doc;
+
+    doc["version"] = 1;
+    doc["path"] = (char *)directory;
+
+    JsonArray files = doc.createNestedArray("files");
+
+    char path[maxPathLength];
+    bool holdsAnything = false;
+
+    const auto addFile = [&](const char *name) {
+        FsFile file;
+
+        if (file.open(path, O_RDONLY)) {
+            JsonObject item = files.createNestedObject();
+            item["name"] = name;
+            item["size"] = (uint32_t)file.fileSize();
+            file.close();
+            holdsAnything = true;
+        }
+    };
+
+    System::context.formatPresetFilename(path, sizeof(path), fileNumber);
+    addFile(slotPresetName);
+    System::context.formatLuaFilename(path, sizeof(path), fileNumber);
+    addFile(slotLuaName);
+
+    /* An empty slot is a slot with nothing in it, the way the mk2 says it of
+     * a slot directory it has not made yet. */
+    doc["exists"] = holdsAnything;
+
+    MidiOutput::sendFileListing(MidiInterface::Type::MidiUsbDev, port, doc);
+
+    return (true);
+}
+
 bool FileTransfer::resolveDestination(char *path,
                                       size_t size,
                                       JsonObject descriptor)
@@ -213,46 +357,8 @@ bool FileTransfer::resolveDestination(char *path,
         return (false);
     }
 
-    if (strcmp(location, slotsLocation) == 0) {
-        const int bankNumber = descriptor["bankNumber"] | -1;
-        const int slot = descriptor["slot"] | -1;
-
-        if ((bankNumber < 0) || (bankNumber >= numberOfBanks) || (slot < 0)
-            || (slot >= slotsPerBank)) {
-            System::logger.write(LOG_ERROR,
-                                 "FileTransfer: no such slot: bank=%d, slot=%d",
-                                 bankNumber,
-                                 slot);
-            return (false);
-        }
-
-        /* A slot holds one script on this model, so the `path` a newer
-         * firmware uses to put several in one slot has nowhere to go. Refused
-         * rather than ignored: a host that asked for `modules/x.lua` and was
-         * given `the script` would not find what it wrote. */
-        if (descriptor["path"].is<const char *>()) {
-            System::logger.write(
-                LOG_ERROR,
-                "FileTransfer: a slot holds one script, so it takes no path");
-            return (false);
-        }
-
-        const uint16_t fileNumber =
-            (uint16_t)((bankNumber * slotsPerBank) + slot);
-
-        if (strcmp(type, presetType) == 0) {
-            System::context.formatPresetFilename(path, size, fileNumber);
-            return (true);
-        }
-
-        if (strcmp(type, luaType) == 0) {
-            System::context.formatLuaFilename(path, size, fileNumber);
-            return (true);
-        }
-
-        System::logger.write(
-            LOG_ERROR, "FileTransfer: a slot holds no %s", type);
-        return (false);
+    if (isSlotsLocation(location)) {
+        return (resolveSlotFile(path, size, descriptor));
     }
 
     if ((strcmp(location, rootLocation) == 0)
@@ -382,6 +488,20 @@ bool FileTransfer::sendFile(uint8_t port, const char *path)
         System::logger.write(
             LOG_ERROR, "FileTransfer::sendFile: no such file: %s", path);
         return (false);
+    }
+
+    /* Only a picture is encoded. A slot's preset and script are seven bit
+     * text, and the editor reads them as they come - it decodes a screenshot
+     * and nothing else, as it does from the mk2. */
+    const size_t length = strlen(path);
+    const size_t extension = strlen(screenshotExtension);
+    const bool picture =
+        (length >= extension)
+        && (strcmp(path + length - extension, screenshotExtension) == 0);
+
+    if (!picture) {
+        return (
+            MidiOutput::sendSysExFile(port, path, ElectraCommand::Object::File));
     }
 
     return (MidiOutput::sendSysExFileBase64(

@@ -677,6 +677,13 @@ void SysexApi::reloadPresetSlot(uint8_t port, MemoryBlock &sysexPayload)
 
 void SysexApi::sendFileListing(uint8_t port, MemoryBlock &sysexPayload)
 {
+    if (FileTransfer::namesASlot(sysexPayload)) {
+        if (!FileTransfer::sendSlotListing(port, sysexPayload)) {
+            MidiOutput::sendNack(MidiInterface::Type::MidiUsbDev, port);
+        }
+        return;
+    }
+
     char directory[FileTransfer::maxPathLength];
 
     if (!FileTransfer::resolveLocation(

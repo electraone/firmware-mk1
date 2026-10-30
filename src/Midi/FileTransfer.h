@@ -34,9 +34,12 @@
  * descriptor naming anything else is refused rather than guessed at, because
  * a guess here is a path.
  *
- * Enough of the API to get a screenshot off the unit, and no more: list a
- * location, fetch a file, remove a file. Writing is the other half and the
- * preset transfer already has its own.
+ * Two locations: the screenshots in `tmp`, and the preset slots. A slot on
+ * this model is two flat files, `p<NNN>.epr` and `p<NNN>.lua`, not the
+ * `b<NN>/p<NN>/` directory the mk2 keeps, so it is listed and addressed under
+ * the names the mk2 gives those two - `preset.json` and `main.lua` - which is
+ * what lets the editor read a slot out and write it somewhere else. Writing is
+ * the other half and the preset transfer already has its own.
  */
 
 #pragma once
@@ -74,6 +77,22 @@ namespace FileTransfer
 
     /** Answers with the files in the directory, as the API spells a listing. */
     void sendListing(uint8_t port, const char *directory);
+
+    /**
+ * @brief Whether a listing asks for a preset slot.
+ *
+ * A slot is not a directory on this model, so it cannot go through
+ * resolveLocation(): what that resolves is also what a `remove location`
+ * empties, and the directory a slot's files live in holds every slot.
+ */
+    bool namesASlot(MemoryBlock &descriptor);
+
+    /**
+ * @brief Answers with what a slot holds, as the mk2 lists one.
+ *
+ * @return false when the descriptor names no slot that exists
+ */
+    bool sendSlotListing(uint8_t port, MemoryBlock &descriptor);
 
     /**
  * @brief Sends the file, base64 encoded, then leaves the caller to ACK.
