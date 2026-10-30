@@ -106,7 +106,8 @@ void ControlComponent::onTouchDoubleClick(
  * segments and which one is in focus, and it is the test ControlComponent
  * already uses to find the handle a double tap should reset.
  */
-uint8_t ControlComponent::handleForPot(void) const
+uint8_t ControlComponent::handleForPot(
+    [[maybe_unused]] uint8_t turnedPotId) const
 {
     if (const MultiValue *mv = dynamic_cast<const MultiValue *>(this)) {
         return (mv->getActiveSegment());
@@ -115,23 +116,23 @@ uint8_t ControlComponent::handleForPot(void) const
     return (0);
 }
 
-uint16_t ControlComponent::numValuesForPot(void) const
+uint16_t ControlComponent::numValuesForPot(uint8_t turnedPotId) const
 {
-    const uint8_t handle = handleForPot();
+    const uint8_t handle = handleForPot(turnedPotId);
 
     /* A Custom control may declare no values at all, and a segment may name one
      * the control does not have. Falling back on what the pot was assigned with
      * is what this used to do for every control. */
     if (handle >= control.values.size()) {
-        return (Component::numValuesForPot());
+        return (Component::numValuesForPot(turnedPotId));
     }
 
     return (control.getValue(handle).getPotSteps());
 }
 
-float ControlComponent::sensitivityForPot(void) const
+float ControlComponent::sensitivityForPot(uint8_t turnedPotId) const
 {
-    const uint8_t handle = handleForPot();
+    const uint8_t handle = handleForPot(turnedPotId);
 
     if (handle >= control.values.size()) {
         return (ControlValue::DefaultSensitivity);

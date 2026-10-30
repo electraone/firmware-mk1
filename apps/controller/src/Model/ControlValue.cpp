@@ -426,6 +426,10 @@ void ControlValue::callFunction(int16_t value) const
 const char *ControlValue::translateId(uint8_t id) const
 {
     switch (control->getType()) {
+        case Control::Type::Custom:
+            return (control->translateValueId(id));
+            break;
+
         case Control::Type::Fader:
         case Control::Type::List:
         case Control::Type::Pad:
@@ -458,7 +462,7 @@ const char *ControlValue::translateId(uint8_t id) const
 
 uint8_t ControlValue::translateId(const char *handle) const
 {
-    return (Control::translateValueToId(control->getType(), handle));
+    return (control->translateValueId(handle));
 }
 
 int16_t ControlValue::translateMidiValue(uint16_t midiValue) const

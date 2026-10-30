@@ -20,6 +20,7 @@
 */
 
 #include "Control.h"
+#include "CustomValueIds.h"
 #include "ParameterMap.h"
 #include "ComponentTable.h"
 #include "Hardware.h"
@@ -398,12 +399,11 @@ const char *Control::translateValueId(uint8_t id) const
             }
             break;
 
-        /* A Custom control's ids are whatever the preset wrote, so the value
-         * itself is asked: it carries the string it was declared with, and
-         * its position is its handle. */
+        /* A Custom control's ids are whatever the preset wrote, and its
+         * values' positions are their handles. */
         case Control::Type::Custom:
-            if (id < values.size()) {
-                return (values[id].getId());
+            if (const char *customId = CustomValueIds::get(this, id)) {
+                return (customId);
             }
             break;
 
@@ -475,13 +475,14 @@ uint8_t Control::translateValueId(const char *handle) const
             }
             break;
 
-        case Control::Type::Custom:
-            for (uint8_t i = 0; i < values.size(); i++) {
-                if (strcmp(handle, values[i].getId()) == 0) {
-                    return (i);
-                }
+        case Control::Type::Custom: {
+            uint8_t index = 0;
+
+            if (CustomValueIds::find(this, handle, index)) {
+                return (index);
             }
             break;
+        }
 
         case Control::Type::Adsr:
             for (uint8_t i = 0; i < 4; i++) {

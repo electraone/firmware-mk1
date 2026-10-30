@@ -337,8 +337,12 @@ void MainWindow::setControlVisible(uint16_t controlId, bool shouldBeVisible)
 
                 if (currentControlSetId == control.getControlSetId()) {
                     if (shouldBeVisible) {
-                        component->assignPot(control.inputs[0].getPotId(),
-                                             control.values[0].getPotSteps());
+                        if (!control.inputs.empty()
+                            && !control.values.empty()) {
+                            component->assignPot(
+                                control.inputs[0].getPotId(),
+                                control.values[0].getPotSteps());
+                        }
                     } else {
                         component->releasePot();
                     }
@@ -482,7 +486,7 @@ void MainWindow::setControlValueLabel(uint16_t controlId,
 {
     Control &control = preset.getControl(controlId);
     if (control.isValid()) {
-        auto handleId = Control::translateValueToId(control.getType(), valueId);
+        auto handleId = control.translateValueId(valueId);
         control.getValue(handleId).setLabel(text);
         refreshControl(control);
     }

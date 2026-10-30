@@ -79,8 +79,7 @@ void PotBroadcaster::triggerCallbacks(PotEvent &potEvent, plFunction function)
         auto current = i++;
         auto listener = current->first;
 
-        if ((listener->getPotId() == PotListener::AllPots)
-            || (potEvent.getPotId() == listener->getPotId())) {
+        if (listener->listensToPot(potEvent.getPotId())) {
             Component *eventComponent = static_cast<Component *>(listener);
             potEvent.setEventCompoment(eventComponent);
 
@@ -89,7 +88,8 @@ void PotBroadcaster::triggerCallbacks(PotEvent &potEvent, plFunction function)
              * to anything downstream. A listener with no range of its own is
              * read as an encoder - one step per detent of travel. */
             potEvent.setAcceleratedChange(
-                listener->computeRate(potEvent.getRelativeChange()));
+                listener->computeRate(potEvent.getRelativeChange(),
+                                      potEvent.getPotId()));
 
             if ((eventComponent->getWindow() == originatingWindow)
                 || eventComponent->isWindow()) {

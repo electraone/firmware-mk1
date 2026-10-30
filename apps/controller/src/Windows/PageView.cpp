@@ -122,7 +122,6 @@ void PageView::reassignComponent(const Control &control)
 
     if (c) {
         auto originalPotId = c->getPotId();
-        auto newPotId = control.inputs[0].getPotId();
 
         c->releasePot();
 
@@ -134,9 +133,8 @@ void PageView::reassignComponent(const Control &control)
             if (uiFeatures.activeControlSetType == ActiveControlSetType::dim) {
                 c->setDimmed(false);
             }
-            c->assignPot(newPotId, control.values[0].getPotSteps());
             usedPots[originalPotId] = false;
-            usedPots[newPotId] = true;
+            assignPots(c, control);
         }
         repaint();
     }
@@ -298,11 +296,30 @@ void PageView::configureControl(ControlComponent *cc, const Control &control)
 
     if (control.isVisible() && control.getControlSetId() == controlSetId) {
         cc->releasePot();
-        cc->assignPot(control.inputs[0].getPotId(),
-                      control.values[0].getPotSteps());
-        usedPots[control.inputs[0].getPotId()] = true;
+        assignPots(cc, control);
     } else {
         cc->releasePot();
+    }
+}
+
+/*
+ * The control's first knob is the one its component is assigned, and a Custom
+ * control's others reach it through listensToPot(). Every one of them is spoken
+ * for: the page reports a touch of a knob nothing owns, and these are owned.
+ *
+ * A Custom control may declare no inputs or no values, and then no knob is its.
+ */
+void PageView::assignPots(Component *component, const Control &control)
+{
+    if (control.inputs.empty() || control.values.empty()) {
+        return;
+    }
+
+    component->assignPot(control.inputs[0].getPotId(),
+                         control.values[0].getPotSteps());
+
+    for (const auto &input : control.inputs) {
+        usedPots[input.getPotId()] = true;
     }
 }
 

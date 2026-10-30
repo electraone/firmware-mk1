@@ -1,5 +1,6 @@
 #include "Preset.h"
 #include "ComponentTable.h"
+#include "CustomValueIds.h"
 #include <utility>
 #include <algorithm>
 #include <cstring>
@@ -80,6 +81,7 @@ void Preset::reset(void)
     resetControls();
     /* The controls and groups are gone, so nothing may answer for them. */
     ComponentTable::clear();
+    CustomValueIds::clear();
 
     groups.clear();
     devices.clear();
@@ -1281,7 +1283,7 @@ void Preset::parseInputs(File &file,
         do {
             size_t valueStartPosition = file.position();
             inputs.push_back(
-                parseInput(file, valueStartPosition, control.getType()));
+                parseInput(file, valueStartPosition, control));
         } while (file.findUntil(",", "]"));
     }
 
@@ -1298,7 +1300,7 @@ void Preset::parseInputs(File &file,
  */
 Input Preset::parseInput(File &file,
                          size_t startPosition,
-                         Control::Type controlType)
+                         const Control &control)
 {
     if (file.seek(startPosition) == false) {
         System::logger.write(
@@ -1318,7 +1320,7 @@ Input Preset::parseInput(File &file,
 
     size_t inputEndPosition = file.position();
 
-    Input input = parseInput(controlType, doc.as<JsonObject>());
+    Input input = parseInput(control, doc.as<JsonObject>());
 
     if (file.seek(inputEndPosition) == false) {
         System::logger.write(
@@ -1332,10 +1334,16 @@ Input Preset::parseInput(File &file,
 /** Parse Input JSON object
  *
  */
-Input Preset::parseInput(Control::Type controlType, JsonObject jInput)
+Input Preset::parseInput(const Control &control, JsonObject jInput)
 {
     uint8_t potId = constrainPotId(jInput["potId"]);
-    uint8_t valueIndex = translateValueId(controlType, jInput["valueId"] | "");
+    const char *valueId = jInput["valueId"] | "";
+
+    /* A Custom control's ids are the preset's, which is why the values are
+     * read before the inputs. */
+    uint8_t valueIndex = (control.getType() == Control::Type::Custom)
+                             ? control.translateValueId(valueId)
+                             : translateValueId(control.getType(), valueId);
 
     return (Input(valueIndex, potId));
 }
@@ -1354,6 +1362,7 @@ void Preset::parseValues(File &file,
      * by index; the run then goes to the pool whole. */
     // Set the initial size of vector according to the type of Control
     std::vector<ControlValue> values(Preset::getNumValues(control->getType()));
+    std::string customIds;
 
     if (file.seek(startPosition) == false) {
         System::logger.write(
@@ -1365,8 +1374,9 @@ void Preset::parseValues(File &file,
     if (findElement(file, "\"values\"", ARRAY, endPosition)) {
         do {
             size_t valueStartPosition = file.position();
+            std::string id;
             ControlValue value =
-                parseValue(file, valueStartPosition, control, ordinal++);
+                parseValue(file, valueStartPosition, control, ordinal++, id);
             const uint8_t index = value.getIndex();
 
             /* A Custom control declares as many values as its script wants, so
@@ -1381,6 +1391,10 @@ void Preset::parseValues(File &file,
                     continue;
                 }
                 values.resize(index + 1);
+                customIds.append(id.empty() ? "value" : id,
+                                 0,
+                                 CustomValueIds::maxIdLength);
+                customIds.push_back('\0');
             }
 
                                     values[index] = value;
@@ -1397,6 +1411,11 @@ void Preset::parseValues(File &file,
         run[i].setControl(control);
     }
     control->values = Span<ControlValue>(run, values.size());
+
+    if (!customIds.empty()) {
+        CustomValueIds::set(
+            control, customIds.data(), customIds.size(), values.size());
+    }
 }
 
 /* Parse individual Value out of the Value Array
@@ -1405,7 +1424,8 @@ void Preset::parseValues(File &file,
 ControlValue Preset::parseValue(File &file,
                                 size_t startPosition,
                                 Control *control,
-                                uint8_t ordinal)
+                                uint8_t ordinal,
+                                std::string &id)
 {
     if (file.seek(startPosition) == false) {
         System::logger.write(
@@ -1424,7 +1444,7 @@ ControlValue Preset::parseValue(File &file,
     }
 
     size_t valueEndPosition = file.position();
-    ControlValue value = parseValue(control, doc.as<JsonObject>(), ordinal);
+    ControlValue value = parseValue(control, doc.as<JsonObject>(), ordinal, id);
 
     if (file.seek(valueEndPosition) == false) {
         System::logger.write(
@@ -1436,8 +1456,10 @@ ControlValue Preset::parseValue(File &file,
 /** Parse Value JSON object
  *
  */
-ControlValue
-    Preset::parseValue(Control *control, JsonObject jValue, uint8_t ordinal)
+ControlValue Preset::parseValue(Control *control,
+                                JsonObject jValue,
+                                uint8_t ordinal,
+                                std::string &id)
 {
     int16_t defaultValue = 0;
     int16_t min = 0;
@@ -1449,6 +1471,7 @@ ControlValue
     uint8_t functionIndex = 0;
 
     const char *valueId = jValue["id"] | "";
+    id = valueId;
     uint8_t overlayId = jValue["overlayId"] | 0;
 
     if (!jValue["formatter"].isNull()) {

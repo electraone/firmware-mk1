@@ -61,6 +61,13 @@ public:
 
     void paint(Graphics &g) override;
 
+    /** Every knob the preset gave the control an input for. */
+    bool listensToPot(uint8_t candidatePotId) const override;
+
+protected:
+    /** The value the input on that knob names. */
+    uint8_t handleForPot(uint8_t turnedPotId) const override;
+
 private:
     /**
      * @brief Hands a knob touch to whichever callback subscribed to it.

@@ -64,7 +64,7 @@ public:
     void configure(void);
 
 protected:
-    uint16_t numValuesForPot(void) const override;
+    uint16_t numValuesForPot(uint8_t turnedPotId) const override;
 
 private:
     LinkProgram &program;

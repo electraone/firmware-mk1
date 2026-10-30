@@ -124,6 +124,19 @@ public:
     uint8_t getPotId(void);
 
     /**
+     * @brief Whether events from this pot are this listener's to handle.
+     *
+     * The one assigned pot, or every pot. A listener driven by several knobs
+     * answers for itself: that is a virtual call rather than a set of pots
+     * kept here because only a Custom control is, and every Component on the
+     * screen is one of these.
+     */
+    virtual bool listensToPot(uint8_t candidatePotId) const
+    {
+        return ((potId == AllPots) || (potId == candidatePotId));
+    }
+
+    /**
      * Set number of values to be associated with the pot
      *
      * @param a number of values to set the sensitivity
@@ -139,8 +152,9 @@ public:
      * @brief Turn rotation of the knob into a change of the value it drives.
      *
      * @param relativeChange rotation since the last report, in phase counts
+     * @param turnedPotId the knob that turned
      */
-    int16_t computeRate(int16_t relativeChange);
+    int16_t computeRate(int16_t relativeChange, uint8_t turnedPotId);
 
     void resetStepCount(void);
 
@@ -153,10 +167,11 @@ protected:
      *
      * The scaling of a turn is a property of what the knob drives, and what a
      * component drives can change while the knob is being held - an envelope
-     * hands its knob to whichever segment is in focus. The default is the one
-     * range the listener was assigned with.
+     * hands its knob to whichever segment is in focus, and a Custom control
+     * has a value per knob. The default is the one range the listener was
+     * assigned with.
      */
-    virtual uint16_t numValuesForPot(void) const
+    virtual uint16_t numValuesForPot([[maybe_unused]] uint8_t turnedPotId) const
     {
         return (numValues);
     }
@@ -167,7 +182,8 @@ protected:
      * What the value the knob drives declares - see
      * ControlValue::setSensitivity().
      */
-    virtual float sensitivityForPot(void) const
+    virtual float sensitivityForPot(
+        [[maybe_unused]] uint8_t turnedPotId) const
     {
         return (1.0f);
     }
@@ -182,5 +198,11 @@ private:
 
     uint16_t numValues;
     uint8_t potId;
-    bool encoderMode;
+    bool encoderMode : 1;
+
+    /* Which knob the banked rotation above belongs to, so that a control
+     * driven by several does not spend one knob's remainder on the next. In
+     * the byte encoderMode already took: one bank and its owner rather than a
+     * bank per knob, on every Component on the screen. */
+    uint8_t ratePot : 7;
 };

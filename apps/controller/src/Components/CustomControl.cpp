@@ -74,6 +74,28 @@ void CustomControl::onTouchLongHold(const TouchEvent &touchEvent)
  * The base is deliberately not called in either case: a Custom control does
  * its own highlighting and its own reporting in Lua.
  */
+bool CustomControl::listensToPot(uint8_t candidatePotId) const
+{
+    for (const auto &input : control.inputs) {
+        if (input.getPotId() == candidatePotId) {
+            return (true);
+        }
+    }
+
+    return (false);
+}
+
+uint8_t CustomControl::handleForPot(uint8_t turnedPotId) const
+{
+    for (const auto &input : control.inputs) {
+        if (input.getPotId() == turnedPotId) {
+            return (input.getValueId());
+        }
+    }
+
+    return (0);
+}
+
 void CustomControl::onPotTouchDown(const PotEvent &potEvent)
 {
     handlePotTouch(potEvent, LuaPotEvent::touchDown);

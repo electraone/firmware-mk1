@@ -147,8 +147,8 @@ private:
                      size_t endPosition,
                      Control &control);
     Input
-        parseInput(File &file, size_t startPosition, Control::Type controlType);
-    Input parseInput(Control::Type controlType, JsonObject jInput);
+        parseInput(File &file, size_t startPosition, const Control &control);
+    Input parseInput(const Control &control, JsonObject jInput);
 
     // Values: placed in controlValues and handed to the control
     void parseValues(File &file,
@@ -156,13 +156,17 @@ private:
                      size_t endPosition,
                      Control *control);
     /** @param ordinal the value's position in the array, which is a Custom
-     *         control's only way of numbering its values. */
+     *         control's only way of numbering its values.
+     *  @param id where the id the preset wrote is left. */
     ControlValue parseValue(File &file,
                             size_t startPosition,
                             Control *control,
-                            uint8_t ordinal);
-    ControlValue
-        parseValue(Control *control, JsonObject jValue, uint8_t ordinal);
+                            uint8_t ordinal,
+                            std::string &id);
+    ControlValue parseValue(Control *control,
+                            JsonObject jValue,
+                            uint8_t ordinal,
+                            std::string &id);
 
     // Messages
     std::vector<uint8_t> *registerData(JsonVariant jData);

@@ -185,19 +185,20 @@ protected:
      * envelope hands its knob to whichever segment is in focus, and a decay
      * that runs to 16383 must not be scaled as though it ran to 127.
      */
-    uint16_t numValuesForPot(void) const override;
+    uint16_t numValuesForPot(uint8_t turnedPotId) const override;
 
     /** @brief What that same value declares about how fast it moves. */
-    float sensitivityForPot(void) const override;
+    float sensitivityForPot(uint8_t turnedPotId) const override;
 
     /**
      * @brief The value a turn of the knob moves, as a handle.
      *
      * The segment in focus for a control that has segments, and the control's
      * own value for one that does not - which is what every onPotChange() here
-     * already picks, so this has to agree with them.
+     * already picks, so this has to agree with them. A control with a value
+     * per knob answers by the knob.
      */
-    uint8_t handleForPot(void) const;
+    virtual uint8_t handleForPot(uint8_t turnedPotId) const;
 
     /**
      * @brief The colour an overlay item asks for, or the control's own.

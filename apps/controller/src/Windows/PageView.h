@@ -68,6 +68,7 @@ private:
     void configureGroup(GroupControl *g, const Group &group);
     void configureControl(ControlComponent *cc, const Control &control);
     void resetUsedPots(void);
+    void assignPots(Component *component, const Control &control);
 
     Preset *model;
     MainDelegate &delegate;

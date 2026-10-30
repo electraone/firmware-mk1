@@ -30,7 +30,8 @@
 
 PotBroadcaster PotListener::potBroadcaster;
 
-PotListener::PotListener() : numValues(0), potId(AllPots), encoderMode(false)
+PotListener::PotListener()
+    : numValues(0), potId(AllPots), encoderMode(false), ratePot(0)
 {
 }
 
@@ -91,13 +92,19 @@ void PotListener::resetStepCount(void)
  * what the component in front of it has to say about the value being driven.
  *
  * @param[in] relativeChange rotation since the last report, in phase counts
+ * @param[in] turnedPotId the knob that turned
  *
  * @return the change to apply to the listener's value
  */
-int16_t PotListener::computeRate(int16_t relativeChange)
+int16_t PotListener::computeRate(int16_t relativeChange, uint8_t turnedPotId)
 {
+    if (turnedPotId != ratePot) {
+        rate.reset();
+        ratePot = turnedPotId;
+    }
+
     return (rate.compute(relativeChange,
-                         numValuesForPot(),
-                         sensitivityForPot(),
+                         numValuesForPot(turnedPotId),
+                         sensitivityForPot(turnedPotId),
                          encoderMode));
 }

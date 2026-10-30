@@ -48,7 +48,8 @@ void LinkKnob::configure(void)
     resetStepCount();
 }
 
-uint16_t LinkKnob::numValuesForPot(void) const
+uint16_t LinkKnob::numValuesForPot(
+    [[maybe_unused]] uint8_t turnedPotId) const
 {
     return (program.valuesOnPot(potId));
 }
