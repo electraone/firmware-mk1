@@ -676,9 +676,17 @@ void ParameterMap::scheduleLuaProcessing(void)
 
 void ParameterMap::repaintParameterMap(void)
 {
-        for (auto &record : index) {
-        const uint32_t hash = record.hash;
-        LookupEntry &mapEntry = *record.entry;
+    /*
+     * By position and not by iterator. Repainting an entry runs a value's Lua
+     * function, and a function may move a message to a parameter that has no
+     * entry yet, which inserts into this very vector - after which a reference
+     * into it reads freed memory, and Lua soon has that memory for something
+     * else. An entry itself does not move. An insert before this position
+     * brings the same record round again, and it is no longer dirty.
+     */
+    for (size_t i = 0; i < index.size(); i++) {
+        const uint32_t hash = index[i].hash;
+        LookupEntry &mapEntry = *index[i].entry;
 
         if (mapEntry.isDirty() && mapEntry.hasValidMidiValue()) {
             System::logger.write(
@@ -706,7 +714,15 @@ void ParameterMap::repaintParameterMap(void)
 
 void ParameterMap::repaintLookupEntry(LookupEntry *mapEntry)
 {
-        for (auto *messageDestination : mapEntry->getDestinations()) {
+    DestinationRange destinations = mapEntry->getDestinations();
+
+    /* The next one is read before the value's function runs: a function can
+     * move this value's message, which takes the value off this chain and
+     * clears its link. */
+    for (auto next = destinations.begin(); next != destinations.end();) {
+        ControlValue *messageDestination = *next;
+        ++next;
+
         if (mapEntry->hasValidMidiValue()) {
             // Process User Lua callbacks assigned to the ControlValue
             if (mapEntry->isForFullRepaint()
