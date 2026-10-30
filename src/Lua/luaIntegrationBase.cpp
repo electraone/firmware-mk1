@@ -20,6 +20,7 @@
 */
 
 #include "luaIntegrationBase.h"
+#include "luaLazyGlobals.h"
 #include "SysexBlock.h"
 #include "System.h"
 #include "Trace.h"
@@ -98,6 +99,12 @@ void luaLE_pushArrayObject(lua_State *L,
 
 void luaLE_pushObject(lua_State *L, const char *objectName, const void *object)
 {
+    /* A type's metatable is made the first time an object of it is pushed,
+     * the way a script's first use of a name makes it - see luaLazyGlobals.h.
+     * Done before the userdata so that registering leaves the stack as it
+     * found it underneath. */
+    luaLE_ensureType(L, objectName);
+
     *reinterpret_cast<const void **>(lua_newuserdata(L, sizeof(void *))) =
         object;
 
@@ -198,10 +205,15 @@ bool luaLE_functionExists(const char *module, const char *function)
      */
     const int top = lua_gettop(L);
 
-    lua_getglobal(L, module);
-    lua_getfield(L, -1, function);
+    /* Raw: a module the script has never named has not been made, and cannot
+     * hold a function the script put there. Asking through _G would make it,
+     * and every module with a callback in it would be made for every script. */
+    lua_pushglobaltable(L);
+    lua_pushstring(L, module);
+    lua_rawget(L, -2);
 
-    const bool exists = lua_isfunction(L, -1);
+    const bool exists = (lua_type(L, -1) == LUA_TTABLE)
+                        && (lua_getfield(L, -1, function) == LUA_TFUNCTION);
 
     /* A probe leaves nothing behind. Every one of the eighteen MIDI handlers
      * is looked for this way when a preset loads, and the module table and

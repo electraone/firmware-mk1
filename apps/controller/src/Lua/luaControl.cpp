@@ -20,19 +20,19 @@ int luaopen_controls(lua_State *L)
 }
 
 /**
- * @brief The Lua object for a Control, with its uservalue table intact.
+ * @brief The Lua object for a Control, the same one every time.
  *
  * The object is cached so that a script can hang its own fields off a control
  * - a cube's vertices, its rotation - and find them again on the next
- * callback. Without the cache every controls.get() would answer a fresh
- * userdata with an empty table, and the fields set on the last one would be
- * gone.
+ * callback, and so that two lookups of one control compare equal. Without the
+ * cache every controls.get() would answer a fresh userdata, and the fields set
+ * on the last one would be gone.
  */
 void luaLE_pushControlInstance(lua_State *L, const Control &control)
 {
     ControlCallbacks &entry = controlCallbacks(control.getId());
 
-    if (entry.userdata != LUA_REFNIL) {
+    if (entry.userdata != ControlCallbacks::none) {
         lua_rawgeti(L, LUA_REGISTRYINDEX, entry.userdata);
 
         if (void *cached = luaL_testudata(L, -1, "Control")) {
@@ -44,16 +44,27 @@ void luaLE_pushControlInstance(lua_State *L, const Control &control)
         /* A stale entry: the preset was replaced and the id reused. */
         lua_pop(L, 1);
         luaL_unref(L, LUA_REGISTRYINDEX, entry.userdata);
-        entry.userdata = LUA_REFNIL;
+        entry.userdata = ControlCallbacks::none;
     }
 
+    /* No table for its fields yet: control_newindex() makes one when the
+     * script first sets a field, and most controls a script names never get
+     * one - a painter and a knob handler hung off each is the usual use. */
     luaLE_pushObject(L, "Control", &control);
 
-    lua_newtable(L);
-    lua_setuservalue(L, -2);
+    const int ref = luaL_ref(L, LUA_REGISTRYINDEX);
 
-    entry.userdata = luaL_ref(L, LUA_REGISTRYINDEX);
-    lua_rawgeti(L, LUA_REGISTRYINDEX, entry.userdata);
+    if ((ref <= 0) || (ref > UINT16_MAX)) {
+        luaL_unref(L, LUA_REGISTRYINDEX, ref);
+        luaL_error(L, "too many control objects");
+        return;
+    }
+
+    /* Found again rather than kept: pushing the object can register its
+     * type, and an entry is not promised to stay where it was across code
+     * that runs Lua. */
+    controlCallbacks(control.getId()).userdata = (uint16_t)ref;
+    lua_rawgeti(L, LUA_REGISTRYINDEX, ref);
 }
 
 /**
@@ -95,13 +106,15 @@ int control_create(lua_State *L)
  */
 int control_index(lua_State *L)
 {
-    /* The instance's own fields */
-    lua_getuservalue(L, 1);
-    lua_pushvalue(L, 2);
-    lua_gettable(L, -2);
+    /* The instance's own fields, where it has been given any */
+    if (lua_getuservalue(L, 1) == LUA_TTABLE) {
+        lua_pushvalue(L, 2);
+        lua_gettable(L, -2);
 
-    if (!lua_isnil(L, -1)) {
-        return (1);
+        if (!lua_isnil(L, -1)) {
+            return (1);
+        }
+        lua_pop(L, 1);
     }
     lua_pop(L, 1);
 
@@ -117,7 +130,14 @@ int control_newindex(lua_State *L)
 {
     luaL_checkudata(L, 1, "Control");
 
-    lua_getuservalue(L, 1);
+    /* The first field set on a control makes the table it is kept in. */
+    if (lua_getuservalue(L, 1) != LUA_TTABLE) {
+        lua_pop(L, 1);
+        lua_newtable(L);
+        lua_pushvalue(L, -1);
+        lua_setuservalue(L, 1);
+    }
+
     lua_pushvalue(L, 2);
     lua_pushvalue(L, 3);
     lua_settable(L, -3);
@@ -139,25 +159,24 @@ int control_repaint(lua_State *L)
 }
 
 /*
- * A function kept in the registry until the control is told to forget it, or
- * the preset goes away. Replacing one frees the reference it held.
+ * A function kept until the control is given another, or the preset goes
+ * away. Controls given the same function share one copy of it - see
+ * retainCallbackFunction().
  */
-static int setControlCallback(lua_State *L, int ControlCallbacks::*which)
+static int setControlCallback(lua_State *L,
+                              uint16_t ControlCallbacks::*which)
 {
     if (Control *control = getControl(L, 1)) {
         luaL_checktype(L, 2, LUA_TFUNCTION);
 
-        ControlCallbacks &entry = controlCallbacks(control->getId());
-
         lua_pushvalue(L, 2);
 
-        const int ref = luaL_ref(L, LUA_REGISTRYINDEX);
+        const uint16_t slot = retainCallbackFunction(L);
+        ControlCallbacks &entry = controlCallbacks(control->getId());
+        const uint16_t previous = entry.*which;
 
-        if (entry.*which != LUA_REFNIL) {
-            luaL_unref(L, LUA_REGISTRYINDEX, entry.*which);
-        }
-
-        entry.*which = ref;
+        entry.*which = slot;
+        releaseCallbackFunction(L, previous);
         return (0);
     }
     return (luaL_error(L, "failed: not a valid control"));

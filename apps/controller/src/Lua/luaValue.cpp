@@ -274,10 +274,9 @@ int value_getControl(lua_State *L)
         Control *control = value->getControl();
 
         if (control) {
-            /* The cached instance, not a bare object. Control's __index reads
-             * the uservalue table first, and a userdata pushed without one took
-             * the script down at its first method call - so
-             * value:getControl():getName() could not be written at all. */
+            /* The cached instance, not a fresh object: the fields a script
+             * set on the control are kept on it, so value:getControl().x
+             * has to find the x the script put there. */
             luaLE_pushControlInstance(L, *control);
             return (1);
         }

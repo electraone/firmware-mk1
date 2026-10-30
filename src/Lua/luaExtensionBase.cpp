@@ -26,29 +26,99 @@
  */
 
 #include "luaExtensionBase.h"
+#include "luaLazyGlobals.h"
 #include "SysexBlock.h"
 #include "System.h"
 
 extern bool lua_windowRepaintEnabled;
 
-static const luaL_Reg eoslibs[] = { { "midi", luaopen_midi },
-                                    { "window", luaopen_window },
-                                    { "controller", luaopen_controller },
-                                    { "timer", luaopen_timer },
-                                    { "transport", luaopen_transport },
-                                    { "logger", luaopen_logger },
-                                    { "bytes", luaopen_bytes },
-                                    { NULL, NULL } };
-
-void luaLE_openEoslibs(lua_State *L, const luaL_Reg *libs)
-{
-    const luaL_Reg *lib;
-    /* "require" functions from 'loadedlibs' and set results to global table */
-    for (lib = libs; lib->func; lib++) {
-        luaL_requiref(L, lib->name, lib->func, 1);
-        lua_pop(L, 1); /* remove lib */
-    }
-}
+/*
+ * What every script can name, made when it first does - see luaLazyGlobals.h.
+ * Sorted by strcmp(), so capitals first; luaLE_addLazyGlobals() says so in the
+ * log if an entry is out of order.
+ *
+ * The standard libraries a script may never touch are here too. The base
+ * library, `package` and `string` are opened up front: the first two put
+ * functions straight into _G, and `string` gives every string its methods.
+ */
+static const LuaLazyGlobal baseGlobals[] = {
+    LuaLazyGlobal::constant("ACTIVE_SENSING", 254),
+    LuaLazyGlobal::constant("BUTTONS", 32),
+    LuaLazyGlobal::constant("BUTTON_1", 1),
+    LuaLazyGlobal::constant("BUTTON_2", 2),
+    LuaLazyGlobal::constant("BUTTON_3", 3),
+    LuaLazyGlobal::constant("BUTTON_4", 4),
+    LuaLazyGlobal::constant("BUTTON_5", 5),
+    LuaLazyGlobal::constant("BUTTON_6", 6),
+    LuaLazyGlobal::constant("CHANNEL_PRESSURE", 208),
+    LuaLazyGlobal::constant("CLOCK", 248),
+    LuaLazyGlobal::constant("CONTINUE", 251),
+    LuaLazyGlobal::constant("CONTROL_CHANGE", 176),
+    LuaLazyGlobal::type("Component", window_registerComponent),
+    LuaLazyGlobal::constant("HEIGHT", 4),
+    LuaLazyGlobal::constant("INTERNAL", 0),
+    LuaLazyGlobal::constant("LUA", 2),
+    LuaLazyGlobal::constant("MIDI", 1),
+    LuaLazyGlobal::constant("MIDI_IO", 0),
+    LuaLazyGlobal::constant("MODEL_MINI", (int)ControllerModel::mini),
+    LuaLazyGlobal::constant("MODEL_MK1", (int)ControllerModel::mk1),
+    LuaLazyGlobal::constant("MODEL_MK2", (int)ControllerModel::mk2),
+    LuaLazyGlobal::constant("NONE", 0),
+    LuaLazyGlobal::constant("NOTE_OFF", 128),
+    LuaLazyGlobal::constant("NOTE_ON", 144),
+    LuaLazyGlobal::constant("PITCH_BEND", 224),
+    LuaLazyGlobal::constant("POLY_PRESSURE", 160),
+    LuaLazyGlobal::constant("PORT_1", 0),
+    LuaLazyGlobal::constant("PORT_2", 1),
+    LuaLazyGlobal::constant("PORT_CTRL", 2),
+    LuaLazyGlobal::constant("POTS", 8),
+    LuaLazyGlobal::constant("POT_1", 1),
+    LuaLazyGlobal::constant("POT_10", 10),
+    LuaLazyGlobal::constant("POT_11", 11),
+    LuaLazyGlobal::constant("POT_12", 12),
+    LuaLazyGlobal::constant("POT_2", 2),
+    LuaLazyGlobal::constant("POT_3", 3),
+    LuaLazyGlobal::constant("POT_4", 4),
+    LuaLazyGlobal::constant("POT_5", 5),
+    LuaLazyGlobal::constant("POT_6", 6),
+    LuaLazyGlobal::constant("POT_7", 7),
+    LuaLazyGlobal::constant("POT_8", 8),
+    LuaLazyGlobal::constant("POT_9", 9),
+    LuaLazyGlobal::constant("PROGRAM_CHANGE", 192),
+    LuaLazyGlobal::constant("RESET", 255),
+    LuaLazyGlobal::constant("SONG_POSITION", 242),
+    LuaLazyGlobal::constant("SONG_SELECT", 243),
+    LuaLazyGlobal::constant("START", 250),
+    LuaLazyGlobal::constant("STOP", 252),
+    LuaLazyGlobal::constant("SYSEX", 240),
+    LuaLazyGlobal::type("SysexBlock", sysexBlock_register),
+    LuaLazyGlobal::constant("TIME_CODE_QUARTER_FRAME", 241),
+    LuaLazyGlobal::constant("TOUCH", 16),
+    LuaLazyGlobal::constant("TOUCH_POINT_1", 1),
+    LuaLazyGlobal::constant("TOUCH_POINT_2", 2),
+    LuaLazyGlobal::constant("TOUCH_POINT_3", 3),
+    LuaLazyGlobal::constant("TOUCH_POINT_4", 4),
+    LuaLazyGlobal::constant("TOUCH_POINT_5", 5),
+    LuaLazyGlobal::constant("TUNE_REQUEST", 246),
+    LuaLazyGlobal::constant("USB_DEV", 1),
+    LuaLazyGlobal::constant("USB_HOST", 2),
+    LuaLazyGlobal::constant("USB_HOST_PORT", 4),
+    LuaLazyGlobal::constant("WIDTH", 3),
+    LuaLazyGlobal::constant("WINDOWS", 64),
+    LuaLazyGlobal::constant("X", 1),
+    LuaLazyGlobal::constant("Y", 2),
+    LuaLazyGlobal::module("bytes", luaopen_bytes),
+    LuaLazyGlobal::module("controller", luaopen_controller),
+    LuaLazyGlobal::module("coroutine", luaopen_coroutine),
+    LuaLazyGlobal::module("debug", luaopen_debug),
+    LuaLazyGlobal::module("logger", luaopen_logger),
+    LuaLazyGlobal::module("math", luaopen_math),
+    LuaLazyGlobal::module("midi", luaopen_midi),
+    LuaLazyGlobal::module("table", luaopen_table),
+    LuaLazyGlobal::module("timer", luaopen_timer),
+    LuaLazyGlobal::module("transport", luaopen_transport),
+    LuaLazyGlobal::module("window", luaopen_window),
+};
 
 lua_State *initLua(void)
 {
@@ -57,15 +127,15 @@ lua_State *initLua(void)
     asm(".global _printf_float");
 
     lua = luaL_newstate(); /* opens Lua */
-    luaL_openlibs(lua); /* opens the standard libraries */
-    luaLE_openEoslibs(lua, eoslibs);
+    luaL_requiref(lua, LUA_GNAME, luaopen_base, 1);
+    luaL_requiref(lua, LUA_LOADLIBNAME, luaopen_package, 1);
+    luaL_requiref(lua, LUA_STRLIBNAME, luaopen_string, 1);
+    lua_pop(lua, 3);
 
-    // register userdate objects
-    sysexBlock_register(lua);
-    window_registerComponent(lua);
-
-    // register global variables
-    loadBaseGlobalVariables(lua);
+    /* Everything else - libraries, modules, types and constants - is made the
+     * first time the script names it. */
+    luaLE_addLazyGlobals(baseGlobals);
+    luaLE_installLazyGlobals(lua);
 
     return (lua);
 }
@@ -146,151 +216,3 @@ bool isLuaValid(const char *filename)
     return (Hardware::sdcard.exists(filename));
 }
 
-void loadBaseGlobalVariables(lua_State *L)
-{
-    // MIDI interfaces
-    lua_pushnumber(L, 0);
-    lua_setglobal(L, "MIDI_IO");
-    lua_pushnumber(L, 1);
-    lua_setglobal(L, "USB_DEV");
-    lua_pushnumber(L, 2);
-    lua_setglobal(L, "USB_HOST");
-
-    // MIDI ports
-    lua_pushnumber(L, 0);
-    lua_setglobal(L, "PORT_1");
-    lua_pushnumber(L, 1);
-    lua_setglobal(L, "PORT_2");
-    lua_pushnumber(L, 2);
-    lua_setglobal(L, "PORT_CTRL");
-
-    // Change origins
-    lua_pushnumber(L, 0);
-    lua_setglobal(L, "INTERNAL");
-    lua_pushnumber(L, 1);
-    lua_setglobal(L, "MIDI");
-    lua_pushnumber(L, 2);
-    lua_setglobal(L, "LUA");
-
-    // Hardware buttons
-    lua_pushnumber(L, 1);
-    lua_setglobal(L, "BUTTON_1");
-    lua_pushnumber(L, 2);
-    lua_setglobal(L, "BUTTON_2");
-    lua_pushnumber(L, 3);
-    lua_setglobal(L, "BUTTON_3");
-    lua_pushnumber(L, 4);
-    lua_setglobal(L, "BUTTON_4");
-    lua_pushnumber(L, 5);
-    lua_setglobal(L, "BUTTON_5");
-    lua_pushnumber(L, 6);
-    lua_setglobal(L, "BUTTON_6");
-
-    // Pots
-    lua_pushnumber(L, 1);
-    lua_setglobal(L, "POT_1");
-    lua_pushnumber(L, 2);
-    lua_setglobal(L, "POT_2");
-    lua_pushnumber(L, 3);
-    lua_setglobal(L, "POT_3");
-    lua_pushnumber(L, 4);
-    lua_setglobal(L, "POT_4");
-    lua_pushnumber(L, 5);
-    lua_setglobal(L, "POT_5");
-    lua_pushnumber(L, 6);
-    lua_setglobal(L, "POT_6");
-    lua_pushnumber(L, 7);
-    lua_setglobal(L, "POT_7");
-    lua_pushnumber(L, 8);
-    lua_setglobal(L, "POT_8");
-    lua_pushnumber(L, 9);
-    lua_setglobal(L, "POT_9");
-    lua_pushnumber(L, 10);
-    lua_setglobal(L, "POT_10");
-    lua_pushnumber(L, 11);
-    lua_setglobal(L, "POT_11");
-    lua_pushnumber(L, 12);
-    lua_setglobal(L, "POT_12");
-
-    // Touch points
-    lua_pushnumber(L, 1);
-    lua_setglobal(L, "TOUCH_POINT_1");
-    lua_pushnumber(L, 2);
-    lua_setglobal(L, "TOUCH_POINT_2");
-    lua_pushnumber(L, 3);
-    lua_setglobal(L, "TOUCH_POINT_3");
-    lua_pushnumber(L, 4);
-    lua_setglobal(L, "TOUCH_POINT_4");
-    lua_pushnumber(L, 5);
-    lua_setglobal(L, "TOUCH_POINT_5");
-
-    // MIDI message types
-    lua_pushnumber(L, 176);
-    lua_setglobal(L, "CONTROL_CHANGE");
-    lua_pushnumber(L, 144);
-    lua_setglobal(L, "NOTE_ON");
-    lua_pushnumber(L, 128);
-    lua_setglobal(L, "NOTE_OFF");
-    lua_pushnumber(L, 192);
-    lua_setglobal(L, "PROGRAM_CHANGE");
-    lua_pushnumber(L, 160);
-    lua_setglobal(L, "POLY_PRESSURE");
-    lua_pushnumber(L, 208);
-    lua_setglobal(L, "CHANNEL_PRESSURE");
-    lua_pushnumber(L, 224);
-    lua_setglobal(L, "PITCH_BEND");
-    lua_pushnumber(L, 248);
-    lua_setglobal(L, "CLOCK");
-    lua_pushnumber(L, 250);
-    lua_setglobal(L, "START");
-    lua_pushnumber(L, 252);
-    lua_setglobal(L, "STOP");
-    lua_pushnumber(L, 251);
-    lua_setglobal(L, "CONTINUE");
-    lua_pushnumber(L, 254);
-    lua_setglobal(L, "ACTIVE_SENSING");
-    lua_pushnumber(L, 255);
-    lua_setglobal(L, "RESET");
-    lua_pushnumber(L, 243);
-    lua_setglobal(L, "SONG_SELECT");
-    lua_pushnumber(L, 242);
-    lua_setglobal(L, "SONG_POSITION");
-    lua_pushnumber(L, 246);
-    lua_setglobal(L, "TUNE_REQUEST");
-    lua_pushnumber(L, 241);
-    lua_setglobal(L, "TIME_CODE_QUARTER_FRAME");
-    lua_pushnumber(L, 240);
-    lua_setglobal(L, "SYSEX");
-
-    // Bounds
-    lua_pushnumber(L, 1);
-    lua_setglobal(L, "X");
-    lua_pushnumber(L, 2);
-    lua_setglobal(L, "Y");
-    lua_pushnumber(L, 3);
-    lua_setglobal(L, "WIDTH");
-    lua_pushnumber(L, 4);
-    lua_setglobal(L, "HEIGHT");
-
-    // Controller models
-    lua_pushnumber(L, (int)ControllerModel::mk1);
-    lua_setglobal(L, "MODEL_MK1");
-    lua_pushnumber(L, (int)ControllerModel::mk2);
-    lua_setglobal(L, "MODEL_MK2");
-    lua_pushnumber(L, (int)ControllerModel::mini);
-    lua_setglobal(L, "MODEL_MINI");
-
-    // Events
-    lua_pushnumber(L, 0);
-    lua_setglobal(L, "NONE");
-    lua_pushnumber(L, 4);
-    lua_setglobal(L, "USB_HOST_PORT");
-    lua_pushnumber(L, 8);
-    lua_setglobal(L, "POTS");
-    lua_pushnumber(L, 16);
-    lua_setglobal(L, "TOUCH");
-    lua_pushnumber(L, 32);
-    lua_setglobal(L, "BUTTONS");
-    lua_pushnumber(L, 64);
-    lua_setglobal(L, "WINDOWS");
-}

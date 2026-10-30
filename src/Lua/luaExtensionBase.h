@@ -51,7 +51,6 @@ extern "C" {
 
 extern lua_State *L;
 
-void luaLE_openEoslibs(lua_State *L, const luaL_Reg *libs);
 void loadLuaModule(const char *filename);
 void runLuaFunction(const char *functionName);
 void runLuaString(const char *commandText);
@@ -61,4 +60,3 @@ void closeLua(void);
 void executeElectraLua(const char *filename);
 bool isLuaValid(const char *filename);
 
-void loadBaseGlobalVariables(lua_State *L);

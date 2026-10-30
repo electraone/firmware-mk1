@@ -37,28 +37,43 @@ extern "C" {
 /**
  * @brief What a script has hung off one control.
  *
- * Six registry references: the control's own Lua object, which carries the
- * fields a script sets on it, and the five callbacks it may have subscribed
- * to.
+ * The control's own Lua object, which carries the fields a script sets on it,
+ * and the five callbacks it may have subscribed to.
  *
  * The mk2 keeps these on the Control itself. They are here instead because a
- * Control is held for every control of every preset - a hundred and thirty of
- * them on the preset this was measured against - and six references on each
- * is three kilobytes of a device that has a quarter of a megabyte, spent
- * almost entirely on controls no script will ever mention. An entry is made
- * the first time one is asked for, so a preset with one custom control pays
- * for one control.
+ * Control is held for every control of every preset, and an entry is made only
+ * the first time a script asks for one, so a preset with one custom control
+ * pays for one control.
+ *
+ * Fourteen bytes. It was 24 in a std::map, whose node made it 48 on the heap;
+ * with the Access Virus TI's controls given a painter and a knob handler each,
+ * this and the shared functions below took a control from 205 bytes to about
+ * half that. A callback is a slot in one table of the functions in use, not a
+ * registry reference of its own: sixty controls drawn by one function hold it
+ * once.
  */
 struct ControlCallbacks {
-    int userdata = LUA_REFNIL;
-    int paint = LUA_REFNIL;
-    int touch = LUA_REFNIL;
-    int pot = LUA_REFNIL;
-    int potTouch = LUA_REFNIL;
-    int switchPress = LUA_REFNIL;
+    /** Zero in any of the fields below means none. */
+    static constexpr uint16_t none = 0;
+
+    uint16_t controlId;
+
+    /** A registry reference. */
+    uint16_t userdata;
+
+    /** Slots in the shared table - see pushCallbackFunction(). */
+    uint16_t paint;
+    uint16_t touch;
+    uint16_t pot;
+    uint16_t potTouch;
+    uint16_t switchPress;
 };
 
-/** What the control has, or nullptr when a script has never mentioned it. */
+/**
+ * @brief What the control has, or nullptr when a script has never mentioned it.
+ *
+ * Good until the next controlCallbacks() call that makes an entry.
+ */
 ControlCallbacks *findControlCallbacks(uint16_t controlId);
 
 /** The same, made empty if it was not there. */
@@ -70,6 +85,21 @@ bool hasTouchCallback(uint16_t controlId);
 bool hasPotCallback(uint16_t controlId);
 bool hasPotTouchCallback(uint16_t controlId);
 bool hasSwitchCallback(uint16_t controlId);
+
+/**
+ * @brief Keeps the function on top of the stack, and pops it.
+ *
+ * The same function given to many controls is kept once and counted.
+ *
+ * @return its slot
+ */
+uint16_t retainCallbackFunction(lua_State *L);
+
+/** One use fewer of the slot's function, which goes with its last use. */
+void releaseCallbackFunction(lua_State *L, uint16_t slot);
+
+/** Pushes the slot's function. Pushes nothing and answers false for none. */
+bool pushCallbackFunction(lua_State *L, uint16_t slot);
 
 /**
  * @brief Drops every reference, unref'ing each in the given state.

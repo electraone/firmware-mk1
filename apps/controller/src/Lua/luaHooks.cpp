@@ -170,22 +170,14 @@ namespace
 {
     /* The function, and the control it belongs to, on the stack. Answers
      * false and leaves the stack as it found it when there is no callback. */
-    bool pushCallback(const Control &control, int ref)
+    bool pushCallback(const Control &control, uint16_t slot)
     {
-        if (!L || (ref == LUA_REFNIL)) {
+        if (!L || !pushCallbackFunction(L, slot)) {
             return (false);
         }
 
-        lua_rawgeti(L, LUA_REGISTRYINDEX, ref);
-
-        if (!lua_isfunction(L, -1)) {
-            lua_pop(L, 1);
-            return (false);
-        }
-
-        /* The instance, not a bare object: Control's __index reads the
-         * uservalue table first, and a userdata without one takes the callback
-         * down at its first method call. */
+        /* The cached instance, not a fresh object: the fields the script
+         * set on the control are kept on it, and the callback reads them. */
         luaLE_pushControlInstance(L, control);
         return (true);
     }
@@ -215,13 +207,13 @@ namespace
     }
 
     void runKnobCallback(const Control &control,
-                         int ref,
+                         uint16_t slot,
                          const char *name,
                          LuaPotEvent event,
                          uint8_t potId,
                          int16_t delta)
     {
-        if (!pushCallback(control, ref)) {
+        if (!pushCallback(control, slot)) {
             return;
         }
 
