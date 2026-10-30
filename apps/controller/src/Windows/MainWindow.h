@@ -327,6 +327,8 @@ public:
     // Getters
     uint8_t getCurrentPageId(void) const override;
     uint8_t getCurrentControlSetId(void) const override;
+    uint8_t getModeControlSet(uint8_t pageId) const;
+    uint8_t getEntryControlSet(uint8_t pageId) const;
     uint8_t getCurrentPresetBank(void) const override;
     uint8_t getCurrentSnapshotBank(void) const override;
     const char *getCurrentProjectId(void) const override;

@@ -126,6 +126,16 @@ public:
     bool isToBeDisplayed(void) const;
 
     /**
+     * @brief The control set the Page was last on.
+     *
+     * What the local control set mode brings a page back to.
+     *
+     * @param controlSetId the control set, counted from zero
+     */
+    void setCurrentControlSetId(uint8_t controlSetId);
+    uint8_t getCurrentControlSetId(void) const;
+
+    /**
      * @brief Prints the Page to the console.
      * 
      * @param logLevel the log level to be used
@@ -140,6 +150,7 @@ private:
         uint8_t defaultControlSetId : 2;
         bool objectsPresent : 1;
         bool hidden : 1;
+        uint8_t currentControlSetId : 2;
     };
 
     char name[MaxNameLength + 1];

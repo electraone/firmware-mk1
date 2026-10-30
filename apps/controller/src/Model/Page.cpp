@@ -22,7 +22,11 @@
 #include "Page.h"
 
 Page::Page()
-    : id(0), defaultControlSetId(0), objectsPresent(false), hidden(false)
+    : id(0),
+      defaultControlSetId(0),
+      objectsPresent(false),
+      hidden(false),
+      currentControlSetId(0)
 {
     *name = '\0';
 }
@@ -34,9 +38,20 @@ Page::Page(uint8_t id,
     : id(id),
       defaultControlSetId(newDefaultControlSetId),
       objectsPresent(false),
-      hidden(shouldBeHidden)
+      hidden(shouldBeHidden),
+      currentControlSetId(0)
 {
     setName(newName);
+}
+
+void Page::setCurrentControlSetId(uint8_t controlSetId)
+{
+    currentControlSetId = controlSetId;
+}
+
+uint8_t Page::getCurrentControlSetId(void) const
+{
+    return (currentControlSetId);
 }
 
 bool Page::isValid(void) const
