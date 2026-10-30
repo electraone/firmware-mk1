@@ -208,6 +208,15 @@ bool MainWindow::switchControlSet(uint8_t controlSetId)
     return (false);
 }
 
+/* Through setControlSet() because the highlight is spread over the controls
+ * as well as the page, and that already visits all of them. */
+void MainWindow::refreshControlSetIndicator(void)
+{
+    if (pageView) {
+        pageView->setControlSet(currentControlSetId);
+    }
+}
+
 void MainWindow::openDetail(uint16_t controlId)
 {
     const Control &control = preset.getControl(controlId);

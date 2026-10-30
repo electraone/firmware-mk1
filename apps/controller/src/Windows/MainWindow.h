@@ -341,6 +341,7 @@ public:
     uint8_t getCurrentPageId(void) const override;
     uint8_t getCurrentControlSetId(void) const override;
     uint8_t getControlSetForPage(uint8_t pageId) override;
+    void refreshControlSetIndicator(void) override;
     uint8_t getCurrentPresetBank(void) const override;
     uint8_t getCurrentSnapshotBank(void) const override;
     const char *getCurrentProjectId(void) const override;

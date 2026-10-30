@@ -237,7 +237,9 @@ Callbacks: `patch.onRequest(device)`,
 ### `pages` — `apps/controller/src/Lua/luaPage.cpp`
 
 `get(pageId)`, `getAll()`, `getActive()`, `display(pageId [, controlSetId])`,
-`setActiveControlSet(controlSetId)`, `getActiveControlSet()`.
+`setActiveControlSet(controlSetId)`, `getActiveControlSet()`,
+`setControlSetIndicatorVisible(shouldBeVisible)`,
+`isControlSetIndicatorVisible()`.
 
 Callback: `pages.onChange(newPageId, oldPageId)`.
 

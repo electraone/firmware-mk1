@@ -133,6 +133,29 @@ int pages_getActiveControlSet(lua_State *L)
     return (1);
 }
 
+/**
+ * @brief pages.setControlSetIndicatorVisible(shouldBeVisible)
+ *
+ * Whether the page shows which control set is active: the bars at its sides, or
+ * the highlight behind the active row, whichever the controller is set to. For
+ * a preset that draws its own. Dimming the other sets is left alone, since that
+ * is how they are told apart from the active one rather than a mark beside it.
+ */
+int pages_setControlSetIndicatorVisible(lua_State *L)
+{
+    lua_settop(L, 1);
+    luaPreset->setControlSetIndicatorVisible(lua_toboolean(L, 1));
+    luaDelegate->refreshControlSetIndicator();
+    return (0);
+}
+
+int pages_isControlSetIndicatorVisible(lua_State *L)
+{
+    lua_settop(L, 0);
+    lua_pushboolean(L, luaPreset->isControlSetIndicatorVisible());
+    return (1);
+}
+
 int page_delete(lua_State *L)
 {
     lua_settop(L, 1);

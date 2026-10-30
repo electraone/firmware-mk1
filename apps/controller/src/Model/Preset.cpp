@@ -91,12 +91,23 @@ void Preset::reset(void)
     pages.clear();
 }
 
+void Preset::setControlSetIndicatorVisible(bool shouldBeVisible)
+{
+    controlSetIndicatorVisible = shouldBeVisible;
+}
+
+bool Preset::isControlSetIndicatorVisible(void) const
+{
+    return (controlSetIndicatorVisible);
+}
+
 /** Reset all preset controls
  *
  */
 void Preset::resetRoot(void)
 {
     copyString(name, "NO NAME", MaxNameLength);
+    controlSetIndicatorVisible = true;
     version = 0;
     projectId[0] = '\0';
 }

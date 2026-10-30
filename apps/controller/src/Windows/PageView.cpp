@@ -194,6 +194,10 @@ void PageView::paint(Graphics &g)
 {
     g.fillAll(Colours565::black);
 
+    if (!model->isControlSetIndicatorVisible()) {
+        return;
+    }
+
     if (uiFeatures.activeControlSetType == ActiveControlSetType::bars) {
         g.setColour(0x7BCF);
         g.fillRect(4, 12 + controlSetId * 180, 3, 166);
@@ -268,7 +272,8 @@ void PageView::configureGroup(GroupControl *g,
         }
     } else if (uiFeatures.activeControlSetType
                == ActiveControlSetType::background) {
-        if (topY < g->getY() && (g->getY() < bottomY)) {
+        if (model->isControlSetIndicatorVisible() && (topY < g->getY())
+            && (g->getY() < bottomY)) {
             g->setUseAltBackground(true);
         } else {
             g->setUseAltBackground(false);
@@ -283,7 +288,9 @@ void PageView::configureControl(ControlComponent *cc, const Control &control)
             cc->setDimmed(false);
         } else if (uiFeatures.activeControlSetType
                    == ActiveControlSetType::background) {
-            cc->setUseAltBackground(true);
+            /* The highlight is the indicator in this mode, and a control
+             * paints its own share of it. */
+            cc->setUseAltBackground(model->isControlSetIndicatorVisible());
         }
     } else {
         if (uiFeatures.activeControlSetType == ActiveControlSetType::dim) {

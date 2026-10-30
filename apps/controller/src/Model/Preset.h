@@ -30,6 +30,16 @@ public:
     uint8_t getVersion(void) const;
     const char *getProjectId(void) const;
 
+    /**
+     * @brief Whether the page shows which control set is active.
+     *
+     * The script's choice, for the preset as a whole. Not written to the
+     * preset file: it lasts until it is changed or the preset is loaded
+     * again, so one preset's choice does not outlive it.
+     */
+    void setControlSetIndicatorVisible(bool shouldBeVisible);
+    bool isControlSetIndicatorVisible(void) const;
+
     Page &getPage(uint8_t pageId);
     const Page &getPage(uint8_t pageId) const;
     const Device &getDevice(uint8_t deviceId) const;
@@ -239,6 +249,7 @@ private:
 
     uint8_t version;
     char name[MaxNameLength + 1];
+    bool controlSetIndicatorVisible = true;
     char projectId[MaxProjectIdLength + 1];
     bool valid;
 

@@ -36,6 +36,8 @@ int pages_display(lua_State *L);
 void pages_onChange(uint8_t newPageId, uint8_t oldPageId);
 int pages_setActiveControlSet(lua_State *L);
 int pages_getActiveControlSet(lua_State *L);
+int pages_setControlSetIndicatorVisible(lua_State *L);
+int pages_isControlSetIndicatorVisible(lua_State *L);
 int page_delete(lua_State *L);
 int page_getId(lua_State *L);
 int page_setName(lua_State *L);
@@ -57,6 +59,8 @@ static const luaL_Reg pages_functions[] = {
     { "display", pages_display },
     { "setActiveControlSet", pages_setActiveControlSet },
     { "getActiveControlSet", pages_getActiveControlSet },
+    { "setControlSetIndicatorVisible", pages_setControlSetIndicatorVisible },
+    { "isControlSetIndicatorVisible", pages_isControlSetIndicatorVisible },
     { NULL, NULL }
 };
 
