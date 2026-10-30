@@ -29,29 +29,19 @@
 
 #include "Graphics.h"
 
-/**
- * @brief The E1 logo, as the mk2 draws it: six rectangles, 52 by 72.
- *
- * Drawn with nothing but rectangles, so it needs no fonts - it can be on
- * the screen the moment the display is up, before the card has mounted or
- * a glyph has been built, which on this model is the long part of a boot.
- */
-void paintLogo(Graphics &g, uint16_t x, uint16_t y);
+/** @brief Black, so that the fade starts from nothing. */
+void clearSplash(Graphics &g);
 
 /**
- * @brief The first thing on the screen: a black ground and the logo.
+ * @brief Takes the logo one step further, if a step is due.
  *
- * Called as soon as the display is initialised. Everything that follows in
- * the boot draws under it rather than over it.
+ * It fades in on the clock, painted rather than copied. Made to be called for
+ * every line of the fonts as they are built, so that it runs alongside them.
  */
-void displaySplashLogo(Graphics &g);
+void fadeInSplash(void);
 
-/**
- * @brief The name and version under the logo, once the fonts exist.
- *
- * @param appName what the program calls itself, printed in capitals
- */
-void displaySplash(Graphics &g,
-                   const char *appName,
-                   const char *appVersion,
-                   uint8_t hwRevision);
+/** @brief Waits for whatever of the fade the fonts did not cover. */
+void completeSplash(void);
+
+/** @brief The name and the version under the logo, once the fonts exist. */
+void printSplashText(Graphics &g);

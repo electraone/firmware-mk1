@@ -54,10 +54,7 @@ void initialise(void)
     // Initialise hardware components
     Hardware::initialise();
 
-    /* The logo, the moment there is a screen to put it on. The card mount
-     * and the fonts that follow are the slow part of a boot, and a panel
-     * that stays dark through them looks like one that is not coming. */
-    displaySplashLogo(Hardware::screen);
+    clearSplash(Hardware::screen);
 
     Hardware::mountStorage();
 
@@ -86,12 +83,13 @@ void initialise(void)
      * composited into the display's memory now. */
     uint32_t fontsStartedAt = millis();
 
+    /* The logo fades in alongside them. */
+    TextAtlas::setLineUploadedCallback(fadeInSplash);
     Hardware::screen.system().uploadFonts();
+    printSplashText(Hardware::screen);
     Hardware::screen.user().uploadFonts();
-    displaySplash(Hardware::screen,
-                  App::get()->getApplicationName(),
-                  App::get()->getApplicationVersion(),
-                  System::runtimeInfo.getElectraInfoHwRevision());
+    TextAtlas::setLineUploadedCallback(nullptr);
+    completeSplash();
 
     /* Worth a number rather than a note: it is the longest thing the unit
      * does before it can show anything, and it is the SPI link rather than

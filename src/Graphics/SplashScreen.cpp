@@ -30,76 +30,126 @@
 #include "VideoRam.h"
 #include "FrameBuffer.h"
 #include "Colours.h"
-#include <cctype>
-#include <cstdio>
-#include <cstring>
+#include "Hardware.h"
+#include "settings.h"
 
-/* Where the logo sits: centred on the 1024 by 600 panel, with the name and
- * version below it and the address at the foot, as on the mk2. */
-static constexpr uint16_t logoX = 486;
-static constexpr uint16_t logoY = 228;
-
-/* The mk2's own rectangles, verbatim. */
-void paintLogo(Graphics &g, uint16_t x, uint16_t y)
+namespace
 {
-    g.setColour(Colours565::white);
-    g.fillRect(x, y, 8, 72);
-    g.fillRect(x + 8, y, 44, 8);
-    g.fillRect(x + 8, y + 64, 44, 8);
-    g.fillRect(x + 21, y + 20, 20, 8);
-    g.fillRect(x + 33, y + 28, 8, 16);
-    g.fillRect(x + 21, y + 44, 31, 8);
-}
+    /* The E1 mark as an outline: the one-pixel edge of the 52 by 72 shape,
+     * drawn inside it so that the outline is the size the mark is. */
+    constexpr uint8_t logoWidth = 52;
+    constexpr uint8_t logoHeight = 72;
+    constexpr uint16_t logoX = (SCREEN_WIDTH - logoWidth) / 2;
+    constexpr uint16_t logoY = (SCREEN_HEIGHT - logoHeight) / 2 - 25;
 
-void displaySplashLogo(Graphics &g)
-{
-    g.fillAll(Colours565::black);
-    paintLogo(g, logoX, logoY);
-}
+    const uint8_t logoOutline[][4] = {
+        { 0, 0, 1, 72 },   { 1, 0, 51, 1 },   { 51, 1, 1, 7 },
+        { 7, 7, 1, 58 },   { 8, 7, 43, 1 },   { 21, 20, 20, 1 },
+        { 21, 21, 1, 7 },  { 40, 21, 1, 24 }, { 22, 27, 12, 1 },
+        { 33, 28, 1, 17 }, { 21, 44, 12, 1 }, { 41, 44, 11, 1 },
+        { 21, 45, 1, 7 },  { 51, 45, 1, 7 },  { 22, 51, 29, 1 },
+        { 8, 64, 44, 1 },  { 51, 65, 1, 7 },  { 1, 71, 50, 1 },
+    };
 
-/*
- * Straight onto the visible page rather than through a prepared layer: the
- * logo is already there, and showing a layer built from nothing would take
- * it down for the text. Nothing else is drawing yet.
- */
-void displaySplash(Graphics &g,
-                   const char *appName,
-                   const char *appVersion,
-                   uint8_t hwRevision)
-{
-    char name[32];
-    char versionText[64];
+    /* From black to white in a second, started as the fonts start to build,
+     * so that it runs alongside them rather than after them. */
+    constexpr uint8_t fadeSteps = 40;
+    constexpr uint8_t fadeStepMs = 25;
 
-    strncpy(name, appName, sizeof(name) - 1);
-    name[sizeof(name) - 1] = '\0';
+    /* Under the logo, centred on it, a line apart. */
+    constexpr uint16_t textWidth = 200;
+    constexpr uint16_t textGap = 11;
+    constexpr uint16_t addressY = logoY + logoHeight + 16;
+    constexpr uint8_t versionDimPasses = 1;
 
-    for (char *c = name; *c != '\0'; c++) {
-        *c = (char)toupper((unsigned char)*c);
+    uint32_t fadeStart = 0;
+    uint8_t fadeStep = 0;
+    bool fadeStarted = false;
+
+    /* A grey in RGB565. Squared so that the steps are even to the eye: in a
+     * linear ramp almost all of what can be seen change is at the bottom. */
+    uint16_t fadeColour(uint8_t step)
+    {
+        const uint32_t level = (255u * step * step) / (fadeSteps * fadeSteps);
+
+        return ((uint16_t)(((level >> 3) << 11) | ((level >> 2) << 5)
+                           | (level >> 3)));
     }
 
-    snprintf(versionText,
-             sizeof(versionText),
-             "VERSION %s   HW %d.%02d",
-             appVersion,
-             hwRevision / 100,
-             hwRevision - ((hwRevision / 100) * 100));
+    void paintLogo(Graphics &g, uint16_t colour)
+    {
+        g.setColour(colour);
+
+        for (const auto &rect : logoOutline) {
+            g.fillRect(logoX + rect[0], logoY + rect[1], rect[2], rect[3]);
+        }
+    }
+} // namespace
+
+void clearSplash(Graphics &g)
+{
+    g.fillAll(Colours565::black);
+}
+
+void fadeInSplash(void)
+{
+    if (!fadeStarted) {
+        fadeStarted = true;
+        fadeStart = millis();
+    }
+
+    const uint32_t due = (millis() - fadeStart) / fadeStepMs;
+
+    if ((fadeStep < fadeSteps) && (due > fadeStep)) {
+        Graphics &g = Hardware::screen;
+
+        fadeStep = (due < fadeSteps) ? (uint8_t)due : fadeSteps;
+
+        /* The layer on the screen, not the one being prepared. */
+        g.switchWriteLayer();
+        paintLogo(g, fadeColour(fadeStep));
+        g.switchWriteLayer();
+    }
+}
+
+void completeSplash(void)
+{
+    while (fadeStep < fadeSteps) {
+        fadeInSplash();
+        delay(1);
+    }
+}
+
+void printSplashText(Graphics &g)
+{
+    const uint16_t lineHeight = g.system().getLineHeight(TextStyle::smallTransparent);
+    const uint16_t versionY = addressY + lineHeight + textGap;
+
+    /* The layer on the screen, not the one being prepared. */
+    g.switchWriteLayer();
 
     g.system().printText(0,
-                         logoY + 100,
-                         name,
-                         TextStyle::mediumTransparent,
-                         1024,
+                         addressY,
+                         "electra one mk1",
+                         TextStyle::smallTransparent,
+                         SCREEN_WIDTH,
                          TextAlign::center);
     g.system().printText(0,
-                         logoY + 134,
-                         versionText,
+                         versionY,
+                         FIRMWARE_VERSION,
                          TextStyle::smallTransparent,
-                         1024,
+                         SCREEN_WIDTH,
                          TextAlign::center);
-    g.system().printText(0,
-                         500,
-                         "WWW.ELECTRA.ONE",
-                         TextStyle::smallTransparent,
-                         1024,
-                         TextAlign::center);
+
+    /* Dimmed as the interface dims: a blend towards black, which leaves black
+     * as it is and darkens the text. One pass takes off about a quarter. */
+    for (uint8_t i = 0; i < versionDimPasses; i++) {
+        g.dim((SCREEN_WIDTH - textWidth) / 2,
+              versionY,
+              textWidth,
+              lineHeight,
+              Colours565::black);
+    }
+
+    g.switchWriteLayer();
 }

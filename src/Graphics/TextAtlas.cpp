@@ -99,6 +99,13 @@ uint16_t TextAtlas::glyphIndex(char character)
     return ((uint16_t)(code - fontFirstGlyph));
 }
 
+void (*TextAtlas::lineUploaded)(void) = nullptr;
+
+void TextAtlas::setLineUploadedCallback(void (*callback)(void))
+{
+    lineUploaded = callback;
+}
+
 void TextAtlas::uploadFaces(const FontFace *faces, uint8_t count)
 {
     for (uint8_t f = 0; f < count; f++) {
@@ -159,6 +166,10 @@ void TextAtlas::uploadFaces(const FontFace *faces, uint8_t count)
             writeRamData(FRAME_GLYPHS + ((uint32_t)line * fontAtlasWidth * 2),
                          (const uint8_t *)atlasRow,
                          sizeof(atlasRow));
+
+            if (lineUploaded) {
+                lineUploaded();
+            }
         }
     }
 }
@@ -196,6 +207,10 @@ void TextAtlas::uploadMasks(const FontFace *faces, uint8_t count)
         writeRamData(maskAddress + ((uint32_t)line * fontMaskWidth),
                      maskRow,
                      sizeof(maskRow));
+
+        if (lineUploaded) {
+            lineUploaded();
+        }
     }
 }
 

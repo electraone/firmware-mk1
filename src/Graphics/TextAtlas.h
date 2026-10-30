@@ -83,12 +83,23 @@ public:
     static constexpr uint32_t maskAddress =
         (uint32_t)FRAME_GLYPHS + (uint32_t)fontAtlasRows * fontAtlasWidth * 2;
 
+    /**
+     * @brief Asks to be called after every line of the fonts is written.
+     *
+     * Building them is most of a second of a boot, which is time something
+     * else can use. Nothing about the display is changed by the upload that
+     * a caller drawing on the screen would have to put back.
+     */
+    static void setLineUploadedCallback(void (*callback)(void));
+
 protected:
     /** Composites every band of every one of the faces into the atlas. */
     void uploadFaces(const FontFace *faces, uint8_t count);
 
     /** Copies the faces' one bit masks into the mask atlas. */
     void uploadMasks(const FontFace *faces, uint8_t count);
+
+    static void (*lineUploaded)(void);
 
     /**
      * @brief Puts a string on the screen, one blit a character.
