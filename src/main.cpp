@@ -65,13 +65,10 @@ void initialise(void)
     if (Hardware::sdcard.exists(UI_FILE) == false) {
         System::logger.write(
             LOG_ERROR, "UI asset file not found: file=%s", UI_FILE);
+        finishLogo();
     } else {
-        Hardware::screen.loadEssentialFont();
-        displaySplash(Hardware::screen,
-                      App::get()->getApplicationName(),
-                      App::get()->getApplicationVersion(),
-                      System::runtimeInfo.getElectraInfoHwRevision());
-        Hardware::screen.initUIToolkit();
+        Hardware::screen.initUIToolkit(fadeInSplash);
+        completeSplash();
     }
     System::logger.write(LOG_INFO, "UI assets: Loaded and initialised");
 

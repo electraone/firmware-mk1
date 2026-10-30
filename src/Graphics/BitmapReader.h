@@ -66,8 +66,12 @@ public:
 
     void loadBMP(const char *filename,
                  uint16_t lines = 600,
-                 bool progressBar = true);
+                 void (*onLineLoaded)(void) = nullptr);
 
-    void initUIToolkit(void);
-    void loadEssentialFont(void);
+    /**
+     * @brief Loads the UI assets from the card.
+     *
+     * @param onLineLoaded called after every line of the image
+     */
+    void initUIToolkit(void (*onLineLoaded)(void) = nullptr);
 };

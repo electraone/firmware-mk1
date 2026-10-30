@@ -29,7 +29,17 @@
 
 #include "Graphics.h"
 
-void displaySplash(Graphics &g,
-                   const char *appName,
-                   const char *appVersion,
-                   uint8_t hwRevision);
+/**
+ * @brief Takes the boot screen one step further, if a step is due.
+ *
+ * The logo fades in on the clock, painted rather than copied, and the address
+ * and version go up as soon as the small font has arrived. Made to be called
+ * for every line of the UI assets, so that the fade runs alongside them.
+ */
+void fadeInSplash(void);
+
+/** @brief Waits for whatever of the fade the UI assets did not cover. */
+void completeSplash(void);
+
+/** @brief Puts the logo up at once, when there are no UI assets to wait on. */
+void finishLogo(void);

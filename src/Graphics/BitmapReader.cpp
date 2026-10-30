@@ -42,7 +42,7 @@ BitmapReader::~BitmapReader()
 
 void BitmapReader::loadBMP(const char *filename,
                            uint16_t lines,
-                           bool progressBar)
+                           void (*onLineLoaded)(void))
 {
     bmpHeader header;
     bmpInfoHeader infoheader;
@@ -81,13 +81,6 @@ void BitmapReader::loadBMP(const char *filename,
     setCanvasAddress(FRAME_UI_TOOLKIT);
     clearScreen(Colours565::black);
 
-    // raw background for the progress bar
-    if (progressBar == true) {
-        setCanvasAddress(FRAME_BUFFER_2);
-        setForegroundColor(0x4208);
-        fillRect(407, 330, 200, 6);
-    }
-
     setAddress(0, 0);
 
     uint8_t buffer[2048] = { 0 };
@@ -98,23 +91,6 @@ void BitmapReader::loadBMP(const char *filename,
             return;
         }
 
-        /*
-		 * draw progress bar
-		 */
-        if (progressBar == true) {
-            if ((y % 3) == 0) {
-                setCanvasAddress(FRAME_BUFFER_2);
-                setForegroundColor(Colours565::white);
-                fillRect(407 + (y / 3), 330, 1, 6);
-
-                setForegroundColor(Colours565::black);
-                fillRect(407, 330, 1, 1);
-                fillRect(407, 335, 1, 1);
-                fillRect(606, 330, 1, 1);
-                fillRect(606, 335, 1, 1);
-            }
-        }
-
         setCanvasAddress(FRAME_UI_TOOLKIT);
 
         waitWriteFifo();
@@ -122,6 +98,12 @@ void BitmapReader::loadBMP(const char *filename,
         setAddress(0, y);
         armMemoryWrite();
         writeData(buffer, sizeof(buffer));
+
+        /* This takes most of a second, which is time something can use. The
+         * next line sets the canvas again, so a callback may draw. */
+        if (onLineLoaded) {
+            onLineLoaded();
+        }
     }
 
     // Enable interrupts again
@@ -146,12 +128,7 @@ bool readUInt(FileIoStream &file, unsigned int *n, int swap)
     return (true);
 }
 
-void BitmapReader::initUIToolkit(void)
+void BitmapReader::initUIToolkit(void (*onLineLoaded)(void))
 {
-    loadBMP(UI_FILE, 600);
-}
-
-void BitmapReader::loadEssentialFont(void)
-{
-    loadBMP(UI_FILE, 73, false);
+    loadBMP(UI_FILE, 600, onLineLoaded);
 }
