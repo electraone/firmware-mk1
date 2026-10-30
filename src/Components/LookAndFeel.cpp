@@ -1439,7 +1439,7 @@ void LookAndFeel::paintBar(Graphics &g,
     uint16_t paddingFader = (bounds.getWidth() - fullFaderLength) / 2;
     const uint16_t top = bounds.getY();
     const uint16_t bottom = top + ((height > 0) ? height - 1 : 0);
-    const FaderRun run{ g, top, height, paddingFader, fullFaderLength };
+    const FaderRun run{ g, true, top, height, paddingFader, fullFaderLength };
 
     // The track, rounded at both ends as a fader's is
     run.paint(paddingFader,

@@ -123,5 +123,9 @@ private:
         bool thresholdCrossed : 1;
     };
 
-    static constexpr uint16_t textPositionFromRight = 0;
+    /** How far a full-size fader's number ends short of the right edge.
+     *  v3.5.4 measured every string as sixteen pixels past the start of its
+     *  last character, so a number - whose digits advance seven - stopped
+     *  nine short of the edge; measuring exactly put it against the edge. */
+    static constexpr uint16_t textPositionFromRight = 9;
 };
