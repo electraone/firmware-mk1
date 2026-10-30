@@ -22,7 +22,12 @@
 #include "Page.h"
 
 Page::Page()
-    : id(0), defaultControlSetId(0), objectsPresent(false), hidden(false)
+    : id(0),
+      defaultControlSetId(0),
+      objectsPresent(false),
+      hidden(false),
+      lockedControlSetId(0),
+      controlSetLocked(false)
 {
     *name = '\0';
 }
@@ -34,9 +39,32 @@ Page::Page(uint8_t id,
     : id(id),
       defaultControlSetId(newDefaultControlSetId),
       objectsPresent(false),
-      hidden(shouldBeHidden)
+      hidden(shouldBeHidden),
+      lockedControlSetId(0),
+      controlSetLocked(false)
 {
     setName(newName);
+}
+
+void Page::lockControlSet(uint8_t controlSetId)
+{
+    lockedControlSetId = controlSetId;
+    controlSetLocked = true;
+}
+
+void Page::unlockControlSet(void)
+{
+    controlSetLocked = false;
+}
+
+bool Page::isControlSetLocked(void) const
+{
+    return (controlSetLocked);
+}
+
+uint8_t Page::getLockedControlSetId(void) const
+{
+    return (lockedControlSetId);
 }
 
 bool Page::isValid(void) const

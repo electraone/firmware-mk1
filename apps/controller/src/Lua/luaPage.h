@@ -42,6 +42,8 @@ int page_setName(lua_State *L);
 int page_getName(lua_State *L);
 int page_setHidden(lua_State *L);
 int page_isHidden(lua_State *L);
+int page_lockActiveControlSet(lua_State *L);
+int page_isActiveControlSetLocked(lua_State *L);
 int page_print(lua_State *L);
 
 void page_register(lua_State *L);
@@ -63,5 +65,9 @@ static const luaL_Reg page_functions[] = { { "getId", page_getId },
                                            { "setName", page_setName },
                                            { "setHidden", page_setHidden },
                                            { "isHidden", page_isHidden },
+                                           { "lockActiveControlSet",
+                                             page_lockActiveControlSet },
+                                           { "isActiveControlSetLocked",
+                                             page_isActiveControlSetLocked },
                                            { "print", page_print },
                                            { NULL, NULL } };

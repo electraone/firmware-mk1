@@ -22,6 +22,7 @@
 #include "luaPage.h"
 #include "Preset.h"
 #include "MainDelegate.h"
+#include "luaPreset.h"
 
 extern Preset *luaPreset;
 extern MainDelegate *luaDelegate;
@@ -107,7 +108,8 @@ int pages_display(lua_State *L)
     }
 
     if (numParameters > 1) {
-        controlSetId = luaLE_checkControlSetId(L, 2);
+        /* From one in a script, from zero below it. */
+        controlSetId = luaLE_checkControlSetId(L, 2) - 1;
     }
 
     luaDelegate->switchPage(pageId, controlSetId);
@@ -204,6 +206,50 @@ int page_isHidden(lua_State *L)
 
     if (Page *page = getPage(L, 1)) {
         lua_pushboolean(L, page->isHidden());
+        return (1);
+    }
+    return (luaL_error(L, "failed: not a valid page"));
+}
+
+/**
+ * @brief page:lockActiveControlSet(shouldBeLocked)
+ *
+ * Holds the page on the control set it is showing: the control set buttons do
+ * not move it, pages.setActiveControlSet() does not, and paging away and back
+ * lands on it. Anything false or nil unlocks.
+ *
+ * A preset that has not been entered yet is showing nothing - onLoad runs
+ * before the first page is drawn, and the current control set is still the
+ * last preset's - so there the set held is the one the page opens on.
+ */
+int page_lockActiveControlSet(lua_State *L)
+{
+    lua_settop(L, 2);
+
+    Page *page = getPage(L, 1);
+
+    if (!page) {
+        return (luaL_error(L, "failed: not a valid page"));
+    }
+
+    if (!lua_toboolean(L, 2)) {
+        page->unlockControlSet();
+    } else if (!page->isControlSetLocked()) {
+        page->lockControlSet(preset_isEntered()
+                                 ? luaDelegate->getControlSetForPage(page->getId())
+                                 : page->getDefaultControlSetId());
+    }
+
+    return (0);
+}
+
+/** @brief page:isActiveControlSetLocked() */
+int page_isActiveControlSetLocked(lua_State *L)
+{
+    lua_settop(L, 1);
+
+    if (Page *page = getPage(L, 1)) {
+        lua_pushboolean(L, page->isControlSetLocked());
         return (1);
     }
     return (luaL_error(L, "failed: not a valid page"));

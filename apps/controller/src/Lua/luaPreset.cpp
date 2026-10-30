@@ -91,6 +91,11 @@ void preset_onReady(void)
  *     switch  onLeave, onExit
  *     script  onExit, then the new script's load (as the mk2: no onLeave)
  */
+bool preset_isEntered(void)
+{
+    return (entered);
+}
+
 void preset_onEnter(void)
 {
     runLifecycleFunction("onEnter");

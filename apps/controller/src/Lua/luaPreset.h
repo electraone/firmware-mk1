@@ -34,6 +34,9 @@ int luaopen_preset(lua_State *L);
 void preset_onLoad(void);
 void preset_onReady(void);
 void preset_onEnter(void);
+
+/** Whether the preset is on the screen, onEnter having been reached. */
+bool preset_isEntered(void);
 void preset_onLeave(void);
 void preset_onExit(void);
 

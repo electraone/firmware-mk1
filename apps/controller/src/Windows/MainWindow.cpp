@@ -124,8 +124,32 @@ bool MainWindow::switchPage(uint8_t pageId)
     return (false);
 }
 
+/* The set the page is showing or, for a page that is not on the screen, the
+ * one it would open on. */
+uint8_t MainWindow::getControlSetForPage(uint8_t pageId)
+{
+    const Page &page = preset.getPage(pageId);
+
+    if (page.isControlSetLocked()) {
+        return (page.getLockedControlSetId());
+    }
+
+    if ((pageId != currentPageId) && setup.uiFeatures.resetActiveControlSet) {
+        return (page.getDefaultControlSetId());
+    }
+
+    return (currentControlSetId);
+}
+
 bool MainWindow::switchPage(uint8_t pageId, uint8_t controlSetId)
 {
+    /* Whoever asked: a page holding a control set is entered on that set. */
+    const Page &page = preset.getPage(pageId);
+
+    if (page.isControlSetLocked()) {
+        controlSetId = page.getLockedControlSetId();
+    }
+
     uint8_t prevCurrentPageId = currentPageId;
     currentPageId = pageId;
     currentControlSetId = controlSetId;
@@ -172,6 +196,10 @@ bool MainWindow::switchPagePrev(void)
 
 bool MainWindow::switchControlSet(uint8_t controlSetId)
 {
+    if (preset.getPage(currentPageId).isControlSetLocked()) {
+        return (false);
+    }
+
     if (0 <= controlSetId && controlSetId <= 2) {
         pageView->setControlSet(controlSetId);
         currentControlSetId = controlSetId;

@@ -197,6 +197,7 @@ public:
     // Getters
     virtual uint8_t getCurrentPageId(void) const = 0;
     virtual uint8_t getCurrentControlSetId(void) const = 0;
+    virtual uint8_t getControlSetForPage(uint8_t pageId) = 0;
     virtual uint8_t getCurrentPresetBank(void) const = 0;
     virtual uint8_t getCurrentSnapshotBank(void) const = 0;
     virtual const char *getCurrentProjectId(void) const = 0;

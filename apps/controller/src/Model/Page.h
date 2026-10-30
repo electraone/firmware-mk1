@@ -126,6 +126,29 @@ public:
     bool isToBeDisplayed(void) const;
 
     /**
+     * @brief Holds the Page on a control set.
+     *
+     * Kept here rather than as a flag on the current set, as the mk2 does it,
+     * because this model has one current control set rather than one per
+     * page: a locked page has to know which set to come back to. Not written
+     * to the preset file; it lasts until it is unlocked or the preset is
+     * loaded again.
+     *
+     * @param controlSetId the control set to hold, counted from zero
+     */
+    void lockControlSet(uint8_t controlSetId);
+
+    /** @brief Lets the Page leave the control set it was held on. */
+    void unlockControlSet(void);
+
+    /** @return true if the Page is holding a control set */
+    bool isControlSetLocked(void) const;
+
+    /** @return the control set the Page is holding, counted from zero. Means
+     *  nothing unless isControlSetLocked(). */
+    uint8_t getLockedControlSetId(void) const;
+
+    /**
      * @brief Prints the Page to the console.
      * 
      * @param logLevel the log level to be used
@@ -140,6 +163,8 @@ private:
         uint8_t defaultControlSetId : 2;
         bool objectsPresent : 1;
         bool hidden : 1;
+        uint8_t lockedControlSetId : 2;
+        bool controlSetLocked : 1;
     };
 
     char name[MaxNameLength + 1];

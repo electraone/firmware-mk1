@@ -241,6 +241,13 @@ Callbacks: `patch.onRequest(device)`,
 
 Callback: `pages.onChange(newPageId, oldPageId)`.
 
+A page object adds `lockActiveControlSet(shouldBeLocked)`, which holds the page
+on the control set it is showing, and `isActiveControlSetLocked()`. While
+locked, the control set buttons and `pages.setActiveControlSet()` do not move
+the page, and paging back to it lands on the held set. A lock taken before the
+preset is on the screen, as in `preset.onLoad()`, holds the set the page opens
+on. It lasts until unlocked or the preset is loaded again.
+
 ### `controls` — `apps/controller/src/Lua/luaControl.cpp`
 
 `get(controlId)`, `print()`.

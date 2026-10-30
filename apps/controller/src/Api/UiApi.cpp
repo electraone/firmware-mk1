@@ -47,10 +47,13 @@ void UiApi::switchPage(uint8_t pageId)
 
 void UiApi::switchControlSet(uint8_t controlSetId)
 {
-    delegate.switchControlSet(controlSetId);
-    MidiOutput::sendControlSetSwitched(MidiInterface::Type::MidiUsbDev,
-                                       delegate.getControlPort(),
-                                       controlSetId);
+    /* A page holding its control set stays where it is, and the host is not
+     * told of a switch that did not happen. */
+    if (delegate.switchControlSet(controlSetId)) {
+        MidiOutput::sendControlSetSwitched(MidiInterface::Type::MidiUsbDev,
+                                           delegate.getControlPort(),
+                                           controlSetId);
+    }
 }
 
 void UiApi::switchSnapshotBank(uint8_t bankNumber)
