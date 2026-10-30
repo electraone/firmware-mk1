@@ -1,0 +1,62 @@
+/*
+* Electra One MIDI Controller Firmware
+* See COPYRIGHT file at the top of the source tree.
+*
+* This product includes software developed by the
+* Electra One Project (http://electra.one/).
+*
+* This program is free software: you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License
+* along with this program.
+*/
+
+/**
+ * @file Lock.h
+ *
+ * @brief Implements an on-screen Window Lock component.
+ */
+
+#pragma once
+
+#include "Component.h"
+#include <functional>
+
+class Lock : public Component
+{
+private:
+    static constexpr uint16_t pinDiameter = 80;
+
+public:
+    Lock();
+    Lock(bool shouldBeLocked);
+    Lock(Rectangle newBounds);
+    virtual ~Lock() = default;
+
+    void setLocked(bool shouldBeLocked);
+    void onTouchDown(const TouchEvent &touchEvent) override;
+    void onTouchUp(const TouchEvent &touchEvent) override;
+    void paint(Graphics &g) override;
+
+    std::function<void(void)> onClick;
+
+private:
+    static void paintCross(Graphics &g, const Rectangle &bounds);
+    static void paintLock(Graphics &g, const Rectangle &bounds);
+    static void paintLockOutline(Graphics &g,
+                                 const Rectangle &bounds,
+                                 bool isHighlighted);
+
+    void setHighlighted(bool shouldBeHighligthed);
+
+    bool locked;
+    bool highlighted;
+};
