@@ -47,6 +47,9 @@ int value_getMessage(lua_State *L);
 int value_getControl(lua_State *L);
 int value_overrideValue(lua_State *L);
 int value_cancelOverride(lua_State *L);
+int value_isSet(lua_State *L);
+int value_getValue(lua_State *L);
+int value_setValue(lua_State *L);
 int value_toMidi(lua_State *L);
 int value_fromMidi(lua_State *L);
 int value_print(lua_State *L);
@@ -68,6 +71,9 @@ static const luaL_Reg value_functions[] = {
     { "setOverlayId", value_setOverlayId },
     { "getMessage", value_getMessage },
     { "getControl", value_getControl },
+    { "isSet", value_isSet },
+    { "getValue", value_getValue },
+    { "setValue", value_setValue },
     { "overrideValue", value_overrideValue },
     { "cancelOverride", value_cancelOverride },
     { "toMidi", value_toMidi },

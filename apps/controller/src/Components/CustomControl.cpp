@@ -100,11 +100,22 @@ bool CustomControl::handlePotTouch(const PotEvent &potEvent, LuaPotEvent event)
     return (false);
 }
 
+/*
+ * What the control shows is whatever its paint callback makes of its values,
+ * so a value that changes - MIDI arriving, another control on the same
+ * parameter, a script - is a repaint. The mk2 does nothing here and a Custom
+ * control there keeps the old value on screen until the script repaints it
+ * itself. A script that also calls repaint() costs nothing extra: the repaint
+ * manager keeps one request per component.
+ */
 void CustomControl::onMidiValueChange(
     [[maybe_unused]] const ControlValue &value,
     [[maybe_unused]] int16_t midiValue,
     [[maybe_unused]] uint8_t handle)
 {
+    if (hasPaintCallback(control.getId())) {
+        repaint();
+    }
 }
 
 /*

@@ -300,14 +300,20 @@ void runSwitchCallback(const Control &control, uint8_t potId, bool pressed)
 {
     const ControlCallbacks *entry = findControlCallbacks(control.getId());
 
-    if (!entry || !pushCallback(control, entry->switchPress)) {
+    if (!entry) {
         return;
     }
 
-    lua_pushinteger(L, potId);
-    lua_pushboolean(L, pressed);
-
-    call("runSwitchCallback", 3);
+    /* As the mk2 hands it over: the knob event table, a press reading as the
+     * knob touched and a release as it let go. This model's knobs have no
+     * switch, so nothing calls this yet; it is here so that a script written
+     * for one that has finds the same arguments. */
+    runKnobCallback(control,
+                    entry->switchPress,
+                    "runSwitchCallback",
+                    pressed ? LuaPotEvent::touchDown : LuaPotEvent::touchUp,
+                    potId,
+                    0);
 }
 
 /*

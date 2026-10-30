@@ -41,7 +41,8 @@ void runPotTouchCallback(const Control &control,
                          const PotEvent &potEvent,
                          LuaPotEvent event);
 
-/** Hands the switch in a knob to the script. */
+/** Hands the switch in a knob to the script, as a knob event: a press is
+ *  type 1, a release type 3. */
 void runSwitchCallback(const Control &control, uint8_t potId, bool pressed);
 
 void runFormatter(const char *formatter,

@@ -24,6 +24,7 @@
 #include "Presets.h"
 #include "MainDelegate.h"
 #include "luaExtension.h"
+#include "ParameterMap.h"
 
 static ControlValue *getControlValue(lua_State *L, uint8_t stackPosition)
 {
@@ -320,6 +321,89 @@ int value_cancelOverride(lua_State *L)
 }
 
 /** @brief The display value as the MIDI value it is sent as. */
+namespace
+{
+    /* The MIDI value the parameter map holds for the value's message, or
+     * MIDI_VALUE_DO_NOT_SEND when nothing has set it yet. */
+    uint16_t currentMidiValue(const ControlValue &value)
+    {
+        const Message &message = value.message;
+
+        return (parameterMap.getValue(message.getDeviceId(),
+                                      message.getType(),
+                                      message.getParameterNumber()));
+    }
+} // namespace
+
+/**
+ * @brief value:isSet() - whether the value has been given one yet.
+ *
+ * A value is unset until MIDI, a knob, a preset's default or a script gives it
+ * one. The mk2's call, and what a script reading the value checks first.
+ */
+int value_isSet(lua_State *L)
+{
+    lua_settop(L, 1);
+
+    if (ControlValue *value = getControlValue(L, 1)) {
+        lua_pushboolean(L, currentMidiValue(*value) != MIDI_VALUE_DO_NOT_SEND);
+        return (1);
+    }
+    return (luaL_error(L, "failed: not a valid value"));
+}
+
+/**
+ * @brief value:getValue() - the value as the control displays it.
+ *
+ * The default while the value is unset, which is what the control shows then.
+ */
+int value_getValue(lua_State *L)
+{
+    lua_settop(L, 1);
+
+    if (ControlValue *value = getControlValue(L, 1)) {
+        const uint16_t midiValue = currentMidiValue(*value);
+
+        lua_pushinteger(L,
+                        (midiValue == MIDI_VALUE_DO_NOT_SEND)
+                            ? value->getDefault()
+                            : value->translateMidiValue(midiValue));
+        return (1);
+    }
+    return (luaL_error(L, "failed: not a valid value"));
+}
+
+/**
+ * @brief value:setValue(displayValue) - sets it as a knob would.
+ *
+ * Held to the display range, sent as MIDI and drawn, the way message:setValue
+ * does it for a MIDI value; this takes the number the control shows.
+ */
+int value_setValue(lua_State *L)
+{
+    lua_settop(L, 2);
+
+    ControlValue *value = getControlValue(L, 1);
+    const lua_Integer displayValue = luaL_checkinteger(L, 2);
+
+    if (value == nullptr) {
+        return (luaL_error(L, "failed: not a valid value"));
+    }
+
+    /* Held before it is narrowed, for the reason value_toMidi() gives. */
+    const lua_Integer held = (displayValue < value->getMin())   ? value->getMin()
+                             : (displayValue > value->getMax()) ? value->getMax()
+                                                                : displayValue;
+    const Message &message = value->message;
+
+    parameterMap.setValue(message.getDeviceId(),
+                          message.getType(),
+                          message.getParameterNumber(),
+                          value->translateValue((int16_t)held),
+                          Origin::lua);
+    return (0);
+}
+
 int value_toMidi(lua_State *L)
 {
     lua_settop(L, 2);

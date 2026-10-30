@@ -26,12 +26,18 @@
 /*
  * What a controller script can name on top of the base firmware's, made when it
  * first does - see luaLazyGlobals.h. Sorted by strcmp(), capitals first.
+ *
+ * The text constants are here twice: ALIGN_CENTER, FONT_BOLD and SIZE_LARGE
+ * are this firmware's own names, CENTER, BOLD and LARGE the mk2's, which is
+ * what the editor writes into a Custom control's script.
  */
 static const LuaLazyGlobal controllerGlobals[] = {
     LuaLazyGlobal::constant("ALIGN_CENTER", (int)TextAlign::center),
     LuaLazyGlobal::constant("ALIGN_LEFT", (int)TextAlign::left),
     LuaLazyGlobal::constant("ALIGN_RIGHT", (int)TextAlign::right),
     LuaLazyGlobal::constant("BLUE", 0x529DEC),
+    LuaLazyGlobal::constant("BOLD", (int)TextFace::bold),
+    LuaLazyGlobal::constant("CENTER", (int)TextAlign::center),
     LuaLazyGlobal::constant("CONTROL_SETS", 2),
     LuaLazyGlobal::constant("CONTROL_SET_1", 1),
     LuaLazyGlobal::constant("CONTROL_SET_2", 2),
@@ -43,10 +49,16 @@ static const LuaLazyGlobal controllerGlobals[] = {
     LuaLazyGlobal::constant("FONT_REGULAR", (int)TextFace::regular),
     LuaLazyGlobal::constant("GREEN", 0x03A598),
     LuaLazyGlobal::type("Group", group_register),
+    LuaLazyGlobal::constant("HUGE", (int)TextSize::huge),
+    LuaLazyGlobal::constant("LARGE", (int)TextSize::large),
+    LuaLazyGlobal::constant("LEFT", (int)TextAlign::left),
+    LuaLazyGlobal::constant("MEDIUM", (int)TextSize::medium),
+    LuaLazyGlobal::constant("MONOSPACED", (int)TextSpacing::monospaced),
     LuaLazyGlobal::type("Message", message_register),
     LuaLazyGlobal::constant("ORANGE", 0xF49500),
     LuaLazyGlobal::type("Overlay", overlay_register),
     LuaLazyGlobal::constant("PAGES", 1),
+    LuaLazyGlobal::constant("PROPORTIONAL", (int)TextSpacing::proportional),
     LuaLazyGlobal::constant("PT_ATCHANNEL", 12),
     LuaLazyGlobal::constant("PT_ATPOLY", 11),
     LuaLazyGlobal::constant("PT_CC14", 2),
@@ -67,10 +79,13 @@ static const LuaLazyGlobal controllerGlobals[] = {
     LuaLazyGlobal::constant("PURPLE", 0xC44795),
     LuaLazyGlobal::type("Page", page_register),
     LuaLazyGlobal::constant("RED", 0xF45C51),
+    LuaLazyGlobal::constant("REGULAR", (int)TextFace::regular),
+    LuaLazyGlobal::constant("RIGHT", (int)TextAlign::right),
     LuaLazyGlobal::constant("SIZE_HUGE", (int)TextSize::huge),
     LuaLazyGlobal::constant("SIZE_LARGE", (int)TextSize::large),
     LuaLazyGlobal::constant("SIZE_MEDIUM", (int)TextSize::medium),
     LuaLazyGlobal::constant("SIZE_SMALL", (int)TextSize::small),
+    LuaLazyGlobal::constant("SMALL", (int)TextSize::small),
     LuaLazyGlobal::constant("SPACING_MONOSPACED", (int)TextSpacing::monospaced),
     LuaLazyGlobal::constant("SPACING_PROPORTIONAL", (int)TextSpacing::proportional),
     LuaLazyGlobal::constant("VT_DEFAULT", 0),
