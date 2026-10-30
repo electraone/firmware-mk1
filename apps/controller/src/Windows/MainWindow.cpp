@@ -115,13 +115,30 @@ void MainWindow::reboot(void)
 bool MainWindow::switchPage(uint8_t pageId)
 {
     if (preset.getPage(pageId).isToBeDisplayed()) {
-        uint8_t controlSet =
-            setup.uiFeatures.resetActiveControlSet
-                ? preset.pages.at(pageId).getDefaultControlSetId()
-                : currentControlSetId;
-        return (switchPage(pageId, controlSet));
+        return (switchPage(pageId, getModeControlSet(pageId)));
     }
     return (false);
+}
+
+/* Which control set the configured mode opens a page on. */
+uint8_t MainWindow::getModeControlSet(uint8_t pageId) const
+{
+    const Page &page = preset.getPage(pageId);
+
+    switch (setup.uiFeatures.activeControlSetMode) {
+        case ActiveControlSetMode::local:
+            return (page.getCurrentControlSetId());
+        case ActiveControlSetMode::custom:
+            return (page.getDefaultControlSetId());
+        default:
+            return (currentControlSetId);
+    }
+}
+
+/* What a preset opens on: what the mode says, if the page can use it. */
+uint8_t MainWindow::getEntryControlSet(uint8_t pageId) const
+{
+    return (preset.getUsableControlSetId(pageId, getModeControlSet(pageId)));
 }
 
 /* The set the page is showing or, for a page that is not on the screen, the
@@ -134,17 +151,14 @@ uint8_t MainWindow::getControlSetForPage(uint8_t pageId)
         return (page.getLockedControlSetId());
     }
 
-    if ((pageId != currentPageId) && setup.uiFeatures.resetActiveControlSet) {
-        return (page.getDefaultControlSetId());
-    }
-
-    return (currentControlSetId);
+    return ((pageId == currentPageId) ? currentControlSetId
+                                      : getModeControlSet(pageId));
 }
 
 bool MainWindow::switchPage(uint8_t pageId, uint8_t controlSetId)
 {
     /* Whoever asked: a page holding a control set is entered on that set. */
-    const Page &page = preset.getPage(pageId);
+    Page &page = preset.getPage(pageId);
 
     if (page.isControlSetLocked()) {
         controlSetId = page.getLockedControlSetId();
@@ -153,6 +167,10 @@ bool MainWindow::switchPage(uint8_t pageId, uint8_t controlSetId)
     uint8_t prevCurrentPageId = currentPageId;
     currentPageId = pageId;
     currentControlSetId = controlSetId;
+
+    if (page.isValid()) {
+        page.setCurrentControlSetId(controlSetId);
+    }
 
     System::logger.write(LOG_ERROR,
                          "switchPage: Page switched: page=%d, controlSetId=%d",
@@ -174,7 +192,7 @@ bool MainWindow::switchPage(uint8_t pageId, uint8_t controlSetId)
 
 bool MainWindow::switchPageNext(void)
 {
-    for (uint8_t i = (currentPageId + 1); i < 12; i++) {
+    for (uint8_t i = (currentPageId + 1); i <= NR_OF_PAGES; i++) {
         if (preset.getPage(i).isToBeDisplayed()) {
             switchPage(i);
             return (true);
@@ -203,6 +221,12 @@ bool MainWindow::switchControlSet(uint8_t controlSetId)
     if (0 <= controlSetId && controlSetId <= 2) {
         pageView->setControlSet(controlSetId);
         currentControlSetId = controlSetId;
+
+        Page &page = preset.getPage(currentPageId);
+
+        if (page.isValid()) {
+            page.setCurrentControlSetId(controlSetId);
+        }
         return (true);
     }
     return (false);
@@ -351,7 +375,7 @@ bool MainWindow::loadLua(LocalFile &file)
         if (preset.isValid()) {
             presets.runUploadedLuaScript();
             closeAllWindows();
-            switchPage(1, preset.getPage(1).getDefaultControlSetId());
+            switchPage(1, getEntryControlSet(1));
             return (true);
         }
     }
@@ -894,7 +918,7 @@ void MainWindow::switchPreset(uint8_t bankNumber, uint8_t slot)
                                 "MainWindow::switchPreset: cannot initialize snapshot storage");
         }
     }
-    switchPage(1, preset.getPage(1).getDefaultControlSetId());
+    switchPage(1, getEntryControlSet(1));
 }
 
 void MainWindow::switchPresetNext(void)

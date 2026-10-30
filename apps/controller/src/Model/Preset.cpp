@@ -112,6 +112,42 @@ void Preset::resetRoot(void)
     projectId[0] = '\0';
 }
 
+bool Preset::hasControlsInControlSet(uint8_t pageId, uint8_t controlSetId) const
+{
+    for (const auto &control : controls) {
+        if ((control.getPageId() == pageId)
+            && (control.getControlSetId() == controlSetId)) {
+            return (true);
+        }
+    }
+
+    return (false);
+}
+
+uint8_t Preset::getUsableControlSetId(uint8_t pageId,
+                                      uint8_t preferredControlSetId) const
+{
+    if (hasControlsInControlSet(pageId, preferredControlSetId)) {
+        return (preferredControlSetId);
+    }
+
+    const uint8_t defaultControlSetId =
+        getPage(pageId).getDefaultControlSetId();
+
+    if (hasControlsInControlSet(pageId, defaultControlSetId)) {
+        return (defaultControlSetId);
+    }
+
+    for (uint8_t controlSetId = 0; controlSetId < 3; controlSetId++) {
+        if (hasControlsInControlSet(pageId, controlSetId)) {
+            return (controlSetId);
+        }
+    }
+
+    /* A page with no controls at all. */
+    return (defaultControlSetId);
+}
+
 /** Reset all preset controls
  *
  */

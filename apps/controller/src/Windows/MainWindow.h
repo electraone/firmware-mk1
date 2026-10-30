@@ -340,6 +340,8 @@ public:
     // Getters
     uint8_t getCurrentPageId(void) const override;
     uint8_t getCurrentControlSetId(void) const override;
+    uint8_t getModeControlSet(uint8_t pageId) const;
+    uint8_t getEntryControlSet(uint8_t pageId) const;
     uint8_t getControlSetForPage(uint8_t pageId) override;
     void refreshControlSetIndicator(void) override;
     uint8_t getCurrentPresetBank(void) const override;

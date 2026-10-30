@@ -5,7 +5,7 @@
 struct UiFeatures {
     UiFeatures()
         : touchSwitchControlSets(true),
-          resetActiveControlSet(false),
+          activeControlSetMode(ActiveControlSetMode::global),
           activeControlSetType(ActiveControlSetType::dim),
           keepPresetState(true),
           loadPresetStateOnStartup(false)
@@ -13,7 +13,7 @@ struct UiFeatures {
     }
 
     bool touchSwitchControlSets;
-    bool resetActiveControlSet;
+    ActiveControlSetMode activeControlSetMode;
     ActiveControlSetType activeControlSetType;
     bool keepPresetState;
     bool loadPresetStateOnStartup;

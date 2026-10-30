@@ -17,6 +17,18 @@ ActiveControlSetType translateControlSetType(const char *typeText)
     return (ActiveControlSetType::dim);
 }
 
+ActiveControlSetMode translateControlSetMode(const char *modeText)
+{
+    if (modeText) {
+        if (strcmp(modeText, "local") == 0) {
+            return (ActiveControlSetMode::local);
+        } else if (strcmp(modeText, "custom") == 0) {
+            return (ActiveControlSetMode::custom);
+        }
+    }
+    return (ActiveControlSetMode::global);
+}
+
 const char *translateControlSetTypeToText(ActiveControlSetType type)
 {
     if (type == ActiveControlSetType::none) {

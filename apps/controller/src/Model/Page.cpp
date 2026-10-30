@@ -27,7 +27,8 @@ Page::Page()
       objectsPresent(false),
       hidden(false),
       lockedControlSetId(0),
-      controlSetLocked(false)
+      controlSetLocked(false),
+      currentControlSetId(0)
 {
     *name = '\0';
 }
@@ -41,7 +42,8 @@ Page::Page(uint8_t id,
       objectsPresent(false),
       hidden(shouldBeHidden),
       lockedControlSetId(0),
-      controlSetLocked(false)
+      controlSetLocked(false),
+      currentControlSetId(0)
 {
     setName(newName);
 }
@@ -65,6 +67,16 @@ bool Page::isControlSetLocked(void) const
 uint8_t Page::getLockedControlSetId(void) const
 {
     return (lockedControlSetId);
+}
+
+void Page::setCurrentControlSetId(uint8_t controlSetId)
+{
+    currentControlSetId = controlSetId;
+}
+
+uint8_t Page::getCurrentControlSetId(void) const
+{
+    return (currentControlSetId);
 }
 
 bool Page::isValid(void) const

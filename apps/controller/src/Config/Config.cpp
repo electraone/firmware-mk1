@@ -405,12 +405,22 @@ bool Config::parseUiFeatures(File &file)
             LOG_TRACE,
             "Config::parseUiFeatures: touchSwitchControlSets=%d",
             uiFeatures.touchSwitchControlSets);
-        uiFeatures.resetActiveControlSet =
-            doc["uiFeatures"]["resetActiveControlSet"].as<bool>();
-        System::logger.write(
-            LOG_TRACE,
-            "Config::parseUiFeatures: resetActiveControlSet=%d",
-            uiFeatures.resetActiveControlSet);
+
+        /* The mode where the configuration names one. A configuration written
+         * for an older firmware says it with a switch instead, and one saying
+         * neither stays on the default. As the mk2 reads it. */
+        if (doc["uiFeatures"]["activeControlSetMode"].is<const char *>()) {
+            uiFeatures.activeControlSetMode = translateControlSetMode(
+                doc["uiFeatures"]["activeControlSetMode"].as<const char *>());
+        } else if (doc["uiFeatures"]["resetActiveControlSet"].is<bool>()) {
+            uiFeatures.activeControlSetMode =
+                doc["uiFeatures"]["resetActiveControlSet"].as<bool>()
+                    ? ActiveControlSetMode::custom
+                    : ActiveControlSetMode::global;
+        }
+        System::logger.write(LOG_TRACE,
+                             "Config::parseUiFeatures: activeControlSetMode=%d",
+                             uiFeatures.activeControlSetMode);
         uiFeatures.activeControlSetType = translateControlSetType(
             doc["uiFeatures"]["activeControlSetType"].as<char *>());
         System::logger.write(LOG_TRACE,
@@ -574,7 +584,7 @@ void Config::assignButton(ButtonAction &action,
 void Config::resetUiFeatures(void)
 {
     uiFeatures.touchSwitchControlSets = true;
-    uiFeatures.resetActiveControlSet = true;
+    uiFeatures.activeControlSetMode = ActiveControlSetMode::global;
     uiFeatures.activeControlSetType = ActiveControlSetType::dim;
     uiFeatures.keepPresetState = false;
     uiFeatures.loadPresetStateOnStartup = false;

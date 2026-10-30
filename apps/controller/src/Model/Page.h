@@ -126,6 +126,16 @@ public:
     bool isToBeDisplayed(void) const;
 
     /**
+     * @brief The control set the Page was last on.
+     *
+     * What the local control set mode brings a page back to.
+     *
+     * @param controlSetId the control set, counted from zero
+     */
+    void setCurrentControlSetId(uint8_t controlSetId);
+    uint8_t getCurrentControlSetId(void) const;
+
+    /**
      * @brief Holds the Page on a control set.
      *
      * Kept here rather than as a flag on the current set, as the mk2 does it,
@@ -165,6 +175,7 @@ private:
         bool hidden : 1;
         uint8_t lockedControlSetId : 2;
         bool controlSetLocked : 1;
+        uint8_t currentControlSetId : 2;
     };
 
     char name[MaxNameLength + 1];

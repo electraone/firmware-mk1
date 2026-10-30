@@ -42,6 +42,22 @@ public:
 
     Page &getPage(uint8_t pageId);
     const Page &getPage(uint8_t pageId) const;
+
+    /**
+     * @brief The control set to put a page on when a preset is entered.
+     *
+     * The one preferred if the page has controls in it, or else the page's
+     * default, or else the lowest set that has any. The set the controller was
+     * on belonged to the preset before this one, and landing on one this preset
+     * puts nothing in leaves every knob with no control. Whether a control is
+     * visible is not asked: a script may hide a set while it loads.
+     *
+     * @param preferredControlSetId the set wanted, counted from zero
+     * @return the set to use, counted from zero
+     */
+    uint8_t getUsableControlSetId(uint8_t pageId,
+                                  uint8_t preferredControlSetId) const;
+    bool hasControlsInControlSet(uint8_t pageId, uint8_t controlSetId) const;
     const Device &getDevice(uint8_t deviceId) const;
     const Device &getDevice(uint8_t port, uint8_t channel) const;
     Overlay *getOverlay(uint8_t overlayId);
